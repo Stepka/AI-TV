@@ -2,6 +2,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -19,7 +24,7 @@ CHANNELS = {
     "Retro": ["80s music", "90s music", "retro hits"]
 }
 
-YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"  # вставь свой ключ
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
 
 class PlaylistRequest(BaseModel):
     channel: str
