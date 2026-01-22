@@ -1,0 +1,19 @@
+# Виртуальное окружение
+venv/
+ENV/
+env/
+
+# Python кэш
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Uvicorn / лог файлы (опционально)
+*.log
+
+# IDE файлы (если используешь PyCharm, VSCode)
+.idea/
+.vscode/
+
+# MacOS файлы
+.DS_Store
