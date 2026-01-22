@@ -21,7 +21,8 @@ app.add_middleware(
 # Предопределенные каналы
 CHANNELS = {
     "MTV": ["pop music", "hip hop", "MTV hits"],
-    "Retro": ["80s music", "90s music", "retro hits"]
+    "Retro": ["80s music", "90s music", "retro hits"],
+    "A One": ["Rock music", "alternative rock", "A One channel"],
 }
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
@@ -56,6 +57,7 @@ def get_playlist(req: PlaylistRequest):
     videos = []
     for tag in tags:
         videos += search_youtube(tag, max_results=req.max_results//len(tags))
+    print(videos)
     return {"playlist": videos}
 
 @app.get("/")
