@@ -9,9 +9,21 @@ export default function App() {
   const [channel, setChannel] = useState(channelsList[0].name);
   const [playlist, setPlaylist] = useState([]);
   const [current, setCurrent] = useState(0);
+
+  const [isTransitioning, setIsTransitioning] = useState(true); // fade
+  const [isBlackout, setIsBlackout] = useState(true);           // чёрный экран
+
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
   const ytAPILoaded = useRef(false);
+
+  // Старт — появление из темноты
+  useEffect(() => {
+    setTimeout(() => {
+      setIsBlackout(false);
+      setIsTransitioning(false);
+    }, 500);
+  }, []);
 
   // Получаем плейлист
   const loadPlaylist = async () => {
@@ -24,13 +36,23 @@ export default function App() {
     setPlaylist(prev => [...prev, ...data.playlist]);
   };
 
+  // При смене канала — через чёрный экран
   useEffect(() => {
-    setPlaylist([]); // очищаем предыдущий
-    setCurrent(0);
-    loadPlaylist();
+    setIsBlackout(true);
+
+    setTimeout(() => {
+      setPlaylist([]);
+      setCurrent(0);
+      clearTimeout(timeoutRef.current);
+      loadPlaylist();
+
+      setTimeout(() => {
+        setIsBlackout(false);
+      }, 300);
+    }, 300);
   }, [channel]);
 
-  // Загружаем скрипт IFrame API один раз
+  // Загружаем IFrame API один раз
   useEffect(() => {
     if (ytAPILoaded.current) return;
     const tag = document.createElement("script");
@@ -42,6 +64,7 @@ export default function App() {
   // Создание плеера
   const createPlayer = (videoId) => {
     if (playerRef.current) playerRef.current.destroy();
+
     playerRef.current = new window.YT.Player("player", {
       height: "405",
       width: "720",
@@ -49,37 +72,50 @@ export default function App() {
       events: {
         onReady: () => handleVideoDuration(),
         onStateChange: (event) => {
-          if (event.data === window.YT.PlayerState.ENDED) handleNext();
+          if (event.data === window.YT.PlayerState.ENDED) smoothNext();
         },
       },
       playerVars: { autoplay: 1, rel: 0 },
     });
   };
 
-  // Переход на следующий клип
+  // Плавный переход клипа через затемнение
+  const smoothNext = () => {
+    setIsTransitioning(true);
+
+    setTimeout(() => {
+      handleNext();
+      setIsTransitioning(false);
+    }, 300);
+  };
+
+  // Следующий клип
   const handleNext = () => {
-    // Если последний клип — догружаем ещё
     if (current === playlist.length - 1) {
-      loadPlaylist(); // добавляем ещё 10 клипов
+      loadPlaylist();
     }
     setCurrent(prev => (prev + 1) % playlist.length);
   };
 
   const prevVideo = () => {
-    setCurrent(prev => (prev - 1 + playlist.length) % playlist.length);
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrent(prev => (prev - 1 + playlist.length) % playlist.length);
+      setIsTransitioning(false);
+    }, 300);
   };
 
-  // Ограничение на 5 минут
+  // Ограничение 5 минут
   const handleVideoDuration = () => {
     if (!playerRef.current) return;
     const duration = playerRef.current.getDuration();
     if (duration > 300) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(handleNext, 300 * 1000);
+      timeoutRef.current = setTimeout(smoothNext, 300 * 1000);
     }
   };
 
-  // Обновляем плеер при смене current или playlist
+  // Обновляем плеер при смене клипа
   useEffect(() => {
     if (!playlist.length || !window.YT) return;
     createPlayer(playlist[current].videoId);
@@ -99,19 +135,31 @@ export default function App() {
   const nextVideoTitle = decodeHtml(playlist[nextIndex].title);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000", color: "#fff" }}>
+    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000", color: "#fff", position: "relative" }}>
       
+      {/* BLACKOUT OVERLAY */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "#000",
+          opacity: isBlackout ? 1 : 0,
+          pointerEvents: "none",
+          transition: "0.5s opacity",
+          zIndex: 999
+        }}
+      />
+
       {/* Боковое меню */}
       <div style={{ width: "200px", padding: "20px", borderRight: "1px solid #333" }}>
         <h2>Каналы</h2>
         {channelsList.map((ch) => (
           <div
             key={ch.name}
-            onClick={() => {
-              setChannel(ch.name);
-              setCurrent(0);
-              clearTimeout(timeoutRef.current);
-            }}
+            onClick={() => setChannel(ch.name)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -132,25 +180,32 @@ export default function App() {
 
       {/* Основной контент */}
       <div style={{ flex: 1, textAlign: "center", padding: "20px" }}>
-        <h1 style={{ transition: "0.3s opacity", opacity: 1 }}>{decodeHtml(video.title)}</h1>
+
+        {/* Название */}
+        <h1
+          style={{
+            transition: "0.3s opacity",
+            opacity: isTransitioning ? 0 : 1
+          }}
+        >
+          {decodeHtml(video.title)}
+        </h1>
 
         {/* Плеер */}
-        <div id="player" style={{ marginTop: "20px", transition: "0.3s opacity", opacity: 1 }}></div>
+        <div
+          style={{
+            marginTop: "20px",
+            transition: "0.3s opacity",
+            opacity: isTransitioning ? 0 : 1
+          }}
+        >
+          <div id="player"></div>
+        </div>
 
-        {/* Кнопки навигации */}
+        {/* Кнопки */}
         <div style={{ marginTop: "15px", display: "flex", justifyContent: "center", gap: "15px" }}>
-          <button
-            onClick={prevVideo}
-            style={{ padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}
-          >
-            ⏮ Предыдущий
-          </button>
-          <button
-            onClick={handleNext}
-            style={{ padding: "10px 20px", fontSize: "16px", cursor: "pointer" }}
-          >
-            Следующий ⏭
-          </button>
+          <button onClick={prevVideo}>⏮ Предыдущий</button>
+          <button onClick={smoothNext}>Следующий ⏭</button>
         </div>
 
         {/* Подсказка следующего клипа */}
