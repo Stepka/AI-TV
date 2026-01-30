@@ -4,6 +4,8 @@ export default function App() {
   const channelsList = [
     { name: "MTV", icon: "🎵" },
     { name: "Retro", icon: "🎶" },
+    { name: "Retro Synth", icon: "🎛️" },
+    { name: "A One", icon: "⭐" },
   ];
 
   const [channel, setChannel] = useState(channelsList[0].name);
@@ -132,7 +134,7 @@ export default function App() {
 
   const video = playlist[current];
   const nextIndex = (current + 1) % playlist.length;
-  const nextVideoTitle = decodeHtml(playlist[nextIndex].title);
+  const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000", color: "#fff", position: "relative" }}>
@@ -188,7 +190,7 @@ export default function App() {
             opacity: isTransitioning ? 0 : 1
           }}
         >
-          {decodeHtml(video.title)}
+          {decodeHtml(video.artist + " - " + video.title)}
         </h1>
 
         {/* Плеер */}
