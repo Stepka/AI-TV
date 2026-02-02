@@ -4,4 +4,6 @@ requests
 pydantic
 python-dotenv
 openai
-sqlite3
+numpy
+scipy
+silero

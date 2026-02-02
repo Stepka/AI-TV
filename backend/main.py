@@ -1,5 +1,7 @@
 import random
 from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse
+import numpy as np
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import requests
@@ -7,11 +9,13 @@ from dotenv import load_dotenv
 import os
 import os
 import json
+from scipy.io.wavfile import write
 from openai import OpenAI
 
-from yt_cache import YouTubeCache
-
 load_dotenv()
+
+from yt_cache import YouTubeCache
+from silero import silero_tts
 
 app = FastAPI()
 
@@ -24,6 +28,9 @@ app.add_middleware(
 )
 
 llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+silero_model, _ = silero_tts(language='ru',
+                                 speaker='v5_1_ru')
 
 # Предопределенные каналы
 CHANNELS = {
@@ -95,6 +102,43 @@ def get_playlist(req: PlaylistRequest):
 @app.get("/")
 def get_home():
     return "It's AI-TV, baby!"
+
+
+@app.get("/test_speech")
+def test_speech():
+    sample_rate = 48000
+    example_text = "Вот это был заряд! Если вы чувствуете этот бит — значит, мы всё делаем правильно. А дальше будет ещё громче, ещё ярче и ещё атмосфернее. Через несколько секунд стартует следующий клип, так что устраивайтесь поудобнее и ловите волну."
+    audio = silero_model.apply_tts(
+        text=example_text,
+        sample_rate=sample_rate
+    )
+    
+    audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
+    audio_int16 = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+    write("wav_folder/dj.wav", sample_rate, audio_int16)
+
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>DJ Transition Player</title>
+    </head>
+    <body style="background-color:#111;color:#fff;text-align:center;padding-top:50px;font-family:sans-serif;">
+        <h1>DJ Transition Player</h1>
+        <audio controls autoplay>
+            <source src="/audio" type="audio/wav">
+            Ваш браузер не поддерживает аудио.
+        </audio>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+
+@app.get("/audio")
+def get_audio():
+    return FileResponse("wav_folder/dj.wav", media_type="audio/wav", filename="dj.wav")
 
 
 ################################################ 
