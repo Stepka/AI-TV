@@ -65,6 +65,12 @@ class PlaylistRequest(BaseModel):
     channel: str
     max_results: int = 10
 
+    
+class DJRequest(BaseModel):
+    channel: str
+    from_title: str
+    to_title: str
+
 
 @app.post("/playlist")
 def get_playlist(req: PlaylistRequest):
@@ -84,7 +90,8 @@ def get_playlist(req: PlaylistRequest):
             query = f"{track['artist']} {track['title']} official music video"
             video_id = search_youtube_video(query)
 
-            cache.save_video(track['artist'], track['title'], video_id)
+            if video_id:
+                cache.save_video(track['artist'], track['title'], video_id)
             
         if video_id:
             videos.append({
@@ -107,17 +114,26 @@ def get_home():
 @app.get("/test_speech")
 def test_speech():
     sample_rate = 48000
-    example_text = "Вот это был заряд! Если вы чувствуете этот бит — значит, мы всё делаем правильно. А дальше будет ещё громче, ещё ярче и ещё атмосфернее. Через несколько секунд стартует следующий клип, так что устраивайтесь поудобнее и ловите волну."
+
+    text = generate_dj_text(
+        channel="MTV",
+        from_title="Dua Lipa - Levitating",
+        to_title="Charlie XCX - Boom Clap",
+    )
+
+    print("Generated text:", text)
+    
     audio = silero_model.apply_tts(
-        text=example_text,
+        text=text,
         sample_rate=sample_rate
     )
     
     audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
     audio_int16 = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
-    write("wav_folder/dj.wav", sample_rate, audio_int16)
+    filename = "dj.wav"
+    write(f"wav_folder/{filename}", sample_rate, audio_int16)
 
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="ru">
     <head>
@@ -127,7 +143,7 @@ def test_speech():
     <body style="background-color:#111;color:#fff;text-align:center;padding-top:50px;font-family:sans-serif;">
         <h1>DJ Transition Player</h1>
         <audio controls autoplay>
-            <source src="/audio" type="audio/wav">
+            <source src="/audio?filename={filename}" type="audio/wav">
             Ваш браузер не поддерживает аудио.
         </audio>
     </body>
@@ -137,8 +153,37 @@ def test_speech():
 
 
 @app.get("/audio")
-def get_audio():
-    return FileResponse("wav_folder/dj.wav", media_type="audio/wav", filename="dj.wav")
+def get_audio(filename: str):
+    return FileResponse(f"wav_folder/{filename}", media_type="audio/wav", filename=filename)
+
+
+@app.post("/dj_transition")
+def dj_transition(req: DJRequest):
+    sample_rate = 48000
+
+    text = generate_dj_text(
+        channel=req.channel,
+        from_title=req.from_title,
+        to_title=req.to_title,
+    )
+
+    print("Generated text:", text)
+    
+    audio = silero_model.apply_tts(
+        text=text,
+        sample_rate=sample_rate
+    )
+    
+    audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
+    audio_int16 = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+    filename = f"DJ - {req.channel} - {req.from_title} - {req.to_title}.wav"
+    write(f"wav_folder/{filename}", sample_rate, audio_int16)
+
+    return {
+        "text": text,
+        "audio_filename": filename,
+        "format": "wav"
+    }
 
 
 ################################################ 
@@ -215,3 +260,42 @@ Format:
     except json.JSONDecodeError:
         # защита от мусора
         raise RuntimeError(f"LLM returned invalid JSON: {content}")
+    
+
+def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
+    prompt = f"""
+Ты — радио-диджей музыкального канала {channel}.
+Нужно плавно и энергично перейти от одного клипа к другому.
+
+Важно:
+
+Сначала ОБЯЗАТЕЛЬНО преобразуй любые названия, в том числе треков и каналов:
+
+перепиши {from_title} и {to_title} по русски
+
+Не делай прямой перевод, а пиши так, как названия песен произносят на русском радио и ТВ.
+
+имена исполнителей и названия песен запиши КИРИЛЛИЦЕЙ
+
+В итоговом тексте используй ТОЛЬКО кириллические версии, латиница запрещена.
+
+Теперь придумай переход от трека {from_title} к треку {to_title}
+
+Требования к тексту:
+— русский язык
+— разговорный стиль
+— живо, уверенно, как на музыкальном ТВ
+— 2–3 предложения
+— никаких слов на латинице
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You write short DJ speech for radio."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()

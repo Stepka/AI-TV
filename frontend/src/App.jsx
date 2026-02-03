@@ -11,9 +11,15 @@ export default function App() {
   const [channel, setChannel] = useState(channelsList[0].name);
   const [playlist, setPlaylist] = useState([]);
   const [current, setCurrent] = useState(0);
+  
+  const [playerReady, setPlayerReady] = useState(false);
 
   const [isTransitioning, setIsTransitioning] = useState(true); // fade
   const [isBlackout, setIsBlackout] = useState(true);           // чёрный экран
+
+  const djAudioRef = useRef(null);
+  const djDataRef = useRef(null);
+  const duckIntervalRef = useRef(null);
 
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -67,12 +73,17 @@ export default function App() {
   const createPlayer = (videoId) => {
     if (playerRef.current) playerRef.current.destroy();
 
+    setPlayerReady(false);
+    
     playerRef.current = new window.YT.Player("player", {
       height: "405",
       width: "720",
       videoId: videoId,
       events: {
-        onReady: () => handleVideoDuration(),
+        onReady: () => {
+          setPlayerReady(true);
+          handleVideoDuration();
+        },
         onStateChange: (event) => {
           if (event.data === window.YT.PlayerState.ENDED) smoothNext();
         },
@@ -80,6 +91,90 @@ export default function App() {
       playerVars: { autoplay: 1, rel: 0 },
     });
   };
+
+  useEffect(() => {
+    if (!playlist.length || !window.YT) return;
+
+    createPlayer(playlist[current].videoId);
+
+    // заранее готовим DJ
+    prepareDjTransition();
+
+  }, [current, playlist]);
+
+  const prepareDjTransition = async () => {
+    const from = playlist[current];
+    const to = playlist[(current + 1) % playlist.length];
+
+    const res = await fetch("http://127.0.0.1:8000/dj_transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channel,
+        from_title: from.artist + " - " + from.title,
+        to_title: to.artist + " - " + to.title,
+      })
+    });
+
+    djDataRef.current = await res.json();
+  };
+
+  useEffect(() => {
+    if (!playerReady || !playerRef.current) return;
+
+    const interval = setInterval(() => {
+      const player = playerRef.current;
+      if (!player || !player.getDuration) return;
+
+      let duration = player.getDuration();
+      if (duration > 300) duration = 300;
+
+      const remaining = duration - player.getCurrentTime();
+
+      if (remaining < 10.5) {
+        clearInterval(interval);
+        playDjOverVideo();
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [current, playerReady]);
+
+  const playDjOverVideo = () => {
+    if (!djDataRef.current || !playerRef.current) return;
+
+    const audio = new Audio(
+      `http://127.0.0.1:8000/audio?filename=${djDataRef.current.audio_filename}`
+    );
+    djAudioRef.current = audio;
+
+    audio.volume = 0;
+    audio.play();
+
+    // 🎚 ducking YouTube
+    let ytVolume = 100;
+    duckIntervalRef.current = setInterval(() => {
+      ytVolume -= 5;
+      if (ytVolume <= 30) {
+        ytVolume = 30;
+        clearInterval(duckIntervalRef.current);
+      }
+      playerRef.current.setVolume(ytVolume);
+    }, 50);
+
+    // 🎙 fade-in DJ
+    const fadeIn = setInterval(() => {
+      audio.volume = Math.min(audio.volume + 0.05, 1);
+      if (audio.volume >= 1) clearInterval(fadeIn);
+    }, 50);
+
+    audio.onended = () => {
+      // возвращаем громкость
+      playerRef.current.setVolume(100);
+      // setCurrent(prev => (prev + 1) % playlist.length);
+    };
+  };
+
 
   // Плавный переход клипа через затемнение
   const smoothNext = () => {
@@ -118,10 +213,10 @@ export default function App() {
   };
 
   // Обновляем плеер при смене клипа
-  useEffect(() => {
-    if (!playlist.length || !window.YT) return;
-    createPlayer(playlist[current].videoId);
-  }, [current, playlist]);
+  // useEffect(() => {
+  //   if (!playlist.length || !window.YT) return;
+  //   createPlayer(playlist[current].videoId);
+  // }, [current, playlist]);
 
   // Декодируем HTML сущности
   const decodeHtml = (html) => {
