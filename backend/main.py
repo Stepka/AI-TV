@@ -154,8 +154,8 @@ CHANNELS = {
         "name": "X-Fit",
         "description": "X-Fit | Фитнес-клуб и тренажёрный зал",
         "voice": {
-            "source": "silero", 
-            "name": "xenia",
+            "source": "elevenlabs", 
+            "name": "random_female",
             "sex": "female"
         },
         "action": [
@@ -424,7 +424,11 @@ def dj_transition(req: DJRequest):
     
         case "elevenlabs":
             # Get raw response with headers
-            voice_id = "LUaup4yiSjSln4XlzDE3" if meta["voice"]["name"] == "random_male" else "LUaup4yiSjSln4XlzDE3"  # пример, нужно подобрать под нужные голоса
+            if meta["voice"]["sex"] == "male":
+                voice_id = "YOq2y2Up4RgXP2HyXjE5" if meta["voice"]["name"] == "random_male" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+            else:
+                voice_id = "2zRM7PkgwBPiau2jvVXc" if meta["voice"]["name"] == "random_female" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+            
             audio = elevenlabs_client.text_to_speech.convert(
                 text=text,
                 model_id="eleven_v3",
