@@ -6,6 +6,12 @@ export default function App() {
     { name: "Retro", icon: "🎶" },
     { name: "Retro Synth", icon: "🎛️" },
     { name: "A One", icon: "⭐" },
+    { name: "Другое Место", icon: "☕" },
+    { name: "Пеперончино", icon: "🍕" },
+    { name: "X-Fit", icon: "🏋️" },
+    { name: "Эдкар", icon: "🏥" },
+    { name: "Exseed", icon: "🚗" },
+    { name: "О, Pretty People", icon: "💅" },
   ];
 
   const [channel, setChannel] = useState(channelsList[0].name);
@@ -131,7 +137,7 @@ export default function App() {
 
       const remaining = duration - player.getCurrentTime();
 
-      if (remaining < 10.5) {
+      if (remaining < 30.5) {
         clearInterval(interval);
         playDjOverVideo();
       }
@@ -205,6 +211,7 @@ export default function App() {
   // Ограничение 5 минут
   const handleVideoDuration = () => {
     if (!playerRef.current) return;
+    console.log("Video duration:", playerRef.current.getDuration());
     const duration = playerRef.current.getDuration();
     if (duration > 300) {
       clearTimeout(timeoutRef.current);
