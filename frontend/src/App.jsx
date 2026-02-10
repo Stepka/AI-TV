@@ -10,8 +10,9 @@ export default function App() {
     { name: "Пеперончино", icon: "🍕" },
     { name: "X-Fit", icon: "🏋️" },
     { name: "Эдкар", icon: "🏥" },
-    { name: "Exseed", icon: "🚗" },
+    { name: "Exeed", icon: "🚗" },
     { name: "О, Pretty People", icon: "💅" },
+    { name: "OldBoy", icon: "💈" },
   ];
 
   const [channel, setChannel] = useState(channelsList[0].name);

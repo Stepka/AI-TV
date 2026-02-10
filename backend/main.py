@@ -15,6 +15,7 @@ from openai import OpenAI
 load_dotenv()
 
 from yt_cache import YouTubeCache
+from elevenlabs.client import ElevenLabs
 from silero import silero_tts
 
 app = FastAPI()
@@ -29,6 +30,8 @@ app.add_middleware(
 
 llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+
 silero_model, _ = silero_tts(language='ru',
                                  speaker='v5_1_ru')
 
@@ -39,28 +42,48 @@ CHANNELS = {
         "type": "music_tv",
         "style": "modern popular music",
         "era": "2010-2024",
-        "description": "global chart hits, pop, hip hop, dance"
+        "description": "global chart hits, pop, hip hop, dance",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        }
     },
     
     "Retro": {
         "type": "music_tv",
         "style": "classic hits",
         "era": "1980-1989",
-        "description": "80s pop, disco, synth, rock"
+        "description": "80s pop, disco, synth, rock",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        }
     },
     
     "Retro Synth": {
         "type": "music_tv",
         "style": "classic synth hits",
         "era": "1980-1989",
-        "description": "80s synth, soviet synth"
+        "description": "80s synth, soviet synth",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        }
     },
     
     "A One": {
         "type": "music_tv",
         "style": "rock and alternative",
         "era": "1995-2010",
-        "description": "alternative rock, grunge, indie"
+        "description": "alternative rock, grunge, indie",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        }
     },
     
     "Другое Место": {
@@ -72,6 +95,11 @@ CHANNELS = {
         "era": "2005-2025",
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
+        "voice": {
+            "source": "elevenlabs", 
+            "name": "random_male",
+            "sex": "male"
+        },
         "action": [
             "При покупке двух кальянов - третий в подарок",
         ],
@@ -94,6 +122,11 @@ CHANNELS = {
         "era": "1985-2025",
         "name": "Пеперончино",
         "description": "ПЕПЕРОНЧИНО🌶️ | Пиццерия Калининград",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
             "Покажите ваш билет на концерт (в день мероприятия) и получите две фирменные настойки на выбор в подарок!",
             "Бокал игристого каждому гостю при заказе завтрака с 11:00 до 14:00",
@@ -120,6 +153,11 @@ CHANNELS = {
         "era": "2008-2025",
         "name": "X-Fit",
         "description": "X-Fit | Фитнес-клуб и тренажёрный зал",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
             "Гостевой визит на 1 день бесплатно при записи через администратора",
             "Скидка 20% на персональные тренировки при покупке пакета 10 занятий",
@@ -147,6 +185,11 @@ CHANNELS = {
         "era": "1995-2025",
         "name": "Эдкар",
         "description": "Эдкар | Семейная медицина и стоматология",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
             "Профилактический осмотр стоматолога — бесплатно при первом визите",
             "Комплекс: профгигиена + консультация — по специальной цене",
@@ -174,6 +217,11 @@ CHANNELS = {
         "era": "2012-2025",
         "name": "EXEED",
         "description": "EXEED | Автомобильный дилерский центр",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
             "Тест-драйв в удобное время + фирменный подарок при записи онлайн",
             "Trade-in: дополнительная выгода до 150 000 ₽ при сдаче авто",
@@ -201,6 +249,11 @@ CHANNELS = {
         "era": "2015-2025",
         "name": "О, Pretty People",
         "description": "О, Pretty People | Салон красоты",
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
             "Скидка 15% на первое посещение при записи онлайн",
             "Маникюр + покрытие — по спеццене в будние дни до 15:00",
@@ -229,6 +282,11 @@ CHANNELS = {
         "era": "1990-2025",
         "name": "OldBoy",
         "description": "OldBoy | Барбершоп",
+        "voice": {
+            "source": "elevenlabs", 
+            "name": "random_male",
+            "sex": "male"
+        },
         "action": [
             "Скидка 10% на первое посещение при записи через администратора",
             "Отец + сын: специальная цена на комплекс стрижек",
@@ -360,15 +418,35 @@ def dj_transition(req: DJRequest):
 
     print("Generated text:", text)
     
-    audio = silero_model.apply_tts(
-        text=text,
-        sample_rate=sample_rate
-    )
+    meta = CHANNELS.get(req.channel)
+
+    match meta["voice"]["source"]:
     
-    audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
-    audio_int16 = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+        case "elevenlabs":
+            # Get raw response with headers
+            voice_id = "LUaup4yiSjSln4XlzDE3" if meta["voice"]["name"] == "random_male" else "LUaup4yiSjSln4XlzDE3"  # пример, нужно подобрать под нужные голоса
+            audio = elevenlabs_client.text_to_speech.convert(
+                text=text,
+                model_id="eleven_v3",
+                voice_id=voice_id,
+                output_format="wav_48000",
+            )
+            # from elevenlabs.play import play
+            # play(audio)
+            audio_data = b"".join(audio)    
+            # Преобразуем байты в NumPy массив int16
+            audio = np.frombuffer(audio_data, dtype=np.int16)
+        
+        case _:
+            audio = silero_model.apply_tts(
+                text=text,
+                sample_rate=sample_rate
+            )
+            audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
+            audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+    
     filename = f"DJ - {req.channel} - {req.from_title} - {req.to_title}.wav"
-    write(f"wav_folder/{filename}", sample_rate, audio_int16)
+    write(f"wav_folder/{filename}", sample_rate, audio)
 
     return {
         "text": text,
@@ -457,16 +535,16 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
     text = generate_text(channel, from_title, to_title)
     if meta["type"] == "brand_space":
         match random.random():
-            case x if x <= 0.2:
+            case x if x <= 0.3:
                 print("Adding promo")
                 text = add_promo(text, channel)
-            case x if x <= 0.4:
+            case x if x <= 0.6:
                 print("Adding menu")
                 text = add_menu(text, channel)
-            case x if x <= 0.6:
+            case x if x <= 0.8:
                 print("Adding weather")
                 text = add_weather(text, channel)
-            case x if x <= 0.8:
+            case x if x <= 0.9:
                 print("Adding local events")
                 text = add_local_events(text, channel)
             case x if x <= 1:
@@ -476,8 +554,10 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
     if len(text) > 1000:
         text = shortener(text, channel, max_symbols=1000)
         
-    text = convert_to_russian(text, from_title, to_title)
-    text = convert_digits(text)
+    
+    if meta["voice"]["source"] == "silero":
+        text = convert_to_russian(text, from_title, to_title)
+        text = convert_digits(text)
     return text
     
 
@@ -503,6 +583,7 @@ def generate_text(channel: str, from_title: str, to_title: str) -> str:
 
 Требования к тексту:
 — русский язык
+— от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
 — разговорный стиль
 — живо, уверенно, как на музыкальном ТВ
 — 2–3 предложения
