@@ -85,10 +85,14 @@ CHANNELS = {
     
     "Другое Место": {
         "type": "brand_space",
-        "style": 
-            "chill electronic and oriental lounge, "
-            "deep house, organic house, downtempo, "
-            "oriental chill, hookah lounge vibes",
+        # "style": 
+        #     "chill electronic and oriental lounge, "
+        #     "deep house, organic house, downtempo, "
+        #     "oriental chill, hookah lounge vibes",
+        "style":
+            "organic house, melodic house, "
+            "downtempo, chill progressive, "
+            "soft oriental fusion, ",
         # "style":
         #     "luxury lounge, "
         #     "organic house, melodic house, "
@@ -105,16 +109,16 @@ CHANNELS = {
 
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
-        # "voice": {
-        #     "source": "elevenlabs", 
-        #     "name": "random_female",
-        #     "sex": "female"
-        # },
         "voice": {
-            "source": "silero", 
-            "name": "xenia",
+            "source": "elevenlabs", 
+            "name": "ZSHzpa6aUvhjzShiBmYw",
             "sex": "female"
         },
+        # "voice": {
+        #     "source": "silero", 
+        #     "name": "xenia",
+        #     "sex": "female"
+        # },
         "action": [
             "При покупке двух кальянов - третий в подарок",
         ],
@@ -525,11 +529,11 @@ Rules:
 - No remixes, no live versions
 - Avoid duplicate artists
 
-Return ONLY valid JSON.
+Return ONLY valid JSON. Add infoormation about how well the track matches the channel style in "match" field (0-100). The higher the better.
 Format:
 {{
   "tracks": [
-  {{ "artist": "Artist name", "title": "Song title" }}
+  {{ "artist": "Artist name", "title": "Song title", "match": "0-100" }}
   ]
 }}
 """
