@@ -40,8 +40,7 @@ CHANNELS = {
     
     "MTV": {
         "type": "music_tv",
-        "style": "modern popular music",
-        "era": "2010-2024",
+        "style": "modern popular music 2010-2024",
         "description": "global chart hits, pop, hip hop, dance",
         "voice": {
             "source": "silero", 
@@ -52,8 +51,7 @@ CHANNELS = {
     
     "Retro": {
         "type": "music_tv",
-        "style": "classic hits",
-        "era": "1980-1989",
+        "style": "classic hits 1980-1989",
         "description": "80s pop, disco, synth, rock",
         "voice": {
             "source": "silero", 
@@ -64,8 +62,7 @@ CHANNELS = {
     
     "Retro Synth": {
         "type": "music_tv",
-        "style": "classic synth hits",
-        "era": "1980-1989",
+        "style": "classic synth hits 1980-1989",
         "description": "80s synth, soviet synth",
         "voice": {
             "source": "silero", 
@@ -76,8 +73,7 @@ CHANNELS = {
     
     "A One": {
         "type": "music_tv",
-        "style": "rock and alternative",
-        "era": "1995-2010",
+        "style": "rock and alternative 1995-2010",
         "description": "alternative rock, grunge, indie",
         "voice": {
             "source": "silero", 
@@ -91,14 +87,32 @@ CHANNELS = {
         "style": 
             "chill electronic and oriental lounge, "
             "deep house, organic house, downtempo, "
-            "oriental chill, arabic fusion, hookah lounge vibes",
-        "era": "2005-2025",
+            "oriental chill, hookah lounge vibes",
+        # "style":
+        #     "luxury lounge, "
+        #     "organic house, melodic house, "
+        #     "downtempo, chill progressive, "
+        #     "soft oriental fusion, "
+        #     "sunset rooftop vibes, hookah lounge mood",
+        # "style":
+        #     "modern chill, "
+        #     "lo-fi house, deep house, "
+        #     "slow techno, minimal grooves, "
+        #     "late night city vibes, "
+        #     "smooth electronic background, "
+        #     "hookah lounge energy",
+
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
+        # "voice": {
+        #     "source": "elevenlabs", 
+        #     "name": "random_female",
+        #     "sex": "female"
+        # },
         "voice": {
-            "source": "elevenlabs", 
-            "name": "random_male",
-            "sex": "male"
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
         },
         "action": [
             "При покупке двух кальянов - третий в подарок",
@@ -119,7 +133,6 @@ CHANNELS = {
             "italian classics, acoustic hits, "
             "easy listening, light funk, "
             "feel-good background music",
-        "era": "1985-2025",
         "name": "Пеперончино",
         "description": "ПЕПЕРОНЧИНО🌶️ | Пиццерия Калининград",
         "voice": {
@@ -150,7 +163,6 @@ CHANNELS = {
             "clean hip-hop, "
             "uplifting dance hits, "
             "gym-friendly bangers",
-        "era": "2008-2025",
         "name": "X-Fit",
         "description": "X-Fit | Фитнес-клуб и тренажёрный зал",
         "voice": {
@@ -182,7 +194,6 @@ CHANNELS = {
             "smooth jazz, "
             "relaxing background music, "
             "minimal piano and ambient",
-        "era": "1995-2025",
         "name": "Эдкар",
         "description": "Эдкар | Семейная медицина и стоматология",
         "voice": {
@@ -214,7 +225,6 @@ CHANNELS = {
             "clean trap beats, "
             "high-end lounge, "
             "confident driving vibes",
-        "era": "2012-2025",
         "name": "EXEED",
         "description": "EXEED | Автомобильный дилерский центр",
         "voice": {
@@ -246,7 +256,6 @@ CHANNELS = {
             "minimal deep house, "
             "clean tik-tok hits, "
             "warm aesthetic vibes",
-        "era": "2015-2025",
         "name": "О, Pretty People",
         "description": "О, Pretty People | Салон красоты",
         "voice": {
@@ -279,7 +288,6 @@ CHANNELS = {
             "barbershop swagger, "
             "clean rock classics, "
             "masculine lounge vibes",
-        "era": "1990-2025",
         "name": "OldBoy",
         "description": "OldBoy | Барбершоп",
         "voice": {
@@ -326,6 +334,7 @@ def get_playlist(req: PlaylistRequest):
 
     tracks = generate_playlist_llm(req.channel, req.max_results*4)
     tracks = random.sample(tracks, min(req.max_results, len(tracks)))
+    print("Generated tracks:", tracks)
     # return tracks
 
     videos = []
@@ -440,6 +449,7 @@ def dj_transition(req: DJRequest):
             audio_data = b"".join(audio)    
             # Преобразуем байты в NumPy массив int16
             audio = np.frombuffer(audio_data, dtype=np.int16)
+            print("Generated audio with elevenlabs")
         
         case _:
             audio = silero_model.apply_tts(
@@ -448,6 +458,7 @@ def dj_transition(req: DJRequest):
             )
             audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
             audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+            print("Generated audio with silero")
     
     filename = f"DJ - {req.channel} - {req.from_title} - {req.to_title}.wav"
     write(f"wav_folder/{filename}", sample_rate, audio)
@@ -492,16 +503,20 @@ def generate_playlist_llm(channel: str, count: int = 10):
         raise ValueError("Unknown channel")
 
     prompt = f"""
-You are a professional music TV editor.
+You are a professional music editor.
 
-Create a playlist for the TV channel "{channel}".
+Create a playlist for the radio channel "{channel}".
+"""
+    
+    if meta.get("type") == "brand_space":
+        prompt += f"""The channel is for a brand space with the following description: "{meta['description']}".
+"""
 
+    prompt = f"""
 Style: {meta["style"]}
-Era: {meta["era"]}
 
 Rules:
 - EXACTLY {count} items
-- Popular and recognizable songs
 - Each item must include artist and title
 - No remixes, no live versions
 - Avoid duplicate artists
@@ -518,7 +533,7 @@ Format:
     response = llm_client.chat.completions.create(
         model="gpt-4o-mini",  # быстрый и дешёвый для MVP
         messages=[
-            {"role": "system", "content": "You generate structured music playlists."},
+            {"role": "system", "content": "You generate structured and smooth music playlists."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.7,
@@ -545,23 +560,29 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
             case x if x <= 0.6:
                 print("Adding menu")
                 text = add_menu(text, channel)
-            case x if x <= 0.8:
+            case x if x <= 0.7:
                 print("Adding weather")
                 text = add_weather(text, channel)
-            case x if x <= 0.9:
-                print("Adding local events")
-                text = add_local_events(text, channel)
-            case x if x <= 1:
-                print("Adding local news")
-                text = add_local_news(text, channel)
+            # case x if x <= 0.9:
+            #     print("Adding local events")
+            #     text = add_local_events(text, channel)
+            # case x if x <= 1:
+            #     print("Adding local news")
+            #     text = add_local_news(text, channel)
 
-    if len(text) > 1000:
-        text = shortener(text, channel, max_symbols=1000)
-        
+    if len(text) > 500:
+        print("Text length before shortening:", len(text))
+        text = shortener(text, channel, max_symbols=500)
+        print("Text length after shortening:", len(text))
     
     if meta["voice"]["source"] == "silero":
+        print("Converting text to Russian")
         text = convert_to_russian(text, from_title, to_title)
+        print("Converting digits to words")
         text = convert_digits(text)
+
+        
+    print("Text length after all:", len(text))
     return text
     
 
