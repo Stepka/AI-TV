@@ -1,3 +1,4 @@
+import hashlib
 import random
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
@@ -460,7 +461,10 @@ def dj_transition(req: DJRequest):
             audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
             print("Generated audio with silero")
     
-    filename = f"DJ - {req.channel} - {req.from_title} - {req.to_title}.wav"
+    raw = f"{req.channel}|{req.from_title}|{req.to_title}"
+    h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+
+    filename = f"dj_{h}.wav"
     write(f"wav_folder/{filename}", sample_rate, audio)
 
     return {
