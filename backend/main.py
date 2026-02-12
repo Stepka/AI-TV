@@ -110,16 +110,17 @@ CHANNELS = {
 
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
-        # "voice": {
-        #     "source": "elevenlabs", 
-        #     "name": "ZSHzpa6aUvhjzShiBmYw",
-        #     "sex": "female"
-        # },
         "voice": {
-            "source": "silero", 
-            "name": "xenia",
+            "source": "elevenlabs", 
+            "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy 
+            # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
             "sex": "female"
         },
+        # "voice": {
+        #     "source": "silero", 
+        #     "name": "xenia",
+        #     "sex": "female"
+        # },
         "action": [
             "Наше лаунж кафе дарит гостям униувльную возможность - стать обладателем легендарного кольца Картье! Условия акции уточняйте у официанта.",
             "Второй кальян в подарок - дымный бонус к выходным. Суббота и воскресенье с 12:00 до 15:00",
@@ -474,7 +475,7 @@ def dj_transition(req: DJRequest):
             
             audio = elevenlabs_client.text_to_speech.convert(
                 text=text,
-                model_id="eleven_v3",
+                model_id="eleven_multilingual_v2",
                 voice_id=voice_id,
                 output_format="wav_48000",
             )
