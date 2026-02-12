@@ -15,7 +15,7 @@ export default function App() {
     { name: "OldBoy", icon: "💈" },
   ];
 
-  const [channel, setChannel] = useState(channelsList[0].name);
+  const [channel, setChannel] = useState(channelsList[4].name);
   const [playlist, setPlaylist] = useState([]);
   const [current, setCurrent] = useState(0);
   
@@ -31,6 +31,11 @@ export default function App() {
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
   const ytAPILoaded = useRef(false);
+
+  const [overlaySrc, setOverlaySrc] = useState(null);
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const overlayRef = useRef(null);
+
 
   // Старт — появление из темноты
   useEffect(() => {
@@ -134,13 +139,15 @@ export default function App() {
       if (!player || !player.getDuration) return;
 
       let duration = player.getDuration();
-      if (duration > 300) duration = 300;
+      if (duration > 600) duration = 600;
+      duration = duration - 30; // отрубаем 30 секунд в конце для плавного перехода
 
       const remaining = duration - player.getCurrentTime();
 
       if (remaining < 30.5) {
         clearInterval(interval);
         playDjOverVideo();
+        playOverlayVideo("http://localhost:8000/video?channel=drugoe_mesto&filename=13637307_1920_1080_24fps.mp4");
       }
     }, 500);
 
@@ -190,7 +197,7 @@ export default function App() {
     setTimeout(() => {
       handleNext();
       setIsTransitioning(false);
-    }, 300);
+    }, 2000);
   };
 
   // Следующий клип
@@ -213,11 +220,13 @@ export default function App() {
   const handleVideoDuration = () => {
     if (!playerRef.current) return;
     console.log("Video duration:", playerRef.current.getDuration());
-    const duration = playerRef.current.getDuration();
-    if (duration > 300) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(smoothNext, 300 * 1000);
+    let duration = playerRef.current.getDuration();
+    if (duration > 600) {
+      duration = 600;
     }
+    duration -= 30; // отрубаем 30 секунд в конце для плавного перехода
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(smoothNext, duration * 1000);
   };
 
   // Обновляем плеер при смене клипа
@@ -232,6 +241,38 @@ export default function App() {
     txt.innerHTML = html;
     return txt.value;
   };
+
+  const playOverlayVideo = async (src) => {
+    setOverlaySrc(src);
+
+    // даём React отрендерить video
+    setTimeout(async () => {
+      const videoEl = overlayRef.current;
+      if (!videoEl) return;
+
+      try {
+        videoEl.currentTime = 0;
+        await videoEl.play();
+      } catch (e) {
+        console.log("overlay play blocked:", e);
+      }
+
+      // fade-in
+      setOverlayVisible(true);
+
+      // ждём конца
+      videoEl.onended = () => {
+        // fade-out
+        setOverlayVisible(false);
+
+        // после fade убираем вообще
+        setTimeout(() => {
+          setOverlaySrc(null);
+        }, 2000);
+      };
+    }, 50);
+  };
+
 
   if (!playlist.length) return <div>Loading...</div>;
 
@@ -299,13 +340,78 @@ export default function App() {
         {/* Плеер */}
         <div
           style={{
+            position: "relative",
+            width: "720px",
+            height: "405px", // 720x405 = 16:9
+            margin: "20px auto",
+            borderRadius: "12px",
+            overflow: "hidden",
+            background: "#000"
+          }}
+        >
+          {/* YouTube */}
+          <div
+            id="player"
+            style={{
+              position: "absolute",
+              transition: "2.0s opacity",
+              opacity: isTransitioning ? 0 : 1,
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              zIndex: 1
+            }}
+          />
+
+          {/* ТВОЁ ВИДЕО поверх */}
+          {overlaySrc && (
+            <video
+              ref={overlayRef}
+              src={overlaySrc}
+              playsInline
+              autoPlay
+              muted
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                zIndex: 50,
+                opacity: overlayVisible ? 1 : 0,
+                transition: "opacity 2.0s ease",
+                pointerEvents: "none"
+              }}
+            />
+          )}
+        </div>
+
+        {/* <div
+          style={{
             marginTop: "20px",
             transition: "0.3s opacity",
             opacity: isTransitioning ? 0 : 1
           }}
         >
-          <div id="player"></div>
-        </div>
+          <div id="player" />
+
+          <video
+            src="http://localhost:8000/video?channel=drugoe_mesto&filename=13637307_1920_1080_24fps.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              zIndex: 10,
+              pointerEvents: "none" // чтобы клики шли в ютуб
+            }}
+          />
+        </div> */}
 
         {/* Кнопки */}
         <div style={{ marginTop: "15px", display: "flex", justifyContent: "center", gap: "15px" }}>

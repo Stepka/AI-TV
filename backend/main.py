@@ -1,6 +1,7 @@
 import hashlib
 import random
-from fastapi import FastAPI
+import re
+from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, HTMLResponse
 import numpy as np
 from pydantic import BaseModel
@@ -109,25 +110,34 @@ CHANNELS = {
 
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
-        "voice": {
-            "source": "elevenlabs", 
-            "name": "ZSHzpa6aUvhjzShiBmYw",
-            "sex": "female"
-        },
         # "voice": {
-        #     "source": "silero", 
-        #     "name": "xenia",
+        #     "source": "elevenlabs", 
+        #     "name": "ZSHzpa6aUvhjzShiBmYw",
         #     "sex": "female"
         # },
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
-            "При покупке двух кальянов - третий в подарок",
+            "Наше лаунж кафе дарит гостям униувльную возможность - стать обладателем легендарного кольца Картье! Условия акции уточняйте у официанта.",
+            "Второй кальян в подарок - дымный бонус к выходным. Суббота и воскресенье с 12:00 до 15:00",
+            "Минус цена - плюс удовольствие. С понедельника по пятницу с 12:00 до 16:00",
+            "Скидка 20 процентов при заказе на вынос",
         ],
         "location": "Калининград",
         "menu": [
-            "Чай с жасмином 500 рублей",
-            "Чай с мятой 500 рублей",
-            "Лимонад с базиликом 700 рублей",
-            "Кофе по-восточному 600 рублей",
+            "Фруктовая чаша 700 рублей",
+            "Фруктовая чаша ананас 1000 рублей",
+            "Апероль Шпритц 900 рублей",
+            "Вино Пино Гриджио 4000 рублей",
+            "Мартини Фиеро тоник 900 рублей",
+            "Салат Цезарь с креветкой 800 рублей",
+            "Ролл Калифорния с креветкой и снежным крабом 1250 рублей",
+            "Вок с курицей в сливочном соусе 950 рублей",
+            "Чизкейк 700 рублей",
+            "Лимонад цитрусовый 0,7 литра 800 рублей",
         ]
     },
     
@@ -317,7 +327,13 @@ CHANNELS = {
 
 }
 
-
+REPLACE_DICT = {
+    "трек": "трэк",
+    "треком": "трэком",
+    "треки": "трэки",
+    "трека": "трэка",
+    "треку": "трэку",
+}
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
 
@@ -338,8 +354,14 @@ def get_playlist(req: PlaylistRequest):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
 
     tracks = generate_playlist_llm(req.channel, req.max_results*4)
-    tracks = random.sample(tracks, min(req.max_results, len(tracks)))
     print("Generated tracks:", tracks)
+    
+    indexed = [(i, t) for i, t in enumerate(tracks)]
+    top_n = sorted(indexed, key=lambda x: float(x[1]["match"]), reverse=True)[:req.max_results]
+    tracks = [t for i, t in sorted(top_n, key=lambda x: x[0])]
+
+    # tracks = random.sample(tracks, min(req.max_results, len(tracks)))
+    print("Selected tracks:", tracks)
     # return tracks
 
     videos = []
@@ -350,10 +372,17 @@ def get_playlist(req: PlaylistRequest):
             print("Searching YouTube for:", track)
 
             query = f"{track['artist']} {track['title']} official music video"
-            video_id = search_youtube_video(query)
+            yt_video = search_youtube_video(query)
+            print("YouTube search result:", yt_video)
 
-            if video_id:
-                cache.save_video(track['artist'], track['title'], video_id)
+            if yt_video:
+                video_duration = get_video_duration(yt_video["videoId"])
+                if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
+                    continue
+                matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'])
+                if matched:
+                    video_id = yt_video["videoId"]
+                    cache.save_video(track['artist'], track['title'], video_id)
             
         if video_id:
             videos.append({
@@ -478,6 +507,15 @@ def dj_transition(req: DJRequest):
     }
 
 
+@app.get("/video")
+def get_video(channel: str = Query(...), filename: str = Query(...)):
+    return FileResponse(
+        f"channels_data/{channel}/videos/{filename}",
+        media_type="video/mp4",
+        filename=filename
+    )
+
+
 ################################################ 
 
 
@@ -491,18 +529,83 @@ def search_youtube_video(query: str):
         "key": YOUTUBE_API_KEY
     }
     r = requests.get(url, params=params)
+    print("YouTube API response:", r.json())
     items = r.json().get("items", [])
 
     if not items:
         return None
 
     item = items[0]
-    return item["id"]["videoId"]
-    # {
-    #     "title": item["snippet"]["title"],
-    #     "videoId": item["id"]["videoId"],
-    #     "channelTitle": item["snippet"]["channelTitle"]
-    # }
+    # print("Found YouTube video:", item)
+    # return item["id"]["videoId"]
+    return {
+        "title": item["snippet"]["title"],
+        "videoId": item["id"]["videoId"],
+        "channelTitle": item["snippet"]["channelTitle"]
+    }
+
+
+def get_video_duration(video_id: str) -> str:
+    url = "https://www.googleapis.com/youtube/v3/videos"
+    params = {
+        "part": "contentDetails",
+        "id": video_id,
+        "key": YOUTUBE_API_KEY
+    }
+
+    r = requests.get(url, params=params)
+    r.raise_for_status()
+
+    items = r.json().get("items", [])
+    if not items:
+        return None
+
+    print("Video content details:", items[0])
+
+    # ISO 8601 duration, например "PT3M25S"
+    return parse_yt_duration_to_seconds(items[0]["contentDetails"]["duration"])
+
+
+def parse_yt_duration_to_seconds(duration: str) -> int:
+    """
+    YouTube duration ISO 8601 -> seconds
+    Examples:
+      PT3M25S -> 205
+      PT45S   -> 45
+      PT1H2M10S -> 3730
+    """
+    if not duration:
+        return None
+
+    pattern = r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
+    m = re.match(pattern, duration)
+    if not m:
+        return None
+
+    hours = int(m.group(1) or 0)
+    minutes = int(m.group(2) or 0)
+    seconds = int(m.group(3) or 0)
+
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def replace_words(text: str, replace_dict: dict) -> str:
+    """
+    Заменяет слова в тексте по словарю replace_dict.
+    
+    text: исходный текст
+    replace_dict: словарь вида {"старое_слово": "новое_слово", ...}
+    
+    Возвращает текст с заменами.
+    """
+    # создаём регулярку, которая ищет любые ключи как отдельные слова
+    pattern = r'\b(' + '|'.join(map(re.escape, replace_dict.keys())) + r')\b'
+    
+    # функция замены
+    def repl(match):
+        return replace_dict[match.group(0)]
+    
+    return re.sub(pattern, repl, text, flags=re.IGNORECASE)
 
 
 def generate_playlist_llm(channel: str, count: int = 10):
@@ -587,7 +690,8 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
         print("Converting text to Russian")
         text = convert_to_russian(text, from_title, to_title)
         print("Converting digits to words")
-        text = convert_digits(text)
+        text = convert_digits(text)        
+        text = replace_words(text, REPLACE_DICT)
 
         
     print("Text length after all:", len(text))
@@ -774,6 +878,7 @@ def add_weather(text, channel: str) -> str:
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
 Добавь в этот текст информацию о погоде в {meta["location"]}. 
 Используй только эту информацию о погоде: {weather_info}
+Округляй температуру до целых чисел, а описание погоды делай максимально коротким (одно-два слова).
 Вот текст, который нужно дополнить: {text}
 
 Верни дополненный текст, который диджей может сказать в эфире, чтобы сделать его более живым и актуальным для слушателей,
@@ -864,6 +969,50 @@ def convert_digits(text: str) -> str:
     )
 
     return response.choices[0].message.content.strip()
+    
+
+def check_title_llm(searching_title: str, found_title: str) -> dict:
+    prompt = f"""
+Ты сравниваешь два названия треков и определяешь, один и тот же ли это трек.
+
+Вход:
+A = "{searching_title}"
+B = "{found_title}"
+
+Правила:
+- Игнорируй HTML entities (&amp; -> &)
+- Игнорируй мусорные префиксы релиза типа "EP", "Radio Edit", "Original Mix"
+- Если артист тот же и название трека совпадает — это MATCH, даже если в B добавлены feat / ремикс / дополнительные артисты
+- Если артист в B совпадает с артистом в A, а название трека в B содержит название из A — это может быть MATCH
+- Если артист в B совпадает с артистом в A, а название трека в B содержит часть названия из A — это может быть MATCH
+- в score ставь число от 0 до 100, которое отражает степень совпадения. 100 — идеально совпало, 0 — совершенно разные треки.
+
+Верни строго JSON:
+{{
+  "match": true/false,
+  "score": 0-100,
+  "normalized_a": "...",
+  "normalized_b": "...",
+  "reason": "коротко"
+}}
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a track title matcher."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
+        response_format={"type": "json_object"},
+    )
+
+    result = json.loads(response.choices[0].message.content)
+
+    print("Title match result:", result)
+
+    return result['match']
+
 
 
 ######################
