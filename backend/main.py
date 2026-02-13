@@ -1,14 +1,16 @@
 import hashlib
 import random
 import re
-from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, HTMLResponse
 import numpy as np
-from pydantic import BaseModel
+
+from fastapi import Depends, FastAPI, Query
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from auth import authenticate_user, create_access_token, get_current_user
+from pydantic import BaseModel
+
 import requests
 from dotenv import load_dotenv
-import os
 import os
 import json
 from scipy.io.wavfile import write
@@ -25,7 +27,8 @@ app = FastAPI()
 # Разрешаем фронтенду подключаться
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -110,17 +113,17 @@ CHANNELS = {
 
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
-        "voice": {
-            "source": "elevenlabs", 
-            "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy 
-            # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
-            "sex": "female"
-        },
         # "voice": {
-        #     "source": "silero", 
-        #     "name": "xenia",
+        #     "source": "elevenlabs", 
+        #     "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
+        #     # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
         #     "sex": "female"
         # },
+        "voice": {
+            "source": "silero", 
+            "name": "xenia",
+            "sex": "female"
+        },
         "action": [
             "Наше лаунж кафе дарит гостям униувльную возможность - стать обладателем легендарного кольца Картье! Условия акции уточняйте у официанта.",
             "Второй кальян в подарок - дымный бонус к выходным. Суббота и воскресенье с 12:00 до 15:00",
@@ -350,6 +353,30 @@ class DJRequest(BaseModel):
     to_title: str
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+### Аутентификация и авторизация (JWT) для админки и будущих персональных кабинетов пользователей
+
+@app.post("/auth/login")
+def login(req: LoginRequest):
+    user = authenticate_user(req.username, req.password)
+    if not user:
+        return {"ok": False, "error": "wrong login or password"}
+
+    token = create_access_token({"sub": user["username"]})
+    return {"ok": True, "access_token": token, "token_type": "bearer"}
+
+
+@app.get("/me")
+def me(user=Depends(get_current_user)):
+    return {"ok": True, "user": user}
+
+
+### Основные эндпоинты для получения плейлиста, генерации текста и аудио для DJ переходов, а также получения видео по ID
+
 @app.post("/playlist")
 def get_playlist(req: PlaylistRequest):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
@@ -403,55 +430,14 @@ def get_home():
     return "It's AI-TV, baby!"
 
 
-@app.get("/test_speech")
-def test_speech():
-    sample_rate = 48000
-
-    text = generate_dj_text(
-        channel="MTV",
-        from_title="Dua Lipa - Levitating",
-        to_title="Charlie XCX - Boom Clap",
-    )
-
-    print("Generated text:", text)
-    
-    audio = silero_model.apply_tts(
-        text=text,
-        sample_rate=sample_rate
-    )
-    
-    audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
-    audio_int16 = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
-    filename = "dj.wav"
-    write(f"wav_folder/{filename}", sample_rate, audio_int16)
-
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-        <meta charset="UTF-8">
-        <title>DJ Transition Player</title>
-    </head>
-    <body style="background-color:#111;color:#fff;text-align:center;padding-top:50px;font-family:sans-serif;">
-        <h1>DJ Transition Player</h1>
-        <audio controls autoplay>
-            <source src="/audio?filename={filename}" type="audio/wav">
-            Ваш браузер не поддерживает аудио.
-        </audio>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
-
-
 @app.get("/audio")
-def get_audio(filename: str):
+def get_audio(filename: str, user=Depends(get_current_user)):
     print("Serving audio file:", filename)
     return FileResponse(f"wav_folder/{filename}", media_type="audio/wav", filename=filename)
 
 
 @app.post("/dj_transition")
-def dj_transition(req: DJRequest):
+def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     sample_rate = 48000
 
     text = generate_dj_text(
@@ -510,6 +496,7 @@ def dj_transition(req: DJRequest):
 
 @app.get("/video")
 def get_video(channel: str = Query(...), filename: str = Query(...)):
+    print("Serving video file:", channel, filename)
     return FileResponse(
         f"channels_data/{channel}/videos/{filename}",
         media_type="video/mp4",

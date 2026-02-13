@@ -15,7 +15,15 @@ export default function App() {
     { name: "OldBoy", icon: "💈" },
   ];
 
-  const [channel, setChannel] = useState(channelsList[4].name);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("1234");
+  const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+
+  const [channel, setChannel] = useState(null);
   const [playlist, setPlaylist] = useState([]);
   const [current, setCurrent] = useState(0);
   
@@ -31,45 +39,131 @@ export default function App() {
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
   const ytAPILoaded = useRef(false);
-
+  
+  const [overlayBearerSrc, setOverlayBearerSrc] = useState(null);
   const [overlaySrc, setOverlaySrc] = useState(null);
   const [overlayVisible, setOverlayVisible] = useState(false);
   const overlayRef = useRef(null);
 
 
-  // Старт — появление из темноты
+  async function doLogin() {
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      const res = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        setAuthError(data.error || "Login failed");
+        setAuthLoading(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.access_token);
+      setAuthToken(data.access_token);
+      setLoginOpen(false);
+      const channel_name = localStorage.getItem("current_channel");
+      setChannel(channel_name || channelsList[0].name); // теперь можно установить канал
+    } catch (e) {
+      setAuthError("Network error");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  function doLogout() {
+    localStorage.removeItem("token");
+    setAuthToken("");
+    setChannel(null); // сбросить канал при выходе
+    setLoginOpen(true);
+  }
+
+
+  // 1️⃣ Проверка логина
   useEffect(() => {
-    setTimeout(() => {
-      setIsBlackout(false);
-      setIsTransitioning(false);
-    }, 500);
+    const token = localStorage.getItem("token");
+    console.log("Checking auth with token:", token);
+
+    if (!token) {
+      setLoginOpen(true);
+      return;
+    }
+
+    fetch("http://localhost:8000/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          setUsername(data.user.username);
+          const channel_name = localStorage.getItem("current_channel");
+          setChannel(channel_name || channelsList[0].name); // теперь можно установить канал
+        } else {
+          setLoginOpen(true);
+          localStorage.removeItem("token");
+        }
+      });
   }, []);
 
   // Получаем плейлист
   const loadPlaylist = async () => {
+    const token = localStorage.getItem("token");
     const res = await fetch("http://127.0.0.1:8000/playlist", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
       body: JSON.stringify({ channel, max_results: 10 })
     });
     const data = await res.json();
     setPlaylist(prev => [...prev, ...data.playlist]);
+    setIsTransitioning(false);
   };
 
-  // При смене канала — через чёрный экран
+  // // При смене канала — через чёрный экран
+  // useEffect(() => {
+  //   setIsBlackout(true);
+
+  //   setTimeout(() => {
+  //     setPlaylist([]);
+  //     setCurrent(0);
+  //     clearTimeout(timeoutRef.current);
+  //     loadPlaylist();
+
+  //     setTimeout(() => {
+  //       setIsBlackout(false);
+  //     }, 300);
+  //   }, 300);
+  // }, [channel]);
+
+  // 2️⃣ Эффект смены канала
   useEffect(() => {
+    if (!channel) return; // только если пользователь залогинен и канал выбран
+
+    localStorage.setItem("current_channel", channel); // сохраняем выбор канала
+
     setIsBlackout(true);
 
-    setTimeout(() => {
+    const fadeOutTimeout = setTimeout(async () => {
       setPlaylist([]);
       setCurrent(0);
-      clearTimeout(timeoutRef.current);
-      loadPlaylist();
+      await loadPlaylist();
 
-      setTimeout(() => {
+      const fadeInTimeout = setTimeout(() => {
         setIsBlackout(false);
-      }, 300);
-    }, 300);
+      }, 1000); // плавный fade-in
+    }, 1000); // плавный fade-out
+
+    return () => {
+      clearTimeout(fadeOutTimeout);
+    };
   }, [channel]);
 
   // Загружаем IFrame API один раз
@@ -118,9 +212,13 @@ export default function App() {
     const from = playlist[current];
     const to = playlist[(current + 1) % playlist.length];
 
+    const token = localStorage.getItem("token");
     const res = await fetch("http://127.0.0.1:8000/dj_transition", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
       body: JSON.stringify({
         channel,
         from_title: from.artist + " - " + from.title,
@@ -144,22 +242,37 @@ export default function App() {
 
       const remaining = duration - player.getCurrentTime();
 
+      console.log("Remaining time:", remaining);
+
       if (remaining < 30.5) {
         clearInterval(interval);
-        playDjOverVideo();
         playOverlayVideo("http://localhost:8000/video?channel=drugoe_mesto&filename=13637307_1920_1080_24fps.mp4");
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(smoothNext, 30 * 1000);
+        playDjOverVideo();
       }
     }, 500);
 
     return () => clearInterval(interval);
   }, [current, playerReady]);
 
-  const playDjOverVideo = () => {
+  const playDjOverVideo = async () => {
     if (!djDataRef.current || !playerRef.current) return;
 
-    const audio = new Audio(
-      `http://127.0.0.1:8000/audio?filename=${djDataRef.current.audio_filename}`
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `http://127.0.0.1:8000/audio?channel=drugoe_mesto&filename=${djDataRef.current.audio_filename}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
     );
+
+    if (!res.ok) throw new Error("Audio fetch failed");
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
     djAudioRef.current = audio;
 
     audio.volume = 0;
@@ -242,6 +355,42 @@ export default function App() {
     return txt.value;
   };
 
+  useEffect(() => {
+    if (!overlayBearerSrc) return; // например djDataRef.current.video_filename
+    console.log("Fetching overlay video:", overlayBearerSrc);
+
+    const token = localStorage.getItem("token");
+
+    const fetchVideo = async () => {
+      console.log("Fetching video: ", overlayBearerSrc);
+      try {
+        const res = await fetch(
+          overlayBearerSrc,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        console.log("Video fetch response:", res);
+
+        if (!res.ok) throw new Error("Failed to fetch video");
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        setOverlaySrc(url); // state, который используешь в src
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchVideo();
+
+    // очищаем объект URL при размонтировании
+    return () => {
+      if (overlaySrc) URL.revokeObjectURL(overlaySrc);
+    };
+  }, [overlayBearerSrc]);
+
   const playOverlayVideo = async (src) => {
     setOverlaySrc(src);
 
@@ -273,6 +422,68 @@ export default function App() {
     }, 50);
   };
 
+  if (loginOpen) return (
+    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000", color: "#fff", position: "relative" }}>
+        {/* LOGIN MODAL */}
+        {loginOpen && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              background: "rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 2000,
+            }}
+            onClick={() => setLoginOpen(false)}
+          >
+            <div
+              style={{
+                width: "320px",
+                background: "#111",
+                border: "1px solid #333",
+                borderRadius: "12px",
+                padding: "18px",
+                textAlign: "left",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ marginTop: 0 }}>Login</h3>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="username"
+                  style={{ padding: "10px", borderRadius: "8px", border: "1px solid #333", background: "#000", color: "#fff" }}
+                />
+
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="password"
+                  type="password"
+                  style={{ padding: "10px", borderRadius: "8px", border: "1px solid #333", background: "#000", color: "#fff" }}
+                />
+
+                {authError && <div style={{ color: "tomato", fontSize: "14px" }}>{authError}</div>}
+
+                <button onClick={doLogin} disabled={authLoading}>
+                  {authLoading ? "Logging in..." : "Login"}
+                </button>
+
+                <button onClick={() => setLoginOpen(false)} style={{ opacity: 0.7 }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+    </div>);    
 
   if (!playlist.length) return <div>Loading...</div>;
 
@@ -301,6 +512,20 @@ export default function App() {
 
       {/* Боковое меню */}
       <div style={{ width: "200px", padding: "20px", borderRight: "1px solid #333" }}>
+        
+
+        {/* AUTH TOP BAR */}
+        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "10px" }}>
+          {!authToken ? (
+            <button onClick={() => setLoginOpen(true)}>🔐 Login</button>
+          ) : (
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <span style={{ fontSize: "14px", color: "#aaa" }}>✅ Logged in</span>
+              <button onClick={doLogout}>Logout</button>
+            </div>
+          )}
+        </div>
+
         <h2>Каналы</h2>
         {channelsList.map((ch) => (
           <div
@@ -336,6 +561,7 @@ export default function App() {
         >
           {decodeHtml(video.artist + " - " + video.title)}
         </h1>
+
 
         {/* Плеер */}
         <div

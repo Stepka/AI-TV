@@ -8,3 +8,5 @@ numpy
 scipy
 silero
 elevenlabs
+python-jose 
+passlib[argon2]
