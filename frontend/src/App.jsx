@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import TitlesOverlay from "./TitlesOverlay";
 
 export default function App() {
   const channelsList = [
@@ -572,14 +573,14 @@ export default function App() {
       <div style={{ flex: 1, textAlign: "center", padding: "20px" }}>
 
         {/* Название */}
-        <h1
+        {/* <h1
           style={{
             transition: "0.3s opacity",
             opacity: isTransitioning ? 0 : 1
           }}
         >
           {decodeHtml(video.artist + " - " + video.title)}
-        </h1>
+        </h1> */}
 
 
         {/* Плеер */}
@@ -629,6 +630,13 @@ export default function App() {
               }}
             />
           )}
+
+          <TitlesOverlay
+            topTitle="Другое Место"
+            topSub="Артиллерийская • Калининград • −2°C • сильный ветер"
+            nowPlaying="Moby — Porcelain"
+            nextTrack="Далее: Eelke Kleijn — The Calling"
+          />
         </div>
 
         {/* <div
@@ -665,9 +673,9 @@ export default function App() {
         </div>
 
         {/* Подсказка следующего клипа */}
-        <div style={{ marginTop: "10px", fontSize: "14px", color: "#aaa" }}>
+        {/* <div style={{ marginTop: "10px", fontSize: "14px", color: "#aaa" }}>
           Следующий: {nextVideoTitle}
-        </div>
+        </div> */}
       </div>
     </div>
   );
