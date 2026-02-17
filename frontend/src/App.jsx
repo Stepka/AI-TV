@@ -242,13 +242,11 @@ export default function App() {
 
       const remaining = duration - player.getCurrentTime();
 
-      console.log("Remaining time:", remaining);
-
-      if (remaining < 30.5) {
+      if (djDataRef.current && remaining < djDataRef.current.duration - 10) {
         clearInterval(interval);
         playOverlayVideo("http://localhost:8000/video?channel=drugoe_mesto&filename=13637307_1920_1080_24fps.mp4");
         clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(smoothNext, 30 * 1000);
+        timeoutRef.current = setTimeout(smoothNext, (djDataRef.current.duration - 10) * 1000);
         playDjOverVideo();
       }
     }, 500);
@@ -275,25 +273,27 @@ export default function App() {
     const audio = new Audio(url);
     djAudioRef.current = audio;
 
-    audio.volume = 0;
+    audio.volume = 1;
     audio.play();
+
+    console.log(djDataRef.current)
 
     // 🎚 ducking YouTube
     let ytVolume = 100;
     duckIntervalRef.current = setInterval(() => {
-      ytVolume -= 5;
-      if (ytVolume <= 30) {
-        ytVolume = 30;
+      ytVolume -= 1;
+      if (ytVolume <= 0) {
+        ytVolume = 0;
         clearInterval(duckIntervalRef.current);
       }
       playerRef.current.setVolume(ytVolume);
-    }, 50);
+    }, ((djDataRef.current.duration - 10) / 100) * 1000);
 
     // 🎙 fade-in DJ
-    const fadeIn = setInterval(() => {
-      audio.volume = Math.min(audio.volume + 0.05, 1);
-      if (audio.volume >= 1) clearInterval(fadeIn);
-    }, 50);
+    // const fadeIn = setInterval(() => {
+    //   audio.volume = Math.min(audio.volume + 0.05, 1);
+    //   if (audio.volume >= 1) clearInterval(fadeIn);
+    // }, 50);
 
     audio.onended = () => {
       // возвращаем громкость
@@ -409,16 +409,35 @@ export default function App() {
       // fade-in
       setOverlayVisible(true);
 
-      // ждём конца
-      videoEl.onended = () => {
-        // fade-out
-        setOverlayVisible(false);
+      // Встроенный stopTime
+      const stopTime = djDataRef.current.duration - 3; // секунд, когда хотим остановить видео
 
-        // после fade убираем вообще
-        setTimeout(() => {
-          setOverlaySrc(null);
-        }, 2000);
+      // Слушаем событие timeupdate
+      const onTimeUpdate = () => {
+        console.log("currentTime:", videoEl.currentTime);
+
+        if (videoEl.currentTime >= stopTime) {
+          videoEl.removeEventListener("timeupdate", onTimeUpdate); // отписываемся
+          setOverlayVisible(false);      // fade-out можно делать сразу
+          setTimeout(() => {
+            videoEl.pause();               // останавливаем
+            setOverlaySrc(null);         // убираем видео
+          }, 3000); // как у тебя
+        }
       };
+
+      videoEl.addEventListener("timeupdate", onTimeUpdate);
+
+      // // ждём конца
+      // videoEl.onended = () => {
+      //   // fade-out
+      //   setOverlayVisible(false);
+
+      //   // после fade убираем вообще
+      //   setTimeout(() => {
+      //     setOverlaySrc(null);
+      //   }, 3000);
+      // };
     }, 50);
   };
 
@@ -605,7 +624,7 @@ export default function App() {
                 objectFit: "cover",
                 zIndex: 50,
                 opacity: overlayVisible ? 1 : 0,
-                transition: "opacity 2.0s ease",
+                transition: "opacity 3.0s ease",
                 pointerEvents: "none"
               }}
             />

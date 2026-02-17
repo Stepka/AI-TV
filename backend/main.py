@@ -459,6 +459,8 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     
     meta = CHANNELS.get(req.channel)
 
+    duration_seconds = 30
+
     match meta["voice"]["source"]:
     
         case "elevenlabs":
@@ -490,7 +492,11 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
             )
             audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
             audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
-            print("Generated audio with silero")
+            # Количество сэмплов
+            num_samples = audio_numpy.shape[0]
+            # Длительность в секундах
+            duration_seconds = num_samples / sample_rate
+            print(f"Generated {duration_seconds:.2f} sec audio with silero")
     
     raw = f"{req.channel}|{req.from_title}|{req.to_title}"
     h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
@@ -501,6 +507,7 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     return {
         "text": text,
         "audio_filename": filename,
+        "duration": duration_seconds,
         "format": "wav"
     }
 
@@ -528,7 +535,7 @@ def search_youtube_video(query: str):
         "key": YOUTUBE_API_KEY
     }
     r = requests.get(url, params=params)
-    print("YouTube API response:", r.json())
+    # print("YouTube API response:", r.json())
     items = r.json().get("items", [])
 
     if not items:
@@ -559,7 +566,7 @@ def get_video_duration(video_id: str) -> str:
     if not items:
         return None
 
-    print("Video content details:", items[0])
+    # print("Video content details:", items[0])
 
     # ISO 8601 duration, например "PT3M25S"
     return parse_yt_duration_to_seconds(items[0]["contentDetails"]["duration"])
