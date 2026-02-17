@@ -10,3 +10,5 @@ silero
 elevenlabs
 python-jose 
 passlib[argon2]
+phonemizer
+epitran

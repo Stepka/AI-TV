@@ -1,3 +1,5 @@
+import ctypes
+from datetime import datetime
 import hashlib
 import random
 import re
@@ -6,6 +8,7 @@ import numpy as np
 from fastapi import Depends, FastAPI, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from phonemizer.backend.espeak.wrapper import EspeakWrapper
 from auth import authenticate_user, create_access_token, get_current_user
 from pydantic import BaseModel
 
@@ -16,7 +19,11 @@ import json
 from scipy.io.wavfile import write
 from openai import OpenAI
 
+from phonemizer import phonemize
+import re
+
 load_dotenv()
+# EspeakWrapper.set_library(r"C:\Program Files\eSpeak NG\libespeak-ng.dll")
 
 from yt_cache import YouTubeCache
 from elevenlabs.client import ElevenLabs
@@ -39,6 +46,7 @@ elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 silero_model, _ = silero_tts(language='ru',
                                  speaker='v5_1_ru')
+
 
 # Предопределенные каналы
 CHANNELS = {
@@ -115,7 +123,8 @@ CHANNELS = {
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
         # "voice": {
         #     "source": "elevenlabs", 
-        #     "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
+        #     # "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
+        #     "name": "jGhxZDfdcvgMh6tm2PBj", # drugaya_natasha         
         #     # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
         #     "sex": "female"
         # },
@@ -401,7 +410,7 @@ def get_playlist(req: PlaylistRequest):
 
             query = f"{track['artist']} {track['title']} official music video"
             yt_video = search_youtube_video(query)
-            print("YouTube search result:", yt_video)
+            # print("YouTube search result:", yt_video)
 
             if yt_video:
                 video_duration = get_video_duration(yt_video["videoId"])
@@ -461,7 +470,8 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
             
             audio = elevenlabs_client.text_to_speech.convert(
                 text=text,
-                model_id="eleven_multilingual_v2",
+                # model_id="eleven_multilingual_v2",
+                model_id="eleven_v3",
                 voice_id=voice_id,
                 output_format="wav_48000",
             )
@@ -473,8 +483,9 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
             print("Generated audio with elevenlabs")
         
         case _:
+            ssml_text = f"<speak>{text}</speak>"
             audio = silero_model.apply_tts(
-                text=text,
+                ssml_text=ssml_text,
                 sample_rate=sample_rate
             )
             audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
@@ -670,6 +681,7 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
             #     text = add_local_news(text, channel)
 
     if len(text) > 500:
+        print(text)
         print("Text length before shortening:", len(text))
         text = shortener(text, channel, max_symbols=500)
         print("Text length after shortening:", len(text))
@@ -680,7 +692,10 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
         print("Converting digits to words")
         text = convert_digits(text)        
         text = replace_words(text, REPLACE_DICT)
-
+    
+    if meta["voice"]["source"] == "elevenlabs":
+        print("Adding emotions")
+        text = add_emotions_llm(text)
         
     print("Text length after all:", len(text))
     return text
@@ -701,6 +716,7 @@ def generate_text(channel: str, from_title: str, to_title: str) -> str:
 Ты играешь музыку в заведении {meta["name"]}, вот его описание: {meta["description"]}.
 """
     prompt += f"""
+Сегодня {datetime.now()}.
 Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
 Упоминай в тексте заведение и его атмосферу, а также особенности музыки канала.
 
@@ -708,10 +724,13 @@ def generate_text(channel: str, from_title: str, to_title: str) -> str:
 
 Требования к тексту:
 — русский язык
+— нельзя использовать слова на английском или других языках, кроме русского
+— Имена исполнителей пиши в русской передаче 
+— Не переводи на русский названия треков
 — от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
 — разговорный стиль
 — живо, уверенно, как на музыкальном ТВ
-— 2–3 предложения
+— 1–2 предложения
 """
 
     response = llm_client.chat.completions.create(
@@ -891,10 +910,11 @@ def shortener(text, channel: str, max_symbols: int) -> str:
 
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
-Сократи этот текст, чтобы он был длиной меньше {max_symbols} символов.
-Вот текст, который нужно дополнить: {text}
+Сократи этот текст, чтобы он был длиной меньше {max_symbols} символов. Ты можешь перевращировать предложения, опуская ненужные слова. 
+В крайнем случае можешь выкинуть ненужные предложения.
+Вот текст, который нужно сократить: {text}
 
-Верни дополненный текст, который диджей может сказать в эфире,
+Верни сокращенный текст, который диджей может сказать в эфире,
 не нарушая при этом стиль канала.
 """
 
@@ -909,33 +929,90 @@ def shortener(text, channel: str, max_symbols: int) -> str:
 
     return response.choices[0].message.content.strip()
     
+IPA_TO_RU = {
+    # СОГЛАСНЫЕ
+    "p": "п", "b": "б", "t": "т", "d": "д", "k": "к", "g": "г",
+    "f": "ф", "v": "в", "θ": "с", "ð": "з", "s": "с", "z": "з",
+    "ʃ": "ш", "ʒ": "ж", "tʃ": "ч", "dʒ": "дж",
+    "m": "м", "n": "н", "ŋ": "нг", "l": "л", "r": "р", "ɹ": "р",
+    "j": "й", "w": "у", "h": "х",
+
+    # ГЛАСНЫЕ
+    "i": "и", "ɪ": "и", "e": "е", "ɛ": "е", "æ": "э",
+    "ʌ": "а", "ɑ": "а", "ɔ": "о", "o": "о", "oʊ": "оу",
+    "u": "у", "ʊ": "у", "ə": "э", "ɜ": "ё", "ɒ": "о", "ɶ": "ё",
+
+    # ДИФТОНГИ
+    "aɪ": "ай", "aʊ": "ау", "ɔɪ": "ой", "eɪ": "эй", "oɪ": "ой",
+    "ju": "ю", "ɪə": "ие", "eə": "еа", "ʊə": "уа",
+
+    # СЛОЖНЫЕ СОГЛАСНЫЕ / ПОЛУСОГЛАСНЫЕ
+    "tr": "тр", "dr": "др", "ts": "ц", "dz": "дз",
+
+    # УДАРЕНИЯ И МЕТКИ
+    "ˈ": "", "ˌ": "", "ː": "", "̆": "",
+
+    # ПРОЧИЕ ФОНЕМЫ И РЕДУКЦИИ
+    "ɾ": "р", "ɫ": "л", "ʰ": "", "ʼ": "", "ʲ": "", "̩": "",
+
+    # АСПИРАЦИЯ, носовые и прочие
+    "n̩": "н", "m̩": "м", "l̩": "л",
+
+    # Новые
+    "ю": "ю", "ö": "ё", "ё": "ё", "ɡ": "г", "ɐ": "э"
+}
+
+# Функция конвертации IPA → русский текст
+def ipa_to_ru(ipa_text):
+    text = ipa_text
+    # сортируем по длине ключей, чтобы сначала более длинные соответствия (tʃ перед t и т.д.)
+    for ipa, ru in sorted(IPA_TO_RU.items(), key=lambda x: -len(x[0])):
+        text = text.replace(ipa, ru)
+    # удаляем лишние символы
+    text = re.sub(r"[ˈˌ]", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+def convert_latin_to_cyrillic(text):
+    ipa = phonemize(text, language="en-us")
+    cyrillic = ipa_to_ru(ipa)
+    return cyrillic
 
 def convert_to_russian(text: str, from_title: str, to_title: str) -> str:
-    prompt = f"""
-Преобразуй любые названия, в том числе треков и каналов:
+#     prompt = f"""
+# Преобразуй любые названия, в том числе треков и каналов:
 
-перепиши {from_title} и {to_title} по русски
+# перепиши {from_title} и {to_title} по русски
 
-Не делай прямой перевод, а пиши так, как названия песен произносят на русском радио и ТВ.
+# Не делай прямой перевод, а пиши так, как названия песен произносят на русском радио и ТВ.
 
-имена исполнителей и названия песен запиши КИРИЛЛИЦЕЙ
+# имена исполнителей и названия песен запиши КИРИЛЛИЦЕЙ
 
-В итоговом тексте замени все имена и названия и используй ТОЛЬКО кириллические версии, латиница запрещена.
+# В итоговом тексте замени все имена и названия и используй ТОЛЬКО кириллические версии, латиница запрещена.
 
-Верни оригинальный текст, но с русскими названиями. Вот текст:
-{text}
-"""
+# Верни оригинальный текст, но с русскими названиями. Вот текст:
+# {text}
+# """
 
-    response = llm_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You convert foreign names and titles to Russian equivalents."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.8,
-    )
+#     response = llm_client.chat.completions.create(
+#         model="gpt-4o-mini",
+#         messages=[
+#             {"role": "system", "content": "You convert foreign names and titles to Russian equivalents."},
+#             {"role": "user", "content": prompt},
+#         ],
+#         temperature=0.8,
+#     )
 
-    return response.choices[0].message.content.strip()
+#     return response.choices[0].message.content.strip()
+
+
+    converted_text = text
+    # Регулярка для поиска фраз на латинице
+    latin_phrases = re.findall(r'[A-Za-z][A-Za-z]*(?: [A-Za-z][A-Za-z]*)*', text)
+    for phrase in latin_phrases:
+        converted_text = converted_text.replace(phrase, convert_latin_to_cyrillic(phrase))
+
+    return converted_text
     
 
 def convert_digits(text: str) -> str:
@@ -1000,6 +1077,42 @@ B = "{found_title}"
     print("Title match result:", result)
 
     return result['match']
+    
+
+def add_emotions_llm(text: str) -> dict:
+    prompt = f"""
+Ты — редактор текста для озвучки в ElevenLabs (модель eleven_v3).
+
+Дополни текст который тебе передали так, чтобы он звучал максимально естественно и “по-человечески”.
+
+Правила:
+
+Добавляй короткие эмоциональные подсказки, которые уместны в тексте в квадратных скобках на английском.
+Эти подсказки не должны быть длинными.
+Максимум 4-5 штук на весь текст.
+
+Добавляй голосовые звуки вроде смешков, ухмылок, покашливаний и других звуков, которые человек издает голосом, в квадратных скобках на английском.
+Максимум 2-3 штуки на весь текст.
+
+Добавляй несловесные речевые звуки и междометия на русском (“мм…”, “эм…”, “ах…”, “хех…”, “ну…”, “м-м…”) - это уже без квадратных строк, прямо в текст.
+Максимум 4-5 штук на весь текст.
+
+Вот твой текст: {text}
+
+Верни дополненный текст, который звучит максимально естественно и по-человечески, с добавленными эмоциями и звуками, 
+который можно отправлять в озвучку в ElevenLabs.
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Ты — редактор текста для озвучки в ElevenLabs (модель eleven_v3)."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
+    )
+
+    return response.choices[0].message.content.strip()
 
 
 
