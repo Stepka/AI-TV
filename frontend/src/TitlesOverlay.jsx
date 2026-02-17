@@ -142,9 +142,9 @@ export default function TitlesOverlay({
             fontSize="36"
             fontWeight="700"
             fill="#fff"
-            opacity="0.9"
+            opacity="0.5"
           >
-            {nextTrack}
+            Далее: {nextTrack}
           </text>
         </g>
       </svg>

@@ -46,6 +46,12 @@ export default function App() {
   const [overlayVisible, setOverlayVisible] = useState(false);
   const overlayRef = useRef(null);
 
+  const [titles, setTitles] = useState({
+    topTitle: "",
+    topSub: "",
+    nowPlaying: "",
+    nextTrack: "",
+  });
 
   async function doLogin() {
     setAuthLoading(true);
@@ -203,6 +209,16 @@ export default function App() {
     if (!playlist.length || !window.YT) return;
 
     createPlayer(playlist[current].videoId);
+
+    const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
+    const nextIndex = (current + 1) % playlist.length;
+    const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
+    setTitles({
+      topTitle: channel ?? "Без названия",
+      topSub: "Описание" ?? "",
+      nowPlaying: currentVideoTitle ?? "",
+      nextTrack: nextVideoTitle ?? "",
+    });
 
     // заранее готовим DJ
     prepareDjTransition();
@@ -632,10 +648,11 @@ export default function App() {
           )}
 
           <TitlesOverlay
-            topTitle="Другое Место"
-            topSub="Артиллерийская • Калининград • −2°C • сильный ветер"
-            nowPlaying="Moby — Porcelain"
-            nextTrack="Далее: Eelke Kleijn — The Calling"
+            topTitle={titles.topTitle}
+            topSub={titles.topSub}
+            nowPlaying={titles.nowPlaying}
+            nextTrack={titles.nextTrack}
+            zIndex={60}
           />
         </div>
 
