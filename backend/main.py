@@ -459,8 +459,6 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     
     meta = CHANNELS.get(req.channel)
 
-    duration_seconds = 30
-
     match meta["voice"]["source"]:
     
         case "elevenlabs":
@@ -492,12 +490,13 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
             )
             audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
             audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
-            # Количество сэмплов
-            num_samples = audio_numpy.shape[0]
-            # Длительность в секундах
-            duration_seconds = num_samples / sample_rate
-            print(f"Generated {duration_seconds:.2f} sec audio with silero")
     
+    duration_seconds = 30
+    # Количество сэмплов
+    num_samples = audio.shape[0]
+    # Длительность в секундах
+    duration_seconds = num_samples / sample_rate
+    print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
     raw = f"{req.channel}|{req.from_title}|{req.to_title}"
     h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
