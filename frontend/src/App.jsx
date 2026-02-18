@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import TitlesOverlay from "./TitlesOverlay";
+import FullscreenButton from "./FullscreenButton";
+import Sidebar from "./Sidebar";
+import VideoStage from "./VideoStage";
+import './global.css';
+
+
 
 export default function App() {
   const channelsList = [
@@ -35,6 +41,7 @@ export default function App() {
 
   const djAudioRef = useRef(null);
   const djDataRef = useRef(null);
+  const djHelloDataRef = useRef(null);
   const duckIntervalRef = useRef(null);
 
   const playerRef = useRef(null);
@@ -45,6 +52,8 @@ export default function App() {
   const [overlaySrc, setOverlaySrc] = useState(null);
   const [overlayVisible, setOverlayVisible] = useState(false);
   const overlayRef = useRef(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [titles, setTitles] = useState({
     topTitle: "",
@@ -132,6 +141,7 @@ export default function App() {
     const data = await res.json();
     setPlaylist(prev => [...prev, ...data.playlist]);
     setIsTransitioning(false);
+    return data.playlist; // возвращаем массив сразу
   };
 
   // // При смене канала — через чёрный экран
@@ -161,12 +171,16 @@ export default function App() {
     const fadeOutTimeout = setTimeout(async () => {
       setPlaylist([]);
       setCurrent(0);
-      await loadPlaylist();
+      const playlistData = await loadPlaylist();
+
+      await prepareDjHello(playlistData);
+
+      playDjHelloOverVideo();
 
       const fadeInTimeout = setTimeout(() => {
         setIsBlackout(false);
-      }, 1000); // плавный fade-in
-    }, 1000); // плавный fade-out
+      }, 10000); // плавный fade-in
+    }, 10000); // плавный fade-out
 
     return () => {
       clearTimeout(fadeOutTimeout);
@@ -193,8 +207,12 @@ export default function App() {
       width: "720",
       videoId: videoId,
       events: {
-        onReady: () => {
+        onReady: (event) => {
           setPlayerReady(true);
+
+          // Ставим громкость на 0
+          // event.target.setVolume(0);
+
           handleVideoDuration();
         },
         onStateChange: (event) => {
@@ -244,6 +262,73 @@ export default function App() {
     });
 
     djDataRef.current = await res.json();
+  };
+
+  const playDjHelloOverVideo = async () => {
+    if (!djHelloDataRef.current) return;
+
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `http://127.0.0.1:8000/audio?channel=drugoe_mesto&filename=${djHelloDataRef.current.audio_filename}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!res.ok) throw new Error("Audio fetch failed");
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    djAudioRef.current = audio;
+
+    audio.volume = 1;
+    audio.play();
+
+    // playerRef.current.setVolume(0);
+    // playerRef.current.unMute(); // обязательно, если был mute
+
+    // // 🎚 ducking YouTube
+    // let ytVolume = 0;
+    // duckIntervalRef.current = setInterval(() => {
+    //   ytVolume += 1;
+    //   if (ytVolume >= 100) {
+    //     ytVolume = 100;
+    //     clearInterval(duckIntervalRef.current);
+    //   }
+    //   playerRef.current.setVolume(ytVolume);
+    // }, 500);
+
+    // 🎙 fade-in DJ
+    // const fadeIn = setInterval(() => {
+    //   audio.volume = Math.min(audio.volume + 0.05, 1);
+    //   if (audio.volume >= 1) clearInterval(fadeIn);
+    // }, 50);
+
+    audio.onended = () => {
+      // возвращаем громкость
+      // playerRef.current.setVolume(100);
+      // setCurrent(prev => (prev + 1) % playlist.length);
+    };
+  };
+
+  const prepareDjHello = async (playlistArray) => {
+    const to = playlistArray[current]; // берем из параметра
+    const token = localStorage.getItem("token");
+    const res = await fetch("http://127.0.0.1:8000/dj_hello", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        channel,
+        from_title: "",
+        to_title: to.artist + " - " + to.title,
+      })
+    });
+    djHelloDataRef.current = await res.json();
   };
 
   useEffect(() => {
@@ -305,20 +390,7 @@ export default function App() {
       }
       playerRef.current.setVolume(ytVolume);
     }, ((djDataRef.current.duration - 10) / 100) * 1000);
-
-    // 🎙 fade-in DJ
-    // const fadeIn = setInterval(() => {
-    //   audio.volume = Math.min(audio.volume + 0.05, 1);
-    //   if (audio.volume >= 1) clearInterval(fadeIn);
-    // }, 50);
-
-    audio.onended = () => {
-      // возвращаем громкость
-      playerRef.current.setVolume(100);
-      // setCurrent(prev => (prev + 1) % playlist.length);
-    };
   };
-
 
   // Плавный переход клипа через затемнение
   const smoothNext = () => {
@@ -458,6 +530,15 @@ export default function App() {
     }, 50);
   };
 
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   if (loginOpen) return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000", color: "#fff", position: "relative" }}>
         {/* LOGIN MODAL */}
@@ -521,15 +602,43 @@ export default function App() {
         )}
     </div>);    
 
-  if (!playlist.length) return <div>Loading...</div>;
+  if (!playlist.length) return (
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        margin: 0,
+        padding: 0,
+        overflowX: "hidden",
+        backgroundColor: "#000",
+        color: "#fff",
+        
+        display: "flex",           // делаем flex
+        justifyContent: "center",  // горизонтальное центрирование
+        alignItems: "center",      // вертикальное центрирование
+        fontSize: "24px",          // размер текста
+      }}
+    >
+      Loading...
+    </div>
+  );
 
   const video = playlist[current];
   const nextIndex = (current + 1) % playlist.length;
   const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000", color: "#fff", position: "relative" }}>
-      
+    <div
+      style={{
+        display: "flex",
+        minHeight: "95vh",
+        minWidth: "75vw",
+        backgroundColor: "#000",
+        color: "#fff",
+        position: "relative",
+        overflowX: "hidden", // убираем горизонтальную прокрутку
+      }}
+    >
       {/* BLACKOUT OVERLAY */}
       <div
         style={{
@@ -541,159 +650,64 @@ export default function App() {
           backgroundColor: "#000",
           opacity: isBlackout ? 1 : 0,
           pointerEvents: "none",
-          transition: "0.5s opacity",
-          zIndex: 999
+          transition: "10s opacity",
+          zIndex: 999,
         }}
       />
 
-      {/* Боковое меню */}
-      <div style={{ width: "200px", padding: "20px", borderRight: "1px solid #333" }}>
-        
+      {/* Fullscreen кнопка */}
+      {!isFullscreen && <FullscreenButton />}
 
-        {/* AUTH TOP BAR */}
-        <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "10px" }}>
-          {!authToken ? (
-            <button onClick={() => setLoginOpen(true)}>🔐 Login</button>
-          ) : (
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <span style={{ fontSize: "14px", color: "#aaa" }}>✅ Logged in</span>
-              <button onClick={doLogout}>Logout</button>
-            </div>
-          )}
+      {/* Sidebar — 25% ширины */}
+      {!isFullscreen && (
+        <div style={{ flexBasis: "25%", padding: "20px", borderRight: "1px solid #333" }}>
+          <Sidebar
+            authToken={authToken}
+            setLoginOpen={setLoginOpen}
+            doLogout={doLogout}
+            channelsList={channelsList}
+            channel={channel}
+            setChannel={setChannel}
+          />
         </div>
+      )}
 
-        <h2>Каналы</h2>
-        {channelsList.map((ch) => (
+      {/* Основной контент — 75% ширины */}
+      <div
+        style={{
+          flexGrow: 1,
+          textAlign: "center",
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <VideoStage
+          isTransitioning={isTransitioning}
+          overlaySrc={overlaySrc}
+          overlayRef={overlayRef}
+          overlayVisible={overlayVisible}
+          titles={titles}
+          isFullscreen={isFullscreen}
+        />
+
+        {!isFullscreen && (
           <div
-            key={ch.name}
-            onClick={() => setChannel(ch.name)}
             style={{
+              marginTop: "15px",
               display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px",
-              margin: "5px 0",
-              cursor: "pointer",
-              backgroundColor: ch.name === channel ? "#444" : "transparent",
-              borderRadius: "5px",
-              transition: "0.2s all"
+              justifyContent: "center",
+              gap: "15px",
             }}
           >
-            <span>{ch.icon}</span>
-            <span>{ch.name}</span>
+            <button onClick={prevVideo}>⏮ Предыдущий</button>
+            <button onClick={smoothNext}>Следующий ⏭</button>
           </div>
-        ))}
-      </div>
-
-      {/* Основной контент */}
-      <div style={{ flex: 1, textAlign: "center", padding: "20px" }}>
-
-        {/* Название */}
-        {/* <h1
-          style={{
-            transition: "0.3s opacity",
-            opacity: isTransitioning ? 0 : 1
-          }}
-        >
-          {decodeHtml(video.artist + " - " + video.title)}
-        </h1> */}
-
-
-        {/* Плеер */}
-        <div
-          style={{
-            position: "relative",
-            width: "720px",
-            height: "405px", // 720x405 = 16:9
-            margin: "20px auto",
-            borderRadius: "12px",
-            overflow: "hidden",
-            background: "#000"
-          }}
-        >
-          {/* YouTube */}
-          <div
-            id="player"
-            style={{
-              position: "absolute",
-              transition: "2.0s opacity",
-              opacity: isTransitioning ? 0 : 1,
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              zIndex: 1
-            }}
-          />
-
-          {/* ТВОЁ ВИДЕО поверх */}
-          {overlaySrc && (
-            <video
-              ref={overlayRef}
-              src={overlaySrc}
-              playsInline
-              autoPlay
-              muted
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                zIndex: 50,
-                opacity: overlayVisible ? 1 : 0,
-                transition: "opacity 3.0s ease",
-                pointerEvents: "none"
-              }}
-            />
-          )}
-
-          <TitlesOverlay
-            topTitle={titles.topTitle}
-            topSub={titles.topSub}
-            nowPlaying={titles.nowPlaying}
-            nextTrack={titles.nextTrack}
-            zIndex={60}
-          />
-        </div>
-
-        {/* <div
-          style={{
-            marginTop: "20px",
-            transition: "0.3s opacity",
-            opacity: isTransitioning ? 0 : 1
-          }}
-        >
-          <div id="player" />
-
-          <video
-            src="http://localhost:8000/video?channel=drugoe_mesto&filename=13637307_1920_1080_24fps.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              zIndex: 10,
-              pointerEvents: "none" // чтобы клики шли в ютуб
-            }}
-          />
-        </div> */}
-
-        {/* Кнопки */}
-        <div style={{ marginTop: "15px", display: "flex", justifyContent: "center", gap: "15px" }}>
-          <button onClick={prevVideo}>⏮ Предыдущий</button>
-          <button onClick={smoothNext}>Следующий ⏭</button>
-        </div>
-
-        {/* Подсказка следующего клипа */}
-        {/* <div style={{ marginTop: "10px", fontSize: "14px", color: "#aaa" }}>
-          Следующий: {nextVideoTitle}
-        </div> */}
+        )}
       </div>
     </div>
+
+
   );
 }

@@ -18,6 +18,8 @@ import os
 import json
 from scipy.io.wavfile import write
 from openai import OpenAI
+import torch
+import torchaudio
 
 from phonemizer import phonemize
 import re
@@ -47,6 +49,14 @@ elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 silero_model, _ = silero_tts(language='ru',
                                  speaker='v5_1_ru')
 
+# ===== 3) Silero VAD =====
+silero_vad_model, vad_utils = torch.hub.load(
+    repo_or_dir="snakers4/silero-vad",
+    model="silero_vad",
+    force_reload=False
+)
+
+(get_speech_timestamps, _, _, _, _) = vad_utils
 
 # Предопределенные каналы
 CHANNELS = {
@@ -121,18 +131,18 @@ CHANNELS = {
 
         "name": "Лаунж кафе Другое Место на артиллерийской",
         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
-        # "voice": {
-        #     "source": "elevenlabs", 
-        #     # "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
-        #     "name": "jGhxZDfdcvgMh6tm2PBj", # drugaya_natasha         
-        #     # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
-        #     "sex": "female"
-        # },
         "voice": {
-            "source": "silero", 
-            "name": "xenia",
+            "source": "elevenlabs", 
+            # "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
+            "name": "jGhxZDfdcvgMh6tm2PBj", # drugaya_natasha         
+            # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
             "sex": "female"
         },
+        # "voice": {
+        #     "source": "silero", 
+        #     "name": "xenia",
+        #     "sex": "female"
+        # },
         "action": [
             "Наше лаунж кафе дарит гостям униувльную возможность - стать обладателем легендарного кольца Картье! Условия акции уточняйте у официанта.",
             "Второй кальян в подарок - дымный бонус к выходным. Суббота и воскресенье с 12:00 до 15:00",
@@ -459,54 +469,164 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     
     meta = CHANNELS.get(req.channel)
 
-    match meta["voice"]["source"]:
-    
-        case "elevenlabs":
-            # Get raw response with headers
-            if meta["voice"]["sex"] == "male":
-                voice_id = "YOq2y2Up4RgXP2HyXjE5" if meta["voice"]["name"] == "random_male" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
-            else:
-                voice_id = "2zRM7PkgwBPiau2jvVXc" if meta["voice"]["name"] == "random_female" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
-            
-            audio = elevenlabs_client.text_to_speech.convert(
-                text=text,
-                # model_id="eleven_multilingual_v2",
-                model_id="eleven_v3",
-                voice_id=voice_id,
-                output_format="wav_48000",
-            )
-            # from elevenlabs.play import play
-            # play(audio)
-            audio_data = b"".join(audio)    
-            # Преобразуем байты в NumPy массив int16
-            audio = np.frombuffer(audio_data, dtype=np.int16)
-            print("Generated audio with elevenlabs")
+    def generate_speech():
+        audio = None
+        match meta["voice"]["source"]:
         
-        case _:
-            ssml_text = f"<speak>{text}</speak>"
-            audio = silero_model.apply_tts(
-                ssml_text=ssml_text,
-                sample_rate=sample_rate
-            )
-            audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
-            audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
-    
-    duration_seconds = 30
-    # Количество сэмплов
-    num_samples = audio.shape[0]
-    # Длительность в секундах
-    duration_seconds = num_samples / sample_rate
-    print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
-    raw = f"{req.channel}|{req.from_title}|{req.to_title}"
-    h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+            case "elevenlabs":
+                # Get raw response with headers
+                if meta["voice"]["sex"] == "male":
+                    voice_id = "YOq2y2Up4RgXP2HyXjE5" if meta["voice"]["name"] == "random_male" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+                else:
+                    voice_id = "2zRM7PkgwBPiau2jvVXc" if meta["voice"]["name"] == "random_female" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+                
+                audio = elevenlabs_client.text_to_speech.convert(
+                    text=text,
+                    # model_id="eleven_multilingual_v2",
+                    model_id="eleven_v3",
+                    voice_id=voice_id,
+                    output_format="wav_48000",
+                )
+                # from elevenlabs.play import play
+                # play(audio)
+                audio_data = b"".join(audio)    
+                # Преобразуем байты в NumPy массив int16
+                audio = np.frombuffer(audio_data, dtype=np.int16)
+                print("Generated audio with elevenlabs")
+            
+            case _:
+                ssml_text = f"<speak>{text}</speak>"
+                audio = silero_model.apply_tts(
+                    ssml_text=ssml_text,
+                    sample_rate=sample_rate
+                )
+                audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
+                audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
 
-    filename = f"dj_{h}.wav"
-    write(f"wav_folder/{filename}", sample_rate, audio)
+        return audio
+    
+    retries = 3
+    is_speech = False
+    audio = None
+    while audio is None and retries > 0:
+        audio = generate_speech()
+        is_speech = has_speech(audio, sample_rate, threshold=0.5)
+        retries -= 1
+        duration_seconds = 30
+        # Количество сэмплов
+        num_samples = audio.shape[0]
+        # Длительность в секундах
+        duration_seconds = num_samples / sample_rate
+        print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
+        raw = f"{req.channel}|{req.from_title}|{req.to_title}"
+        h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+
+        filename = f"dj_{h}.wav"
+        write(f"wav_folder/{filename}", sample_rate, audio)
+          
+
+    if is_speech:
+        return {
+            "text": text,
+            "audio_filename": filename,
+            "duration": duration_seconds,
+            "format": "wav"
+        }
+    
+    print(f"!!!!!!!!!!!!!!!!!!!!! {filename} bad speech")
 
     return {
         "text": text,
-        "audio_filename": filename,
-        "duration": duration_seconds,
+        "audio_filename": "",
+        "duration": 0,
+        "format": "wav"
+    }
+
+
+@app.post("/dj_hello")
+def dj_hello(req: DJRequest, user=Depends(get_current_user)):
+    sample_rate = 48000
+
+    text = generate_dj_text(
+        channel=req.channel,
+        from_title=None,
+        to_title=req.to_title,
+    )
+
+    print("Generated text:", text)
+    
+    meta = CHANNELS.get(req.channel)
+
+    def generate_speech():
+        audio = None
+        match meta["voice"]["source"]:
+        
+            case "elevenlabs":
+                # Get raw response with headers
+                if meta["voice"]["sex"] == "male":
+                    voice_id = "YOq2y2Up4RgXP2HyXjE5" if meta["voice"]["name"] == "random_male" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+                else:
+                    voice_id = "2zRM7PkgwBPiau2jvVXc" if meta["voice"]["name"] == "random_female" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+                
+                audio = elevenlabs_client.text_to_speech.convert(
+                    text=text,
+                    # model_id="eleven_multilingual_v2",
+                    model_id="eleven_v3",
+                    voice_id=voice_id,
+                    output_format="wav_48000",
+                )
+                # from elevenlabs.play import play
+                # play(audio)
+                audio_data = b"".join(audio)    
+                # Преобразуем байты в NumPy массив int16
+                audio = np.frombuffer(audio_data, dtype=np.int16)
+                print("Generated audio with elevenlabs")
+            
+            case _:
+                ssml_text = f"<speak>{text}</speak>"
+                audio = silero_model.apply_tts(
+                    ssml_text=ssml_text,
+                    sample_rate=sample_rate
+                )
+                audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
+                audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+
+        return audio
+    
+    retries = 3
+    is_speech = False
+    audio = None
+    while audio is None and retries > 0:
+        audio = generate_speech()
+        is_speech = has_speech(audio, sample_rate, threshold=0.5)
+        retries -= 1
+        duration_seconds = 30
+        # Количество сэмплов
+        num_samples = audio.shape[0]
+        # Длительность в секундах
+        duration_seconds = num_samples / sample_rate
+        print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
+        raw = f"{req.channel}|{req.from_title}|{req.to_title}"
+        h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+
+        filename = f"dj_{h}.wav"
+        write(f"wav_folder/{filename}", sample_rate, audio)
+          
+
+    if is_speech:
+        return {
+            "text": text,
+            "audio_filename": filename,
+            "duration": duration_seconds,
+            "format": "wav"
+        }
+    
+    print(f"!!!!!!!!!!!!!!!!!!!!! {filename} bad speech")
+
+    return {
+        "text": text,
+        "audio_filename": "",
+        "duration": 0,
         "format": "wav"
     }
 
@@ -669,22 +789,26 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
     meta = CHANNELS.get(channel)
     text = generate_text(channel, from_title, to_title)
     if meta["type"] == "brand_space":
-        match random.random():
-            case x if x <= 0.3:
-                print("Adding promo")
-                text = add_promo(text, channel)
-            case x if x <= 0.6:
-                print("Adding menu")
-                text = add_menu(text, channel)
-            case x if x <= 0.7:
-                print("Adding weather")
-                text = add_weather(text, channel)
-            # case x if x <= 0.9:
-            #     print("Adding local events")
-            #     text = add_local_events(text, channel)
-            # case x if x <= 1:
-            #     print("Adding local news")
-            #     text = add_local_news(text, channel)
+        if from_title:
+            match random.random():
+                case x if x <= 0.3:
+                    print("Adding promo")
+                    text = add_promo(text, channel)
+                case x if x <= 0.6:
+                    print("Adding menu")
+                    text = add_menu(text, channel)
+                case x if x <= 0.7:
+                    print("Adding weather")
+                    text = add_weather(text, channel)
+                # case x if x <= 0.9:
+                #     print("Adding local events")
+                #     text = add_local_events(text, channel)
+                # case x if x <= 1:
+                #     print("Adding local news")
+                #     text = add_local_news(text, channel)
+        else:
+            print("Adding weather")
+            text = add_weather(text, channel)
 
     if len(text) > 500:
         print(text)
@@ -725,9 +849,19 @@ def generate_text(channel: str, from_title: str, to_title: str) -> str:
 Сегодня {datetime.now()}.
 Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
 Упоминай в тексте заведение и его атмосферу, а также особенности музыки канала.
+"""
+    if from_title is None:        
+        prompt += f"""
+Теперь придумай переход к треку {to_title}. Это твоя первая реплика, сделай ее привественной.
 
+"""
+    else:
+        prompt += f"""
 Теперь придумай переход от трека {from_title} к треку {to_title}
 
+"""
+    
+    prompt += f"""
 Требования к тексту:
 — русский язык
 — нельзя использовать слова на английском или других языках, кроме русского
@@ -1338,3 +1472,27 @@ def get_local_events_perplexity(
         return data
     except Exception:
         return {"ok": False, "error": "Perplexity returned invalid JSON", "raw": content}
+
+
+
+def rms(audio_int16):
+    x = audio_int16.astype(np.float32)
+    return float(np.sqrt(np.mean(x * x)))
+
+def has_speech(audio_int16, sample_rate, threshold=0.5):
+    x = audio_int16.astype(np.float32) / 32768.0
+
+    # silero лучше всего работает на 16000
+    if sample_rate != 16000:
+        x_t = torch.from_numpy(x).unsqueeze(0)
+        x_t = torchaudio.functional.resample(x_t, sample_rate, 16000)
+        x = x_t.squeeze(0).numpy()
+        sample_rate = 16000
+
+    speech_timestamps = get_speech_timestamps(
+        torch.from_numpy(x),
+        silero_vad_model,
+        sampling_rate=sample_rate,
+        threshold=threshold
+    )
+    return len(speech_timestamps) > 0
