@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 class YouTubeCache:
-    def __init__(self, db_path="youtube_cache.db"):
+    def __init__(self, db_path="data/youtube_cache.db"):
         self.db_path = db_path
         # Если база не существует — создаём её
         first_time = not os.path.exists(self.db_path)

@@ -11,9 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from phonemizer.backend.espeak.wrapper import EspeakWrapper
 from auth import authenticate_user, create_access_token, get_current_user
 from pydantic import BaseModel
+from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
+import sqlite3, json
+from typing import List, Dict
 
 import requests
 from dotenv import load_dotenv
+import sqlite3
 import os
 import json
 from scipy.io.wavfile import write
@@ -42,6 +47,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+DB_PATH = "data/youtube_music_hits.db"
+
 llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
@@ -59,296 +66,307 @@ silero_vad_model, vad_utils = torch.hub.load(
 (get_speech_timestamps, _, _, _, _) = vad_utils
 
 # Предопределенные каналы
-CHANNELS = {
+# CHANNELS = {
     
-    "MTV": {
-        "type": "music_tv",
-        "style": "modern popular music 2010-2024",
-        "description": "global chart hits, pop, hip hop, dance",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        }
-    },
+#     "MTV": {
+#         "type": "music_tv",
+#         "name": "MTV",
+#         "style": "modern popular music 2010-2024",
+#         "description": "global chart hits, pop, hip hop, dance",
+#         # "voice": {
+#         #     "source": "silero", 
+#         #     "name": "xenia",
+#         #     "sex": "female"
+#         # }
+#         "voice": {
+#             "source": "elevenlabs", 
+#             # "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
+#             "name": "jGhxZDfdcvgMh6tm2PBj", # drugaya_natasha         
+#             # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
+#             "sex": "female"
+#         },
+#     },
     
-    "Retro": {
-        "type": "music_tv",
-        "style": "classic hits 1980-1989",
-        "description": "80s pop, disco, synth, rock",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        }
-    },
+#     "Retro": {
+#         "type": "music_tv",
+#         "name": "Retro TV",
+#         "style": "classic hits 1980-1989",
+#         "description": "80s pop, disco, synth, rock",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         }
+#     },
     
-    "Retro Synth": {
-        "type": "music_tv",
-        "style": "classic synth hits 1980-1989",
-        "description": "80s synth, soviet synth",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        }
-    },
+#     "Retro Synth": {
+#         "type": "music_tv",
+#         "name": "Retro Synth TV",
+#         "style": "classic synth hits 1980-1989",
+#         "description": "80s synth, soviet synth",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         }
+#     },
     
-    "A One": {
-        "type": "music_tv",
-        "style": "rock and alternative 1995-2010",
-        "description": "alternative rock, grunge, indie",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        }
-    },
+#     "A One": {
+#         "type": "music_tv",
+#         "name": "A One",
+#         "style": "rock and alternative 1995-2010",
+#         "description": "alternative rock, grunge, indie",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         }
+#     },
     
-    "Другое Место": {
-        "type": "brand_space",
-        # "style": 
-        #     "chill electronic and oriental lounge, "
-        #     "deep house, organic house, downtempo, "
-        #     "oriental chill, hookah lounge vibes",
-        "style":
-            "organic house, melodic house, "
-            "downtempo, chill progressive, "
-            "soft oriental fusion, ",
-        # "style":
-        #     "luxury lounge, "
-        #     "organic house, melodic house, "
-        #     "downtempo, chill progressive, "
-        #     "soft oriental fusion, "
-        #     "sunset rooftop vibes, hookah lounge mood",
-        # "style":
-        #     "modern chill, "
-        #     "lo-fi house, deep house, "
-        #     "slow techno, minimal grooves, "
-        #     "late night city vibes, "
-        #     "smooth electronic background, "
-        #     "hookah lounge energy",
+#     "Другое Место": {
+#         "type": "brand_space",
+#         # "style": 
+#         #     "chill electronic and oriental lounge, "
+#         #     "deep house, organic house, downtempo, "
+#         #     "oriental chill, hookah lounge vibes",
+#         "style":
+#             "organic house, melodic house, "
+#             "downtempo, chill progressive, "
+#             "soft oriental fusion, ",
+#         # "style":
+#         #     "luxury lounge, "
+#         #     "organic house, melodic house, "
+#         #     "downtempo, chill progressive, "
+#         #     "soft oriental fusion, "
+#         #     "sunset rooftop vibes, hookah lounge mood",
+#         # "style":
+#         #     "modern chill, "
+#         #     "lo-fi house, deep house, "
+#         #     "slow techno, minimal grooves, "
+#         #     "late night city vibes, "
+#         #     "smooth electronic background, "
+#         #     "hookah lounge energy",
 
-        "name": "Лаунж кафе Другое Место на артиллерийской",
-        "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
-        "voice": {
-            "source": "elevenlabs", 
-            # "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
-            "name": "jGhxZDfdcvgMh6tm2PBj", # drugaya_natasha         
-            # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
-            "sex": "female"
-        },
-        # "voice": {
-        #     "source": "silero", 
-        #     "name": "xenia",
-        #     "sex": "female"
-        # },
-        "action": [
-            "Наше лаунж кафе дарит гостям униувльную возможность - стать обладателем легендарного кольца Картье! Условия акции уточняйте у официанта.",
-            "Второй кальян в подарок - дымный бонус к выходным. Суббота и воскресенье с 12:00 до 15:00",
-            "Минус цена - плюс удовольствие. С понедельника по пятницу с 12:00 до 16:00",
-            "Скидка 20 процентов при заказе на вынос",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "Фруктовая чаша 700 рублей",
-            "Фруктовая чаша ананас 1000 рублей",
-            "Апероль Шпритц 900 рублей",
-            "Вино Пино Гриджио 4000 рублей",
-            "Мартини Фиеро тоник 900 рублей",
-            "Салат Цезарь с креветкой 800 рублей",
-            "Ролл Калифорния с креветкой и снежным крабом 1250 рублей",
-            "Вок с курицей в сливочном соусе 950 рублей",
-            "Чизкейк 700 рублей",
-            "Лимонад цитрусовый 0,7 литра 800 рублей",
-        ]
-    },
+#         "name": "Лаунж кафе Другое Место на артиллерийской",
+#         "description": "Лаунж кафе Другое Место на артиллерийской, кальяны, чай",
+#         # "voice": {
+#         #     "source": "elevenlabs", 
+#         #     # "name": "PB6BdkFkZLbI39GHdnbQ", # eleven_multilingual_v2 sexy expensive 
+#         #     "name": "jGhxZDfdcvgMh6tm2PBj", # drugaya_natasha         
+#         #     # "name": "2zRM7PkgwBPiau2jvVXc", # бодро
+#         #     "sex": "female"
+#         # },
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         },
+#         "action": [
+#             "Наше лаунж кафе дарит гостям униувльную возможность - стать обладателем легендарного кольца Картье! Условия акции уточняйте у официанта.",
+#             "Второй кальян в подарок - дымный бонус к выходным. Суббота и воскресенье с 12:00 до 15:00",
+#             "Минус цена - плюс удовольствие. С понедельника по пятницу с 12:00 до 16:00",
+#             "Скидка 20 процентов при заказе на вынос",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "Фруктовая чаша 700 рублей",
+#             "Фруктовая чаша ананас 1000 рублей",
+#             "Апероль Шпритц 900 рублей",
+#             "Вино Пино Гриджио 4000 рублей",
+#             "Мартини Фиеро тоник 900 рублей",
+#             "Салат Цезарь с креветкой 800 рублей",
+#             "Ролл Калифорния с креветкой и снежным крабом 1250 рублей",
+#             "Вок с курицей в сливочном соусе 950 рублей",
+#             "Чизкейк 700 рублей",
+#             "Лимонад цитрусовый 0,7 литра 800 рублей",
+#         ]
+#     },
     
-    "Пеперончино": {
-        "type": "brand_space",
-        "style": 
-            "family-friendly pop and soft rock, "
-            "italian classics, acoustic hits, "
-            "easy listening, light funk, "
-            "feel-good background music",
-        "name": "Пеперончино",
-        "description": "ПЕПЕРОНЧИНО🌶️ | Пиццерия Калининград",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        },
-        "action": [
-            "Покажите ваш билет на концерт (в день мероприятия) и получите две фирменные настойки на выбор в подарок!",
-            "Бокал игристого каждому гостю при заказе завтрака с 11:00 до 14:00",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "Неполитанская пицца Пьемонт 550 рублей (было 695)",
-            "Неполитанская пицца Цезарио 550 рублей (было 695)",
-            "Куриный суп с домашней лапшой 315 рублей (было 395)",
-            "NEW Салат с креветками 655 рублей",
-            "Чизкейк Сан-Себастьян 315 рублей (было 395)",
-        ]
-    },
+#     "Пеперончино": {
+#         "type": "brand_space",
+#         "style": 
+#             "family-friendly pop and soft rock, "
+#             "italian classics, acoustic hits, "
+#             "easy listening, light funk, "
+#             "feel-good background music",
+#         "name": "Пеперончино",
+#         "description": "ПЕПЕРОНЧИНО🌶️ | Пиццерия Калининград",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         },
+#         "action": [
+#             "Покажите ваш билет на концерт (в день мероприятия) и получите две фирменные настойки на выбор в подарок!",
+#             "Бокал игристого каждому гостю при заказе завтрака с 11:00 до 14:00",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "Неполитанская пицца Пьемонт 550 рублей (было 695)",
+#             "Неполитанская пицца Цезарио 550 рублей (было 695)",
+#             "Куриный суп с домашней лапшой 315 рублей (было 395)",
+#             "NEW Салат с креветками 655 рублей",
+#             "Чизкейк Сан-Себастьян 315 рублей (было 395)",
+#         ]
+#     },
     
-    "X-Fit": {
-        "type": "brand_space",
-        "style":
-            "energetic workout pop, "
-            "motivational EDM, "
-            "commercial house, "
-            "clean hip-hop, "
-            "uplifting dance hits, "
-            "gym-friendly bangers",
-        "name": "X-Fit",
-        "description": "X-Fit | Фитнес-клуб и тренажёрный зал",
-        "voice": {
-            "source": "elevenlabs", 
-            "name": "random_female",
-            "sex": "female"
-        },
-        "action": [
-            "Гостевой визит на 1 день бесплатно при записи через администратора",
-            "Скидка 20% на персональные тренировки при покупке пакета 10 занятий",
-            "Акция: приведи друга — получите по семь дней продления абонемента",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "Абонемент 1 месяц — от 4 990 ₽",
-            "Абонемент 3 месяца — от 12 990 ₽",
-            "Персональная тренировка — от 1 500 ₽",
-            "Пакет 10 персональных тренировок — от 12 900 ₽",
-            "Фитнес-тестирование + консультация тренера — 990 ₽",
-        ],
-    },
+#     "X-Fit": {
+#         "type": "brand_space",
+#         "style":
+#             "energetic workout pop, "
+#             "motivational EDM, "
+#             "commercial house, "
+#             "clean hip-hop, "
+#             "uplifting dance hits, "
+#             "gym-friendly bangers",
+#         "name": "X-Fit",
+#         "description": "X-Fit | Фитнес-клуб и тренажёрный зал",
+#         "voice": {
+#             "source": "elevenlabs", 
+#             "name": "random_female",
+#             "sex": "female"
+#         },
+#         "action": [
+#             "Гостевой визит на 1 день бесплатно при записи через администратора",
+#             "Скидка 20% на персональные тренировки при покупке пакета 10 занятий",
+#             "Акция: приведи друга — получите по семь дней продления абонемента",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "Абонемент 1 месяц — от 4 990 ₽",
+#             "Абонемент 3 месяца — от 12 990 ₽",
+#             "Персональная тренировка — от 1 500 ₽",
+#             "Пакет 10 персональных тренировок — от 12 900 ₽",
+#             "Фитнес-тестирование + консультация тренера — 990 ₽",
+#         ],
+#     },
 
-    "Эдкар": {
-        "type": "brand_space",
-        "style":
-            "calm modern lounge, "
-            "soft chill electronic, "
-            "warm acoustic pop, "
-            "smooth jazz, "
-            "relaxing background music, "
-            "minimal piano and ambient",
-        "name": "Эдкар",
-        "description": "Эдкар | Семейная медицина и стоматология",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        },
-        "action": [
-            "Профилактический осмотр стоматолога — бесплатно при первом визите",
-            "Комплекс: профгигиена + консультация — по специальной цене",
-            "Семейная программа: скидка 10% при записи 2+ членов семьи",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "Консультация стоматолога — от 800 ₽",
-            "Профессиональная гигиена полости рта — от 3 500 ₽",
-            "Лечение кариеса — от 4 200 ₽",
-            "УЗИ (по направлению) — от 1 200 ₽",
-            "Приём терапевта — от 1 600 ₽",
-        ],
-    },
+#     "Эдкар": {
+#         "type": "brand_space",
+#         "style":
+#             "calm modern lounge, "
+#             "soft chill electronic, "
+#             "warm acoustic pop, "
+#             "smooth jazz, "
+#             "relaxing background music, "
+#             "minimal piano and ambient",
+#         "name": "Эдкар",
+#         "description": "Эдкар | Семейная медицина и стоматология",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         },
+#         "action": [
+#             "Профилактический осмотр стоматолога — бесплатно при первом визите",
+#             "Комплекс: профгигиена + консультация — по специальной цене",
+#             "Семейная программа: скидка 10% при записи 2+ членов семьи",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "Консультация стоматолога — от 800 ₽",
+#             "Профессиональная гигиена полости рта — от 3 500 ₽",
+#             "Лечение кариеса — от 4 200 ₽",
+#             "УЗИ (по направлению) — от 1 200 ₽",
+#             "Приём терапевта — от 1 600 ₽",
+#         ],
+#     },
 
-    "Exeed": {
-        "type": "brand_space",
-        "style":
-            "premium modern pop, "
-            "cinematic electronic, "
-            "future bass, "
-            "clean trap beats, "
-            "high-end lounge, "
-            "confident driving vibes",
-        "name": "EXEED",
-        "description": "EXEED | Автомобильный дилерский центр",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        },
-        "action": [
-            "Тест-драйв в удобное время + фирменный подарок при записи онлайн",
-            "Trade-in: дополнительная выгода до 150 000 ₽ при сдаче авто",
-            "Кредитная программа: сниженная ставка при первом взносе от 30%",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "EXEED LX — от 2 800 000 ₽",
-            "EXEED TXL — от 3 600 000 ₽",
-            "EXEED RX — от 4 500 000 ₽",
-            "КАСКО + ОСАГО в дилерском центре — индивидуальный расчёт",
-            "Сервисное ТО — от 12 000 ₽",
-        ],
-    },
+#     "Exeed": {
+#         "type": "brand_space",
+#         "style":
+#             "premium modern pop, "
+#             "cinematic electronic, "
+#             "future bass, "
+#             "clean trap beats, "
+#             "high-end lounge, "
+#             "confident driving vibes",
+#         "name": "EXEED",
+#         "description": "EXEED | Автомобильный дилерский центр",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         },
+#         "action": [
+#             "Тест-драйв в удобное время + фирменный подарок при записи онлайн",
+#             "Trade-in: дополнительная выгода до 150 000 ₽ при сдаче авто",
+#             "Кредитная программа: сниженная ставка при первом взносе от 30%",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "EXEED LX — от 2 800 000 ₽",
+#             "EXEED TXL — от 3 600 000 ₽",
+#             "EXEED RX — от 4 500 000 ₽",
+#             "КАСКО + ОСАГО в дилерском центре — индивидуальный расчёт",
+#             "Сервисное ТО — от 12 000 ₽",
+#         ],
+#     },
 
-    "О, Pretty People": {
-        "type": "brand_space",
-        "style":
-            "trendy beauty lounge pop, "
-            "soft r&b, "
-            "modern chill, "
-            "minimal deep house, "
-            "clean tik-tok hits, "
-            "warm aesthetic vibes",
-        "name": "О, Pretty People",
-        "description": "О, Pretty People | Салон красоты",
-        "voice": {
-            "source": "silero", 
-            "name": "xenia",
-            "sex": "female"
-        },
-        "action": [
-            "Скидка 15% на первое посещение при записи онлайн",
-            "Маникюр + покрытие — по спеццене в будние дни до 15:00",
-            "Приведи подругу — получите по 10% скидки на следующую услугу",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "Маникюр + покрытие гель-лак — от 2 200 ₽",
-            "Педикюр + покрытие — от 3 200 ₽",
-            "Стрижка женская — от 1 800 ₽",
-            "Окрашивание (тон/сложное) — от 4 500 ₽",
-            "Ламинирование ресниц — от 2 400 ₽",
-        ],
-    },
+#     "О, Pretty People": {
+#         "type": "brand_space",
+#         "style":
+#             "trendy beauty lounge pop, "
+#             "soft r&b, "
+#             "modern chill, "
+#             "minimal deep house, "
+#             "clean tik-tok hits, "
+#             "warm aesthetic vibes",
+#         "name": "О, Pretty People",
+#         "description": "О, Pretty People | Салон красоты",
+#         "voice": {
+#             "source": "silero", 
+#             "name": "xenia",
+#             "sex": "female"
+#         },
+#         "action": [
+#             "Скидка 15% на первое посещение при записи онлайн",
+#             "Маникюр + покрытие — по спеццене в будние дни до 15:00",
+#             "Приведи подругу — получите по 10% скидки на следующую услугу",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "Маникюр + покрытие гель-лак — от 2 200 ₽",
+#             "Педикюр + покрытие — от 3 200 ₽",
+#             "Стрижка женская — от 1 800 ₽",
+#             "Окрашивание (тон/сложное) — от 4 500 ₽",
+#             "Ламинирование ресниц — от 2 400 ₽",
+#         ],
+#     },
 
-    "OldBoy": {
-        "type": "brand_space",
-        "style":
-            "confident hip-hop, "
-            "old school rap, "
-            "modern trap, "
-            "funky beats, "
-            "barbershop swagger, "
-            "clean rock classics, "
-            "masculine lounge vibes",
-        "name": "OldBoy",
-        "description": "OldBoy | Барбершоп",
-        "voice": {
-            "source": "elevenlabs", 
-            "name": "random_male",
-            "sex": "male"
-        },
-        "action": [
-            "Скидка 10% на первое посещение при записи через администратора",
-            "Отец + сын: специальная цена на комплекс стрижек",
-            "Стрижка + борода: выгодный комбо-тариф в будние дни",
-        ],
-        "location": "Калининград",
-        "menu": [
-            "Мужская стрижка — от 1 600 ₽",
-            "Стрижка машинкой — от 900 ₽",
-            "Оформление бороды — от 1 100 ₽",
-            "Комплекс: стрижка + борода — от 2 500 ₽",
-            "Детская стрижка — от 1 200 ₽",
-        ],
-    },
+#     "OldBoy": {
+#         "type": "brand_space",
+#         "style":
+#             "confident hip-hop, "
+#             "old school rap, "
+#             "modern trap, "
+#             "funky beats, "
+#             "barbershop swagger, "
+#             "clean rock classics, "
+#             "masculine lounge vibes",
+#         "name": "OldBoy",
+#         "description": "OldBoy | Барбершоп",
+#         "voice": {
+#             "source": "elevenlabs", 
+#             "name": "random_male",
+#             "sex": "male"
+#         },
+#         "action": [
+#             "Скидка 10% на первое посещение при записи через администратора",
+#             "Отец + сын: специальная цена на комплекс стрижек",
+#             "Стрижка + борода: выгодный комбо-тариф в будние дни",
+#         ],
+#         "location": "Калининград",
+#         "menu": [
+#             "Мужская стрижка — от 1 600 ₽",
+#             "Стрижка машинкой — от 900 ₽",
+#             "Оформление бороды — от 1 100 ₽",
+#             "Комплекс: стрижка + борода — от 2 500 ₽",
+#             "Детская стрижка — от 1 200 ₽",
+#         ],
+#     },
 
-}
+# }
 
 REPLACE_DICT = {
     "трек": "трэк",
@@ -362,12 +380,14 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
 class PlaylistRequest(BaseModel):
-    channel: str
+    user_id: str
+    channel_id: str
     max_results: int = 10
 
     
 class DJRequest(BaseModel):
-    channel: str
+    user_id: str
+    channel_id: str
     from_title: str
     to_title: str
 
@@ -379,6 +399,76 @@ class LoginRequest(BaseModel):
 
 ### Аутентификация и авторизация (JWT) для админки и будущих персональных кабинетов пользователей
 
+USERS_DB_PATH = "data/users.db"
+
+# -----------------------------
+# Pydantic модели
+# -----------------------------
+class Voice(BaseModel):
+    source: str
+    name: str
+    sex: str
+
+class Channel(BaseModel):
+    channel_uid: str
+    name: str
+    type: str
+    style: str
+    description: str
+    location: str = ""
+    voice: Voice
+    actions: List[str] = []
+    menu: List[str] = []
+
+class UserResponse(BaseModel):
+    username: str
+    user_uid: str
+    channels: List[Channel] = []
+
+
+# -----------------------------
+# Получение пользователя + каналов из базы
+# -----------------------------
+def fetch_user_with_channels(username: str) -> UserResponse:
+    conn = sqlite3.connect(USERS_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    # 1) ищем пользователя
+    user_row = cur.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    if not user_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_uid = user_row["user_uid"]
+
+    # 2) ищем каналы
+    channels_rows = cur.execute("SELECT * FROM channels WHERE user_uid = ?", (user_uid,)).fetchall()
+    channels = []
+    for row in channels_rows:
+        channels.append(Channel(
+            channel_uid=row["channel_uid"],
+            name=row["name"],
+            type=row["type"],
+            style=row["style"],
+            description=row["description"],
+            location=row["location"] if row["location"] is not None else "",
+            voice=Voice(**json.loads(row["voice_json"])),
+            actions=json.loads(row["actions_json"] or "[]"),
+            menu=json.loads(row["menu_json"] or "[]")
+        ))
+
+    conn.close()
+
+    return UserResponse(
+        username=username,
+        user_uid=user_uid,
+        channels=channels
+    )
+
+# -----------------------------
+# Эндпоинты
+# -----------------------------
 @app.post("/auth/login")
 def login(req: LoginRequest):
     user = authenticate_user(req.username, req.password)
@@ -388,10 +478,10 @@ def login(req: LoginRequest):
     token = create_access_token({"sub": user["username"]})
     return {"ok": True, "access_token": token, "token_type": "bearer"}
 
-
 @app.get("/me")
-def me(user=Depends(get_current_user)):
-    return {"ok": True, "user": user}
+def me(username: str = Depends(get_current_user)):
+    user_data = fetch_user_with_channels(username)
+    return {"ok": True, "user": user_data.dict()}
 
 
 ### Основные эндпоинты для получения плейлиста, генерации текста и аудио для DJ переходов, а также получения видео по ID
@@ -400,7 +490,7 @@ def me(user=Depends(get_current_user)):
 def get_playlist(req: PlaylistRequest):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
 
-    tracks = generate_playlist_llm(req.channel, req.max_results*4)
+    tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results*4)
     print("Generated tracks:", tracks)
     
     indexed = [(i, t) for i, t in enumerate(tracks)]
@@ -415,21 +505,34 @@ def get_playlist(req: PlaylistRequest):
     for track in tracks:
         video_id = cache.get_video(track['artist'], track['title'])
         if not video_id:
-            # поиск через YouTube API
-            print("Searching YouTube for:", track)
 
-            query = f"{track['artist']} {track['title']} official music video"
-            yt_video = search_youtube_video(query)
-            # print("YouTube search result:", yt_video)
+            found = find_tracks(track['artist'], track['title'])
 
-            if yt_video:
-                video_duration = get_video_duration(yt_video["videoId"])
-                if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
-                    continue
-                matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'])
-                if matched:
-                    video_id = yt_video["videoId"]
-                    cache.save_video(track['artist'], track['title'], video_id)
+            if len(found) > 0:
+                print(found)
+                video_id = found[0]['youtubeId']
+                
+            else:
+                # поиск через YouTube API
+                print("Searching YouTube for:", track)
+
+                query = f"{track['artist']} {track['title']} official music video"
+                yt_video = search_youtube_video(query)
+                # print("YouTube search result:", yt_video)
+
+                if yt_video:
+                    matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'])
+                    if matched:
+                        video_id = yt_video["videoId"]
+
+                        try:
+                            video_duration = get_video_duration(video_id)
+                            if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
+                                continue
+                            cache.save_video(track['artist'], track['title'], video_id)
+                        except Exception as e:
+                            print(e)
+                            continue
             
         if video_id:
             videos.append({
@@ -450,9 +553,9 @@ def get_home():
 
 
 @app.get("/audio")
-def get_audio(filename: str, user=Depends(get_current_user)):
-    print("Serving audio file:", filename)
-    return FileResponse(f"wav_folder/{filename}", media_type="audio/wav", filename=filename)
+def get_audio(filename: str, user_id: str, channel_id: str, user=Depends(get_current_user)):
+    print("Serving audio file:", user_id, channel_id, filename)
+    return FileResponse(f"channels_data/{user_id}/{channel_id}/speech/{filename}", media_type="audio/wav", filename=filename)
 
 
 @app.post("/dj_transition")
@@ -460,14 +563,15 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     sample_rate = 48000
 
     text = generate_dj_text(
-        channel=req.channel,
+        user_uid=req.user_id,
+        channel_uid=req.channel_id,
         from_title=req.from_title,
         to_title=req.to_title,
     )
 
     print("Generated text:", text)
     
-    meta = CHANNELS.get(req.channel)
+    meta = get_channel_by_id(req.user_id, req.channel_id)
 
     def generate_speech():
         audio = None
@@ -518,11 +622,11 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
         # Длительность в секундах
         duration_seconds = num_samples / sample_rate
         print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
-        raw = f"{req.channel}|{req.from_title}|{req.to_title}"
+        raw = f"{req.user_id}|{req.channel_id}|{req.from_title}|{req.to_title}"
         h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
         filename = f"dj_{h}.wav"
-        write(f"wav_folder/{filename}", sample_rate, audio)
+        write(f"channels_data/{req.user_id}/{req.channel_id}/speech/{filename}", sample_rate, audio)
           
 
     if is_speech:
@@ -548,14 +652,15 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
     sample_rate = 48000
 
     text = generate_dj_text(
-        channel=req.channel,
+        user_uid=req.user_id,
+        channel_uid=req.channel_id,
         from_title=None,
         to_title=req.to_title,
     )
 
     print("Generated text:", text)
     
-    meta = CHANNELS.get(req.channel)
+    meta = get_channel_by_id(req.user_id, req.channel_id)
 
     def generate_speech():
         audio = None
@@ -606,11 +711,11 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
         # Длительность в секундах
         duration_seconds = num_samples / sample_rate
         print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
-        raw = f"{req.channel}|{req.from_title}|{req.to_title}"
+        raw = f"{req.user_id}|{req.channel_id}|{req.from_title}|{req.to_title}"
         h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
         filename = f"dj_{h}.wav"
-        write(f"wav_folder/{filename}", sample_rate, audio)
+        write(f"channels_data/{req.user_id}/{req.channel_id}/speech/{filename}", sample_rate, audio)
           
 
     if is_speech:
@@ -632,10 +737,10 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
 
 
 @app.get("/video")
-def get_video(channel: str = Query(...), filename: str = Query(...)):
-    print("Serving video file:", channel, filename)
+def get_video(user_id: str = Query(...), channel_id: str = Query(...), filename: str = Query(...)):
+    print("Serving video file:", user_id, channel_id, filename)
     return FileResponse(
-        f"channels_data/{channel}/videos/{filename}",
+        f"channels_data/{user_id}/{channel_id}/videos/{filename}",
         media_type="video/mp4",
         filename=filename
     )
@@ -733,15 +838,16 @@ def replace_words(text: str, replace_dict: dict) -> str:
     return re.sub(pattern, repl, text, flags=re.IGNORECASE)
 
 
-def generate_playlist_llm(channel: str, count: int = 10):
-    meta = CHANNELS.get(channel)
+def generate_playlist_llm(user_uid: str, channel_uid: str, count: int = 10):
+    meta = get_channel_by_id(user_uid, channel_uid)
+
     if not meta:
         raise ValueError("Unknown channel")
 
     prompt = f"""
 You are a professional music editor.
 
-Create a playlist for the radio channel "{channel}".
+Create a playlist for the radio channel "{meta['name']}".
 """
     
     if meta.get("type") == "brand_space":
@@ -785,21 +891,22 @@ Format:
         raise RuntimeError(f"LLM returned invalid JSON: {content}")
     
 
-def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
-    meta = CHANNELS.get(channel)
-    text = generate_text(channel, from_title, to_title)
+def generate_dj_text(user_uid: str, channel_uid: str, from_title: str, to_title: str) -> str:
+    meta = get_channel_by_id(user_uid, channel_uid)
+    channel = meta['name']
+    text = generate_text(user_uid, channel_uid, from_title, to_title)
     if meta["type"] == "brand_space":
         if from_title:
             match random.random():
                 case x if x <= 0.3:
                     print("Adding promo")
-                    text = add_promo(text, channel)
+                    text = add_promo(text, user_uid, channel_uid)
                 case x if x <= 0.6:
                     print("Adding menu")
-                    text = add_menu(text, channel)
+                    text = add_menu(text, user_uid, channel_uid)
                 case x if x <= 0.7:
                     print("Adding weather")
-                    text = add_weather(text, channel)
+                    text = add_weather(text, user_uid, channel_uid)
                 # case x if x <= 0.9:
                 #     print("Adding local events")
                 #     text = add_local_events(text, channel)
@@ -808,12 +915,12 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
                 #     text = add_local_news(text, channel)
         else:
             print("Adding weather")
-            text = add_weather(text, channel)
+            text = add_weather(text, user_uid, channel_uid)
 
     if len(text) > 500:
         print(text)
         print("Text length before shortening:", len(text))
-        text = shortener(text, channel, max_symbols=500)
+        text = shortener(text, user_uid, channel_uid, max_symbols=500)
         print("Text length after shortening:", len(text))
     
     if meta["voice"]["source"] == "silero":
@@ -826,16 +933,18 @@ def generate_dj_text(channel: str, from_title: str, to_title: str) -> str:
     if meta["voice"]["source"] == "elevenlabs":
         print("Adding emotions")
         text = add_emotions_llm(text)
+
+    text = add_pauses_llm(text)
         
     print("Text length after all:", len(text))
     return text
     
 
-def generate_text(channel: str, from_title: str, to_title: str) -> str:
+def generate_text(user_uid: str, channel_uid: str, from_title: str, to_title: str) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
 
-    
+    channel = meta['name']
 
     prompt = f"""
 Ты — радио-диджей брендированного музыкального канала {channel}. 
@@ -844,19 +953,23 @@ def generate_text(channel: str, from_title: str, to_title: str) -> str:
     if meta["type"] == "brand_space":
         prompt += f"""
 Ты играешь музыку в заведении {meta["name"]}, вот его описание: {meta["description"]}.
+Упоминай в тексте заведение и его атмосферу, а также особенности музыки канала.
+"""
+    else:
+        prompt += f"""
+Ты играешь музыку на канале {meta["name"]}, вот его описание: {meta["description"]}.
 """
     prompt += f"""
 Сегодня {datetime.now()}.
-Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
-Упоминай в тексте заведение и его атмосферу, а также особенности музыки канала.
 """
     if from_title is None:        
         prompt += f"""
-Теперь придумай переход к треку {to_title}. Это твоя первая реплика, сделай ее привественной.
+Теперь придумай представление трека {to_title}. Это твоя первая реплика, сделай ее привественной.
 
 """
     else:
         prompt += f"""
+Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
 Теперь придумай переход от трека {from_title} к треку {to_title}
 
 """
@@ -885,9 +998,10 @@ def generate_text(channel: str, from_title: str, to_title: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def add_menu(text, channel: str) -> str:
+def add_menu(text, user_uid: str, channel_uid: str) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
+    channel = meta['name']
 
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
@@ -911,9 +1025,11 @@ def add_menu(text, channel: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def add_promo(text, channel: str) -> str:
+def add_promo(text, user_uid: str, channel_uid: str) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
 
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
@@ -937,9 +1053,11 @@ def add_promo(text, channel: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def add_local_news(text, channel: str) -> str:
+def add_local_news(text, user_uid: str, channel_uid: str) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
 
     news = get_local_news_perplexity(channel)
 
@@ -975,9 +1093,11 @@ def add_local_news(text, channel: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def add_local_events(text, channel: str) -> str:
+def add_local_events(text, user_uid: str, channel_uid: str) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
 
     events = get_local_events_perplexity(channel)
 
@@ -1013,9 +1133,11 @@ def add_local_events(text, channel: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def add_weather(text, channel: str) -> str:
+def add_weather(text, user_uid: str, channel_uid: str) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
 
     weather_info = get_weather(meta["location"])
 
@@ -1044,9 +1166,11 @@ def add_weather(text, channel: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def shortener(text, channel: str, max_symbols: int) -> str:
+def shortener(text, user_uid: str, channel_uid: str, max_symbols: int) -> str:
     
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
 
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
@@ -1229,13 +1353,18 @@ def add_emotions_llm(text: str) -> dict:
 
 Добавляй короткие эмоциональные подсказки, которые уместны в тексте в квадратных скобках на английском.
 Эти подсказки не должны быть длинными.
+Добавляй это перед кусочком текста, который надо озвучить с такой эмоцией.
 Максимум 4-5 штук на весь текст.
 
-Добавляй голосовые звуки вроде смешков, ухмылок, покашливаний и других звуков, которые человек издает голосом, в квадратных скобках на английском.
+Добавляй голосовые звуки вроде смешков, ухмылок, покашливаний и других звуков, которые человек издает голосом, в квадратных скобках на английском. 
+Добавляй эти ухмылки в середину текстаи предложений.
 Максимум 2-3 штуки на весь текст.
 
-Добавляй несловесные речевые звуки и междометия на русском (“мм…”, “эм…”, “ах…”, “хех…”, “ну…”, “м-м…”) - это уже без квадратных строк, прямо в текст.
-Максимум 4-5 штук на весь текст.
+Добавляй несловесные речевые звуки и междометия на русском (“хех…”, “ну…”, “м-м…”) - это уже без квадратных строк, прямо в текст.
+Максимум 2-3 штуки на весь текст.
+
+Добавляй паузы в виде троеточий в середине предложений - это уже без квадратных строк, прямо в текст.
+Максимум 2-3 штуки на весь текст.
 
 Вот твой текст: {text}
 
@@ -1247,6 +1376,28 @@ def add_emotions_llm(text: str) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Ты — редактор текста для озвучки в ElevenLabs (модель eleven_v3)."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
+def add_pauses_llm(text: str) -> dict:
+    prompt = f"""
+Ты — редактор текста для озвучки. Добавь паузы в виде троеточий в середине предложений - прямо в текст, посередине предложений.
+Добавь 2-3 штуки на весь текст.
+
+Вот твой текст: {text}
+
+Верни дополненный текст.
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Ты — редактор текста для озвучки."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.0,
@@ -1303,11 +1454,12 @@ def get_weather(city: str) -> dict:
 
 
 def get_local_news_perplexity(
-    channel: str, news_count: int = 5
+    user_uid: str, channel_uid: str, news_count: int = 5
 ) -> dict:
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
     if not meta:
         return {"ok": False, "error": f"Channel not found: {channel}"}
+    channel = meta['name']
     location = meta.get("location")
     channel_style = meta.get("style")
     channel_description = meta.get("description")
@@ -1388,11 +1540,11 @@ def get_local_news_perplexity(
 
 
 def get_local_events_perplexity(
-    channel: str, events_count: int = 5
+    user_uid: str, channel_uid: str, events_count: int = 5
 ) -> dict:
-    meta = CHANNELS.get(channel)
+    meta = get_channel_by_id(user_uid, channel_uid)
     if not meta:
-        return {"ok": False, "error": f"Channel not found: {channel}"}
+        return {"ok": False, "error": f"Channel not found: {channel_uid}"}
     location = meta.get("location")
     channel_style = meta.get("style")
     channel_description = meta.get("description")
@@ -1496,3 +1648,49 @@ def has_speech(audio_int16, sample_rate, threshold=0.5):
         threshold=threshold
     )
     return len(speech_timestamps) > 0
+
+
+def find_tracks(artist: str, title: str, limit: int = 3):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    q = """
+    SELECT *
+    FROM youtube_music_hits
+    WHERE lower(performerLabel) LIKE '%' || lower(?) || '%'
+      AND lower(itemLabel)  LIKE '%' || lower(?) || '%'
+    LIMIT ?
+    """
+
+    rows = conn.execute(q, (artist, title, limit)).fetchall()
+    conn.close()
+
+    return [dict(r) for r in rows]
+
+    
+def get_channel_by_id(user_uid: str, channel_id: str):
+    conn = sqlite3.connect(USERS_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    row = cur.execute("""
+        SELECT * FROM channels
+        WHERE user_uid = ? AND channel_uid = ?
+    """, (user_uid, channel_id)).fetchone()
+
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "channel_uid": row["channel_uid"],
+        "name": row["name"],
+        "type": row["type"],
+        "style": row["style"],
+        "description": row["description"],
+        "location": row["location"],
+        "voice": json.loads(row["voice_json"] or "{}"),
+        "actions": json.loads(row["actions_json"] or "[]"),
+        "menu": json.loads(row["menu_json"] or "[]"),
+    }

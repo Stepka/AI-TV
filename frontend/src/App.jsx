@@ -8,29 +8,19 @@ import './global.css';
 
 
 export default function App() {
-  const channelsList = [
-    { name: "MTV", icon: "🎵" },
-    { name: "Retro", icon: "🎶" },
-    { name: "Retro Synth", icon: "🎛️" },
-    { name: "A One", icon: "⭐" },
-    { name: "Другое Место", icon: "☕" },
-    { name: "Пеперончино", icon: "🍕" },
-    { name: "X-Fit", icon: "🏋️" },
-    { name: "Эдкар", icon: "🏥" },
-    { name: "Exeed", icon: "🚗" },
-    { name: "О, Pretty People", icon: "💅" },
-    { name: "OldBoy", icon: "💈" },
-  ];
+  const [channelsList, setChannelsList] = useState([]);
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("1234");
+  const [userData, setUserData] = useState(null);
+  const [password, setPassword] = useState("");
   const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
 
   const [channel, setChannel] = useState(null);
+  const [channelData, setChannelData] = useState(null);
   const [playlist, setPlaylist] = useState([]);
   const [current, setCurrent] = useState(0);
   
@@ -38,6 +28,9 @@ export default function App() {
 
   const [isTransitioning, setIsTransitioning] = useState(true); // fade
   const [isBlackout, setIsBlackout] = useState(true);           // чёрный экран
+  const [helloReady, setHelloReady] = useState(false);
+  const [helloFinished, setHelloFinished] = useState(false);
+  const [helloFinishedTransition, setHelloFinishedTransition] = useState(false);
 
   const djAudioRef = useRef(null);
   const djDataRef = useRef(null);
@@ -84,27 +77,20 @@ export default function App() {
       localStorage.setItem("token", data.access_token);
       setAuthToken(data.access_token);
       setLoginOpen(false);
-      const channel_name = localStorage.getItem("current_channel");
-      setChannel(channel_name || channelsList[0].name); // теперь можно установить канал
+      // const channel_name = localStorage.getItem("current_channel");
+      // setChannel(channel_name || channelsList[0].name); // теперь можно установить канал
+      getMe();
     } catch (e) {
       setAuthError("Network error");
     } finally {
       setAuthLoading(false);
+      setChannel(null); // сбросить канал при выходе
     }
   }
 
-  function doLogout() {
-    localStorage.removeItem("token");
-    setAuthToken("");
-    setChannel(null); // сбросить канал при выходе
-    setLoginOpen(true);
-  }
-
-
-  // 1️⃣ Проверка логина
-  useEffect(() => {
+  async function getMe() {
     const token = localStorage.getItem("token");
-    console.log("Checking auth with token:", token);
+    console.log("Checking auth with");
 
     if (!token) {
       setLoginOpen(true);
@@ -118,13 +104,39 @@ export default function App() {
       .then(data => {
         if (data.ok) {
           setUsername(data.user.username);
+          setUserData(data.user)
+          console.log("User:", data.user)
+          console.log("Username:", data.user.username)
+          setChannelsList(data.user.channels);
           const channel_name = localStorage.getItem("current_channel");
-          setChannel(channel_name || channelsList[0].name); // теперь можно установить канал
+          console.log(channel_name)
+          const selected = data.user.channels.find((item) => item.name === channel_name);
+          console.log(selected);
+          if(selected) {
+            setChannel(channel_name || data.user.channels[0].name); // теперь можно установить канал
+            setChannelData(selected);
+          } else {
+            setChannel(data.user.channels[0].name); // теперь можно установить канал
+            setChannelData(data.user.channels[0]);
+          }
         } else {
           setLoginOpen(true);
           localStorage.removeItem("token");
         }
       });
+  }
+
+  function doLogout() {
+    localStorage.removeItem("token");
+    setAuthToken("");
+    setChannel(null); // сбросить канал при выходе
+    setLoginOpen(true);
+  }
+
+
+  // 1️⃣ Проверка логина
+  useEffect(() => {
+    getMe();
   }, []);
 
   // Получаем плейлист
@@ -136,7 +148,7 @@ export default function App() {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
-      body: JSON.stringify({ channel, max_results: 10 })
+      body: JSON.stringify({ user_id: userData.user_uid, channel_id: channelData.channel_uid, max_results: 10 })
     });
     const data = await res.json();
     setPlaylist(prev => [...prev, ...data.playlist]);
@@ -162,7 +174,7 @@ export default function App() {
 
   // 2️⃣ Эффект смены канала
   useEffect(() => {
-    if (!channel) return; // только если пользователь залогинен и канал выбран
+    if (!channel || !channelData || !userData) return; // только если пользователь залогинен и канал выбран
 
     localStorage.setItem("current_channel", channel); // сохраняем выбор канала
 
@@ -179,16 +191,27 @@ export default function App() {
 
       const fadeInTimeout = setTimeout(() => {
         setIsBlackout(false);
-      }, 10000); // плавный fade-in
-    }, 10000); // плавный fade-out
+      }, 8100); // плавный fade-in
+
+      const helloFinishedTimeout = setTimeout(() => {
+        setHelloFinished(true);
+      }, 8000); // плавный fade-in
+
+      const helloFinishedTransitionTimeout = setTimeout(() => {
+        setHelloFinishedTransition(true);
+      }, 5000); // плавный fade-in
+
+      setHelloReady(true)
+    }, 2000); // плавный fade-out
 
     return () => {
       clearTimeout(fadeOutTimeout);
     };
-  }, [channel]);
+  }, [channel, channelData, userData]);
 
   // Загружаем IFrame API один раз
   useEffect(() => {
+    console.log("ytAPILoaded")
     if (ytAPILoaded.current) return;
     const tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
@@ -198,6 +221,7 @@ export default function App() {
 
   // Создание плеера
   const createPlayer = (videoId) => {
+    console.log("createPlayer")
     if (playerRef.current) playerRef.current.destroy();
 
     setPlayerReady(false);
@@ -208,14 +232,30 @@ export default function App() {
       videoId: videoId,
       events: {
         onReady: (event) => {
+          console.log("onReady")
           setPlayerReady(true);
 
           // Ставим громкость на 0
-          // event.target.setVolume(0);
+          event.target.setVolume(0);
+          // console.log(event.target.getVolume())
 
           handleVideoDuration();
+          
+          let ytVolume = 0;
+          const period = 250
+          duckIntervalRef.current = setInterval(() => {
+            ytVolume += 1;
+            if (ytVolume >= 100) {
+              ytVolume = 100;
+              clearInterval(duckIntervalRef.current);
+            }
+            event.target.setVolume(ytVolume);
+            // console.log(event.target.getVolume())
+          }, period);
+
         },
         onStateChange: (event) => {
+          // console.log(event.data)
           if (event.data === window.YT.PlayerState.ENDED) smoothNext();
         },
       },
@@ -224,7 +264,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!playlist.length || !window.YT) return;
+    if (!playlist.length || !window.YT || !helloFinished) return;
 
     createPlayer(playlist[current].videoId);
 
@@ -241,7 +281,7 @@ export default function App() {
     // заранее готовим DJ
     prepareDjTransition();
 
-  }, [current, playlist]);
+  }, [current, playlist, helloFinished]);
 
   const prepareDjTransition = async () => {
     const from = playlist[current];
@@ -255,7 +295,8 @@ export default function App() {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
-        channel,
+        user_id: userData.user_uid, 
+        channel_id: channelData.channel_uid,
         from_title: from.artist + " - " + from.title,
         to_title: to.artist + " - " + to.title,
       })
@@ -265,12 +306,15 @@ export default function App() {
   };
 
   const playDjHelloOverVideo = async () => {
-    if (!djHelloDataRef.current) return;
+    if (!djHelloDataRef.current || !userData || !channelData) return;
 
     const token = localStorage.getItem("token");
 
+    console.log(userData)
+    console.log(channelData)
+
     const res = await fetch(
-      `http://127.0.0.1:8000/audio?channel=drugoe_mesto&filename=${djHelloDataRef.current.audio_filename}`,
+      `http://127.0.0.1:8000/audio?user_id=${userData.user_uid}&channel_id=${channelData.channel_uid}&filename=${djHelloDataRef.current.audio_filename}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -323,7 +367,8 @@ export default function App() {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
-        channel,
+        user_id: userData.user_uid, 
+        channel_id: channelData.channel_uid,
         from_title: "",
         to_title: to.artist + " - " + to.title,
       })
@@ -346,7 +391,7 @@ export default function App() {
 
       if (djDataRef.current && remaining < djDataRef.current.duration - 10) {
         clearInterval(interval);
-        playOverlayVideo("http://localhost:8000/video?channel=drugoe_mesto&filename=13637307_1920_1080_24fps.mp4");
+        playOverlayVideo(`http://localhost:8000/video?user_id=${userData.user_uid}&channel_id=${channelData.channel_uid}&filename=13637307_1920_1080_24fps.mp4`);
         clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(smoothNext, (djDataRef.current.duration - 10) * 1000);
         playDjOverVideo();
@@ -362,7 +407,7 @@ export default function App() {
     const token = localStorage.getItem("token");
 
     const res = await fetch(
-      `http://127.0.0.1:8000/audio?channel=drugoe_mesto&filename=${djDataRef.current.audio_filename}`,
+      `http://127.0.0.1:8000/audio?user_id=${userData.user_uid}&channel_id=${channelData.channel_uid}&filename=${djDataRef.current.audio_filename}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -377,8 +422,6 @@ export default function App() {
 
     audio.volume = 1;
     audio.play();
-
-    console.log(djDataRef.current)
 
     // 🎚 ducking YouTube
     let ytVolume = 100;
@@ -421,7 +464,6 @@ export default function App() {
   // Ограничение 5 минут
   const handleVideoDuration = () => {
     if (!playerRef.current) return;
-    console.log("Video duration:", playerRef.current.getDuration());
     let duration = playerRef.current.getDuration();
     if (duration > 600) {
       duration = 600;
@@ -446,12 +488,9 @@ export default function App() {
 
   useEffect(() => {
     if (!overlayBearerSrc) return; // например djDataRef.current.video_filename
-    console.log("Fetching overlay video:", overlayBearerSrc);
-
     const token = localStorage.getItem("token");
 
     const fetchVideo = async () => {
-      console.log("Fetching video: ", overlayBearerSrc);
       try {
         const res = await fetch(
           overlayBearerSrc,
@@ -459,8 +498,6 @@ export default function App() {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-
-        console.log("Video fetch response:", res);
 
         if (!res.ok) throw new Error("Failed to fetch video");
 
@@ -503,7 +540,6 @@ export default function App() {
 
       // Слушаем событие timeupdate
       const onTimeUpdate = () => {
-        console.log("currentTime:", videoEl.currentTime);
 
         if (videoEl.currentTime >= stopTime) {
           videoEl.removeEventListener("timeupdate", onTimeUpdate); // отписываемся
@@ -602,7 +638,7 @@ export default function App() {
         )}
     </div>);    
 
-  if (!playlist.length) return (
+  if (!playlist.length || !helloReady) return (
     <div
       style={{
         width: "100vw",
@@ -612,6 +648,8 @@ export default function App() {
         overflowX: "hidden",
         backgroundColor: "#000",
         color: "#fff",
+        transition: "3s opacity",
+        cursor: isFullscreen ? "none" : "default",
         
         display: "flex",           // делаем flex
         justifyContent: "center",  // горизонтальное центрирование
@@ -619,7 +657,39 @@ export default function App() {
         fontSize: "24px",          // размер текста
       }}
     >
+
+      {/* Fullscreen кнопка */}
+      {!isFullscreen && <FullscreenButton />}
+
       Loading...
+    </div>
+  );
+
+  if (!helloFinished) return (
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        margin: 0,
+        padding: 0,
+        overflowX: "hidden",
+        backgroundColor: "#000",
+        color: "#fff",
+        transition: "3s opacity",
+        opacity: !helloFinishedTransition ? 1 : 0,
+        cursor: isFullscreen ? "none" : "default",
+        
+        display: "flex",           // делаем flex
+        justifyContent: "center",  // горизонтальное центрирование
+        alignItems: "center",      // вертикальное центрирование
+        fontSize: "24px",          // размер текста
+      }}
+    >
+
+      {/* Fullscreen кнопка */}
+      {!isFullscreen && <FullscreenButton />}
+
+      Hello! We are starting...
     </div>
   );
 
@@ -637,6 +707,7 @@ export default function App() {
         color: "#fff",
         position: "relative",
         overflowX: "hidden", // убираем горизонтальную прокрутку
+        cursor: isFullscreen ? "none" : "default",
       }}
     >
       {/* BLACKOUT OVERLAY */}

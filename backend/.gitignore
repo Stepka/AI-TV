@@ -20,7 +20,7 @@ __pycache__/
 
 .env
 
-youtube_cache.db
-
 latest_silero_models.yml
+channels_data/
+data/
 wav_folder/

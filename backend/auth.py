@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import os
+import sqlite3
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -13,32 +14,48 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = 24 * 30
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+DB_PATH = "data/users.db"
 
-# 🔒 временно хардкод (потом заменим на sqlite)
-FAKE_USERS = {
-    "admin": {
-        "username": "admin",
-        "password_hash": pwd_context.hash("1234"),
-    }
-}
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
+def get_user_by_username(username: str):
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+    row = cur.fetchone()
+
+    conn.close()
+    return row
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
     return pwd_context.verify(plain_password, password_hash)
 
 
 def authenticate_user(username: str, password: str):
-    user = FAKE_USERS.get(username)
-    if not user:
+    row = get_user_by_username(username)
+    if not row:
         return None
-    if not verify_password(password, user["password_hash"]):
+
+    if not verify_password(password, row["password_hash"]):
         return None
-    return {"username": username}
+
+    # возвращаем то, что будет использоваться дальше
+    return {
+        "user_uid": row["user_uid"],
+        "username": row["username"],
+    }
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -54,6 +71,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         username = payload.get("sub")
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return {"username": username}
+        return username
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
