@@ -374,6 +374,10 @@ REPLACE_DICT = {
     "треки": "трэки",
     "трека": "трэка",
     "треку": "трэку",
+    "энергия": "энэргия",
+    "энергию": "энэргию",
+    # "энергией": "энэргией",
+    "энергии": "энэргии",
 }
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
@@ -490,16 +494,19 @@ def me(username: str = Depends(get_current_user)):
 def get_playlist(req: PlaylistRequest):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
 
-    tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results*4)
-    print("Generated tracks:", tracks)
+    # tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results*4)
+    tracks = []
+    try:
+        tracks = generate_playlist_ppx(req.user_id, req.channel_id, req.max_results)
+        print(f"PPX tracks found: {len(tracks)}")
+        if len(tracks) == 0: raise Exception("No found tracks")
+    except Exception as e:
+        print(e)
     
-    indexed = [(i, t) for i, t in enumerate(tracks)]
-    top_n = sorted(indexed, key=lambda x: float(x[1]["match"]), reverse=True)[:req.max_results]
-    tracks = [t for i, t in sorted(top_n, key=lambda x: x[0])]
-
-    # tracks = random.sample(tracks, min(req.max_results, len(tracks)))
-    print("Selected tracks:", tracks)
-    # return tracks
+    gpt_tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results)
+    print(f"GPT tracks found: {len(gpt_tracks)}")
+    tracks += gpt_tracks
+    print(f"Generated tracks {len(tracks)}:", tracks)
 
     videos = []
     for track in tracks:
@@ -538,8 +545,17 @@ def get_playlist(req: PlaylistRequest):
             videos.append({
                 "artist": track['artist'],
                 "title": track['title'],
-                "videoId": video_id
+                "videoId": video_id,
+                "match": track['match']
             })
+            
+    
+    indexed = [(i, t) for i, t in enumerate(videos)]
+    top_n = sorted(indexed, key=lambda x: float(x[1]["match"]), reverse=True)[:req.max_results]
+    videos = [t for i, t in sorted(top_n, key=lambda x: x[0])]
+
+    print("Selected videos:")
+    print(videos)
     return {
         "playlist": videos,
         "source": "llm+youtube"
@@ -737,13 +753,50 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
 
 
 @app.get("/video")
-def get_video(user_id: str = Query(...), channel_id: str = Query(...), filename: str = Query(...)):
+def get_video(
+    user_id: str = Query(...),
+    channel_id: str = Query(...),
+    filename: str = Query(...)
+):
     print("Serving video file:", user_id, channel_id, filename)
-    return FileResponse(
-        f"channels_data/{user_id}/{channel_id}/videos/{filename}",
-        media_type="video/mp4",
-        filename=filename
+
+    base_path = os.path.join(
+        "channels_data",
+        user_id,
+        channel_id,
+        "videos"
     )
+
+    file_path = os.path.join(base_path, filename)
+
+    # # 🔒 защита от path traversal
+    # file_path = os.path.normpath(file_path)
+    # if not file_path.startswith(os.path.abspath("channels_data")):
+    #     return {"error": "Invalid path"}
+
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(
+            file_path,
+            media_type="video/mp4",
+            filename=filename
+        )
+
+    # 🔁 fallback
+    fallback_path = os.path.join(
+        "channels_data",
+        "common",
+        "videos",
+        "13637307_1920_1080_24fps.mp4"
+    )
+
+    if os.path.exists(fallback_path):
+        return FileResponse(
+            fallback_path,
+            media_type="video/mp4",
+            filename="fallback.mp4"
+        )
+
+    return {"error": "Video not found"}
 
 
 ################################################ 
@@ -847,7 +900,7 @@ def generate_playlist_llm(user_uid: str, channel_uid: str, count: int = 10):
     prompt = f"""
 You are a professional music editor.
 
-Create a playlist for the radio channel "{meta['name']}".
+Create a playlist for the channel "{meta['name']}".
 """
     
     if meta.get("type") == "brand_space":
@@ -860,8 +913,14 @@ Style: {meta["style"]}
 Rules:
 - EXACTLY {count} items
 - Each item must include artist and title
-- No remixes, no live versions
+- No live versions
+- Prefer no remixes
+- Prefer new fresh tracks
+- Prefer tracks with the video clip on Youtube
+- Try to make different playlist with different tracks each time
 - Avoid duplicate artists
+- Use various artists in generated playlist. Add not more 2 tracks from a single artist
+- Do not arrange tracks on its popularity
 
 Return ONLY valid JSON. Add infoormation about how well the track matches the channel style in "match" field (0-100). The higher the better.
 Format:
@@ -889,33 +948,130 @@ Format:
     except json.JSONDecodeError:
         # защита от мусора
         raise RuntimeError(f"LLM returned invalid JSON: {content}")
+
+
+def generate_playlist_ppx(user_uid: str, channel_uid: str, count: int = 10):
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    if not meta:
+        raise ValueError("Unknown channel")
+        
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+
+    url = "https://api.perplexity.ai/chat/completions"
+
+
+    prompt = f"""
+You are a professional music editor.
+
+Create a playlist for the channel "{meta['name']}".
+"""
+    
+    if meta.get("type") == "brand_space":
+        prompt += f"""The channel is for a brand space with the following description: "{meta['description']}".
+"""
+
+    prompt = f"""
+Style: {meta["style"]}
+
+Rules:
+- EXACTLY {count} items
+- Each item must include artist and title
+- No live versions
+- No long DJ sets, DJ mixes, etc
+- Prefer no remixes
+- Prefer new fresh tracks
+- Try to select tracks with duration from 2 to 10 minutes, avoid tracks with duretion more than 10 minutes
+- Prefer tracks with the video clip on Youtube
+- Try to make different playlist with different tracks each time
+- Avoid duplicate artists
+- If possible make query music databases, YouTube, Spotify, or music streaming platforms
+- If there are few tracks anyway return those tracks
+- Use various artists in generated playlist. Add not more 2 tracks from a single artist
+- Use different sources
+- If track is a part of a big youtube video then use different videos as source. T
+ry to do not select tracks from a same set or from a same big youtube video (check it with youtube_id)
+- Do not arrange tracks on its popularity
+- Add youtube id of the video on youtube if it possible.
+- Add youtube link with timestamp if it is a fragment of video
+- Add duration if it is a fragment of video
+- IMPORTANT! Select only one track with the same youtube_id to the result playlist
+
+Add information about how well the track matches the channel style in "match" field (0-100). The higher the better.
+
+Return ONLY valid JSON. Do not use markdown.
+Format:
+{{
+  "tracks": [
+  {{ "artist": "Artist name", "title": "Song title", "match": "0-100", "youtube_id": "xxx", "youtube_url": "xxx", "fragment_duration": "duration" }}
+  ]
+}}
+"""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "sonar",
+        "messages": [
+            {"role": "system", "content": "Return only valid JSON. No markdown."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.8,
+    }
+
+    r = requests.post(url, headers=headers, json=payload, timeout=30)
+    r.raise_for_status()
+
+    content = r.json()["choices"][0]["message"]["content"].strip()
+
+    # Если модель вернула NONE
+    if content.upper() == "NONE":
+        raise Exception("No suitable tracks found")
+
+    print(content)
+    try:
+        data = json.loads(content)["tracks"]
+        return data
+    except Exception as e:
+        print(e)
+        try:
+            data = json.loads(content.replace("```json", "").replace("```", ""))["tracks"]
+            return data
+        except Exception as e:
+            print(e)
+            print(content)
+            raise Exception("Perplexity returned invalid JSON")
+        raise Exception("Perplexity returned invalid JSON")
     
 
 def generate_dj_text(user_uid: str, channel_uid: str, from_title: str, to_title: str) -> str:
     meta = get_channel_by_id(user_uid, channel_uid)
     channel = meta['name']
     text = generate_text(user_uid, channel_uid, from_title, to_title)
-    if meta["type"] == "brand_space":
-        if from_title:
-            match random.random():
-                case x if x <= 0.3:
-                    print("Adding promo")
-                    text = add_promo(text, user_uid, channel_uid)
-                case x if x <= 0.6:
-                    print("Adding menu")
-                    text = add_menu(text, user_uid, channel_uid)
-                case x if x <= 0.7:
-                    print("Adding weather")
-                    text = add_weather(text, user_uid, channel_uid)
-                # case x if x <= 0.9:
-                #     print("Adding local events")
-                #     text = add_local_events(text, channel)
-                # case x if x <= 1:
-                #     print("Adding local news")
-                #     text = add_local_news(text, channel)
-        else:
-            print("Adding weather")
-            text = add_weather(text, user_uid, channel_uid)
+    if from_title:
+        if meta["type"] == "brand_space":
+                match random.random():
+                    case x if x <= 0.3:
+                        print("Adding promo")
+                        text = add_promo(text, user_uid, channel_uid)
+                    case x if x <= 0.6:
+                        print("Adding menu")
+                        text = add_menu(text, user_uid, channel_uid)
+                    case x if x <= 0.7:
+                        print("Adding weather")
+                        text = add_weather(text, user_uid, channel_uid)
+                    # case x if x <= 0.9:
+                    #     print("Adding local events")
+                    #     text = add_local_events(text, channel)
+                    # case x if x <= 1:
+                    #     print("Adding local news")
+                    #     text = add_local_news(text, channel)
+    else:
+        print("Adding weather")
+        text = add_weather(text, user_uid, channel_uid)
 
     if len(text) > 500:
         print(text)
@@ -926,15 +1082,18 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_title: str, to_title:
     if meta["voice"]["source"] == "silero":
         print("Converting text to Russian")
         text = convert_to_russian(text, from_title, to_title)
+        print(text)
         print("Converting digits to words")
         text = convert_digits(text)        
+        text = convert_abbreviatures(text)        
         text = replace_words(text, REPLACE_DICT)
+        text = add_silero_emotions_llm(text)
     
     if meta["voice"]["source"] == "elevenlabs":
         print("Adding emotions")
         text = add_emotions_llm(text)
 
-    text = add_pauses_llm(text)
+    # text = add_pauses_llm(text)
         
     print("Text length after all:", len(text))
     return text
@@ -960,17 +1119,19 @@ def generate_text(user_uid: str, channel_uid: str, from_title: str, to_title: st
 Ты играешь музыку на канале {meta["name"]}, вот его описание: {meta["description"]}.
 """
     prompt += f"""
-Сегодня {datetime.now()}.
+Сегодня {datetime.now()}. Если будешь в тексте упоминать время дня, то соотноси его с текущим временем. 
 """
     if from_title is None:        
         prompt += f"""
-Теперь придумай представление трека {to_title}. Это твоя первая реплика, сделай ее привественной.
+Теперь придумай представление для трека {to_title}, с которого начнется вещание. 
+Это единственный трек, который надо будет упомняуть. Это твоя первая реплика в эфире, сделай ее привественной.
 
 """
     else:
         prompt += f"""
 Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
-Теперь придумай переход от трека {from_title} к треку {to_title}
+Теперь придумай переход от трека {from_title}, который заканчивает играть, к треку {to_title}, который будет играть следующим. 
+Расскажи пару слов о треке, который будет играть, какие он эмоции вызовет. 
 
 """
     
@@ -978,13 +1139,14 @@ def generate_text(user_uid: str, channel_uid: str, from_title: str, to_title: st
 Требования к тексту:
 — русский язык
 — нельзя использовать слова на английском или других языках, кроме русского
-— Имена исполнителей пиши в русской передаче 
-— Не переводи на русский названия треков
+— Имена исполнителей или исполнителя пиши в русской фонетической передаче 
+— Не переводи на русский названия треков или трека
 — от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
 — разговорный стиль
 — живо, уверенно, как на музыкальном ТВ
 — 1–2 предложения
 """
+    print(prompt)
 
     response = llm_client.chat.completions.create(
         model="gpt-4o-mini",
@@ -1035,7 +1197,7 @@ def add_promo(text, user_uid: str, channel_uid: str) -> str:
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
 Добавь в этот текст информацию об одной из акций заведения {meta["name"]}, которое играет на канале {channel}.
 Вот текст, который нужно дополнить: {text}
-Вот акция: {random.choice(meta["action"])}
+Вот акция: {random.choice(meta["actions"])}
 
 Верни дополненный текст, который диджей может сказать в эфире, чтобы прорекламировать заведение и его предложения, 
 не нарушая при этом стиль канала и не делая прямой рекламы.
@@ -1141,29 +1303,32 @@ def add_weather(text, user_uid: str, channel_uid: str) -> str:
 
     weather_info = get_weather(meta["location"])
 
-    print("Weather info:", weather_info)
+    if weather_info['ok']:
 
-    prompt = f"""
-Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
-Добавь в этот текст информацию о погоде в {meta["location"]}. 
-Используй только эту информацию о погоде: {weather_info}
-Округляй температуру до целых чисел, а описание погоды делай максимально коротким (одно-два слова).
-Вот текст, который нужно дополнить: {text}
+        print("Weather info:", weather_info)
 
-Верни дополненный текст, который диджей может сказать в эфире, чтобы сделать его более живым и актуальным для слушателей,
-не нарушая при этом стиль канала.
-"""
+        prompt = f"""
+    Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
+    Добавь в этот текст информацию о погоде в {meta["location"]}. 
+    Используй только эту информацию о погоде: {weather_info}
+    Округляй температуру до целых чисел, а описание погоды делай максимально коротким (одно-два слова).
+    Вот текст, который нужно дополнить: {text}
 
-    response = llm_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You write short DJ speech for radio."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.8,
-    )
+    Верни дополненный текст, который диджей может сказать в эфире, чтобы сделать его более живым и актуальным для слушателей,
+    не нарушая при этом стиль канала.
+    """
 
-    return response.choices[0].message.content.strip()
+        response = llm_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You write short DJ speech for radio."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.8,
+        )
+
+        return response.choices[0].message.content.strip()
+    return text
 
 
 def shortener(text, user_uid: str, channel_uid: str, max_symbols: int) -> str:
@@ -1223,7 +1388,7 @@ IPA_TO_RU = {
     "n̩": "н", "m̩": "м", "l̩": "л",
 
     # Новые
-    "ю": "ю", "ö": "ё", "ё": "ё", "ɡ": "г", "ɐ": "э"
+    "ю": "ю", "ö": "ё", "ё": "ё", "ɡ": "г", "ɐ": "э", "ɚ": "э", "ᵻ": "и", "ö": "ё"
 }
 
 # Функция конвертации IPA → русский текст
@@ -1243,34 +1408,45 @@ def convert_latin_to_cyrillic(text):
     return cyrillic
 
 def convert_to_russian(text: str, from_title: str, to_title: str) -> str:
-#     prompt = f"""
-# Преобразуй любые названия, в том числе треков и каналов:
+    prompt = f"""
+Преобразуй любые названия, в том числе треков и каналов:
+"""
+    if from_title is None:        
+        prompt += f"""
+перепиши {to_title} по русски.
 
-# перепиши {from_title} и {to_title} по русски
+"""
+    else:
+        prompt += f"""
+перепиши {from_title} и {to_title} по русски.
 
-# Не делай прямой перевод, а пиши так, как названия песен произносят на русском радио и ТВ.
+"""
+        
+    prompt += f"""
+Не делай прямой перевод, а пиши так, как названия песен произносят на русском радио и ТВ.
 
-# имена исполнителей и названия песен запиши КИРИЛЛИЦЕЙ
+имена исполнителей и названия песен запиши КИРИЛЛИЦЕЙ. 
 
-# В итоговом тексте замени все имена и названия и используй ТОЛЬКО кириллические версии, латиница запрещена.
+Очень важно! Не делай перевод названий песен, а только фонетическую конвертацию названия на кириллице так, как его должен прочитать русскоговорящий человек, если бы он читал английское название. 
+Если не можешь сделать такую конвертацию, лучше оставь англоязычное написание песни. 
 
-# Верни оригинальный текст, но с русскими названиями. Вот текст:
-# {text}
-# """
+В итоговом тексте замени все имена и названия и используй ТОЛЬКО кириллические версии, латиница запрещена.
 
-#     response = llm_client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[
-#             {"role": "system", "content": "You convert foreign names and titles to Russian equivalents."},
-#             {"role": "user", "content": prompt},
-#         ],
-#         temperature=0.8,
-#     )
+Верни оригинальный текст, но с русскими названиями. Вот текст:
+{text}
+"""
 
-#     return response.choices[0].message.content.strip()
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You convert foreign names and titles to Russian equivalents."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
+    )
 
+    converted_text = response.choices[0].message.content.strip()
 
-    converted_text = text
     # Регулярка для поиска фраз на латинице
     latin_phrases = re.findall(r'[A-Za-z][A-Za-z]*(?: [A-Za-z][A-Za-z]*)*', text)
     for phrase in latin_phrases:
@@ -1282,7 +1458,9 @@ def convert_to_russian(text: str, from_title: str, to_title: str) -> str:
 def convert_digits(text: str) -> str:
     prompt = f"""
 Преобразуй любые цифры и числа в тексте в из буквенной написание, 
-например 1 - один, 10 - десять, 80s -> восемьдесятые, 90s -> девяностые, 2020 -> две тысячи двадцатый и т.д.:
+например 1 - один, 10 - десять, 80s -> восемьдесятые, 90s -> девяностые, 2020 -> две тысячи двадцатый и т.д.
+
+Обязательно заменяй числа так, чтобы они были согласованы в предложении по правилам русккого языка.
 
 Верни оригинальный текст, но с русскими названиями. Вот текст:
 {text}
@@ -1292,6 +1470,47 @@ def convert_digits(text: str) -> str:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You convert numbers in text to their Russian word equivalents."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
+def convert_abbreviatures(text: str) -> str:
+    prompt = f"""
+Ты — редактор текста для синтеза речи.
+
+Твоя задача: подготовить текст для озвучки на русском языке.
+
+Правила:
+1. Найди все аббревиатуры (латиница, кириллица, сокращения из заглавных букв).
+2. Не расшифровывай их по смыслу.
+3. Вместо аббревиатуры запиши отдельные слова с фонетическим произношением букв на русском.
+4. Каждая буква должна быть отдельным словом.
+5. Используй естественное разговорное звучание.
+6. Не добавляй комментарии. Верни только готовый текст.
+
+Примеры:
+NASA → эн эй эс эй
+GPT → джи пи ти
+ТВ → тэ вэ
+MTV → эм ти ви
+USA → ю эс эй
+AI → эй ай
+BTC → би ти си
+ООН → о о эн
+
+Текст:
+
+{text}
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Ты — редактор текста для синтеза речи."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.8,
@@ -1356,11 +1575,9 @@ def add_emotions_llm(text: str) -> dict:
 Добавляй это перед кусочком текста, который надо озвучить с такой эмоцией.
 Максимум 4-5 штук на весь текст.
 
-Добавляй голосовые звуки вроде смешков, ухмылок, покашливаний и других звуков, которые человек издает голосом, в квадратных скобках на английском. 
-Добавляй эти ухмылки в середину текстаи предложений.
-Максимум 2-3 штуки на весь текст.
-
-Добавляй несловесные речевые звуки и междометия на русском (“хех…”, “ну…”, “м-м…”) - это уже без квадратных строк, прямо в текст.
+Добавляй голосовые звуки вроде смешков, ухмылок, покашливаний, заминок, запинок, заиканий и других звуков, 
+которые человек издает голосом, в квадратных скобках на английском. 
+Добавляй эти ухмылки в середину текста и даже предложений.
 Максимум 2-3 штуки на весь текст.
 
 Добавляй паузы в виде троеточий в середине предложений - это уже без квадратных строк, прямо в текст.
@@ -1376,6 +1593,49 @@ def add_emotions_llm(text: str) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Ты — редактор текста для озвучки в ElevenLabs (модель eleven_v3)."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
+def add_silero_emotions_llm(text: str) -> dict:
+    prompt = f"""
+Ты — редактор текста для озвучки в Silero.
+
+Дополни текст который тебе передали так SSML тегами, чтобы он звучал максимально естественно и “по-человечески”.
+
+Используй только эти теги:
+---
+<prosody rate="slow"/>
+
+Example: Когда я просыпаюсь, <prosody rate="slow">я говорю довольно медленно</prosody>
+
+Правила:
+
+Выделяй названия треков и артистов (или трека и артиста, если он встречается в тексте однажды) тегом так, 
+чтобы озвучка silero четче и медленнее проговаривала их. 
+
+Выделяй только те названия и имена, которые имеют иностранное происхождение, для имен и названий на русском ничего не делай. 
+
+Выделяй только названия треков и имена исполнтелей. Названия каналов, простанств, брендов не трогай. 
+Не добавляй от себя ничего в текст, в том числе названия треков или артистов, которых нет в тексте. 
+В тексте может быть один или два исполнителя и один или два трека.
+
+Дополнительно замени или убери спецсимволы xml, которые могут словать xml-разметку
+
+Вот твой текст: {text}
+
+Верни дополненный текст, который звучит максимально естественно и по-человечески, с добавленными эмоциями, 
+который можно отправлять в озвучку в Silero.
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Дополни текст который тебе передали так SSML тегами для озвучки в Silero."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.0,

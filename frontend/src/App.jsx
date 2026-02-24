@@ -113,10 +113,10 @@ export default function App() {
           const selected = data.user.channels.find((item) => item.name === channel_name);
           console.log(selected);
           if(selected) {
-            setChannel(channel_name || data.user.channels[0].name); // теперь можно установить канал
+            // setChannel(channel_name || data.user.channels[0].name); // теперь можно установить канал
             setChannelData(selected);
           } else {
-            setChannel(data.user.channels[0].name); // теперь можно установить канал
+            // setChannel(data.user.channels[0].name); // теперь можно установить канал
             setChannelData(data.user.channels[0]);
           }
         } else {
@@ -174,15 +174,49 @@ export default function App() {
 
   // 2️⃣ Эффект смены канала
   useEffect(() => {
-    if (!channel || !channelData || !userData) return; // только если пользователь залогинен и канал выбран
+    if (!channel) return; // только если пользователь залогинен и канал выбран
 
     localStorage.setItem("current_channel", channel); // сохраняем выбор канала
 
     setIsBlackout(true);
 
     const fadeOutTimeout = setTimeout(async () => {
+      if (djAudioRef.current) {
+        const audio = djAudioRef.current;
+
+        audio.pause();        // остановить воспроизведение
+        audio.currentTime = 0; // сбросить на начало
+
+        audio.src = "";       // убрать источник
+        audio.load();         // прервать загрузку
+
+        djAudioRef.current = null;
+      }
+      if (overlayRef.current) {
+        const video = overlayRef.current;
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
       setPlaylist([]);
       setCurrent(0);
+      setUserData(null);
+      setChannelData(null);
+      setHelloReady(false);
+      setHelloFinished(false);
+      setHelloFinishedTransition(false);
+      getMe();
+    }, 100); // плавный fade-out
+
+    return () => {
+      clearTimeout(fadeOutTimeout);
+    };
+  }, [channel]);
+
+  useEffect(() => {
+    if (!channelData || !userData) return; // только если пользователь залогинен и канал выбран
+
+    const fadeOutTimeout = setTimeout(async () => {
       const playlistData = await loadPlaylist();
 
       await prepareDjHello(playlistData);
@@ -202,12 +236,12 @@ export default function App() {
       }, 5000); // плавный fade-in
 
       setHelloReady(true)
-    }, 2000); // плавный fade-out
+    }, 100); // плавный fade-out
 
     return () => {
       clearTimeout(fadeOutTimeout);
     };
-  }, [channel, channelData, userData]);
+  }, [channelData, userData]);
 
   // Загружаем IFrame API один раз
   useEffect(() => {
@@ -772,8 +806,20 @@ export default function App() {
               gap: "15px",
             }}
           >
-            <button onClick={prevVideo}>⏮ Предыдущий</button>
-            <button onClick={smoothNext}>Следующий ⏭</button>
+            <button               
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(0,0,0,0.6)",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              onClick={smoothNext}
+              >
+                Следующий ⏭
+              </button>
           </div>
         )}
       </div>

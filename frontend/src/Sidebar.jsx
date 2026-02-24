@@ -13,11 +13,37 @@ export default function Sidebar({
       {/* AUTH TOP BAR */}
       <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "10px" }}>
         {!authToken ? (
-          <button onClick={() => setLoginOpen(true)}>🔐 Login</button>
+          <button             
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(0,0,0,0.6)",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+            onClick={() => setLoginOpen(true)}
+          >
+            🔐 Login
+          </button>
         ) : (
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <span style={{ fontSize: "14px", color: "#aaa" }}>✅ Logged in</span>
-            <button onClick={doLogout}>Logout</button>
+            <button                      
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(0,0,0,0.6)",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              onClick={doLogout}
+            >
+              Logout
+            </button>
           </div>
         )}
       </div>
