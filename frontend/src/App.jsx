@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import TitlesOverlay from "./TitlesOverlay";
 import FullscreenButton from "./FullscreenButton";
 import Sidebar from "./Sidebar";
 import VideoStage from "./VideoStage";
@@ -31,6 +30,8 @@ export default function App() {
   const [helloReady, setHelloReady] = useState(false);
   const [helloFinished, setHelloFinished] = useState(false);
   const [helloFinishedTransition, setHelloFinishedTransition] = useState(false);
+  
+  const [djTransitionReady, setDjTransitionReady] = useState(false);
 
   const djAudioRef = useRef(null);
   const djDataRef = useRef(null);
@@ -141,6 +142,7 @@ export default function App() {
 
   // Получаем плейлист
   const loadPlaylist = async () => {
+    console.log("Loading playlist");
     const token = localStorage.getItem("token");
     const res = await fetch("http://127.0.0.1:8000/playlist", {
       method: "POST",
@@ -152,6 +154,7 @@ export default function App() {
     });
     const data = await res.json();
     setPlaylist(prev => [...prev, ...data.playlist]);
+    console.log("Playlist loaded:", data.playlist);
     setIsTransitioning(false);
     return data.playlist; // возвращаем массив сразу
   };
@@ -219,21 +222,23 @@ export default function App() {
     const fadeOutTimeout = setTimeout(async () => {
       const playlistData = await loadPlaylist();
 
-      await prepareDjHello(playlistData);
+      const helloData = await prepareDjHello(playlistData);
+
+      console.log("Hello data:", helloData);
 
       playDjHelloOverVideo();
 
       const fadeInTimeout = setTimeout(() => {
         setIsBlackout(false);
-      }, 8100); // плавный fade-in
+      }, helloData.duration * 1000 - 6900); // плавный fade-in
 
       const helloFinishedTimeout = setTimeout(() => {
         setHelloFinished(true);
-      }, 8000); // плавный fade-in
+      }, helloData.duration * 1000 - 7000); // плавный fade-in
 
       const helloFinishedTransitionTimeout = setTimeout(() => {
         setHelloFinishedTransition(true);
-      }, 5000); // плавный fade-in
+      }, helloData.duration * 1000 - 10000); // плавный fade-in
 
       setHelloReady(true)
     }, 100); // плавный fade-out
@@ -273,41 +278,59 @@ export default function App() {
           event.target.setVolume(0);
           // console.log(event.target.getVolume())
 
-          handleVideoDuration();
+          // handleVideoDuration();
           
-          let ytVolume = 0;
-          const period = 250
+          const duration = 10000; // общее время разгона (мс)
+          const period = 50;
+
+          let elapsed = 0;
+
           duckIntervalRef.current = setInterval(() => {
-            ytVolume += 1;
-            if (ytVolume >= 100) {
-              ytVolume = 100;
+            elapsed += period;
+
+            let progress = elapsed / duration;
+            if (progress >= 1) {
+              progress = 1;
               clearInterval(duckIntervalRef.current);
             }
-            event.target.setVolume(ytVolume);
-            // console.log(event.target.getVolume())
+
+            // Парабола
+            const volume = Math.pow(progress, 2) * 90;
+
+            event.target.setVolume(volume);
+
           }, period);
 
         },
         onStateChange: (event) => {
-          // console.log(event.data)
-          if (event.data === window.YT.PlayerState.ENDED) smoothNext();
+          console.log(event.data)
+          // if (event.data === window.YT.PlayerState.ENDED) smoothNext();
         },
       },
-      playerVars: { autoplay: 1, rel: 0 },
+      playerVars: {
+        autoplay: 1,
+        enablejsapi: 1,
+        origin: window.location.origin,
+        // controls: 0,
+        modestbranding: 1,
+        rel: 0,
+        iv_load_policy: 3
+      }
     });
   };
 
   useEffect(() => {
-    if (!playlist.length || !window.YT || !helloFinished) return;
+    if (!playlist.length || !window.YT || !helloFinished || !channelData) return;
 
+    
     createPlayer(playlist[current].videoId);
 
     const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
     const nextIndex = (current + 1) % playlist.length;
     const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
     setTitles({
-      topTitle: channel ?? "Без названия",
-      topSub: "Описание" ?? "",
+      topTitle: channelData?.name ?? "Без названия",
+      topSub: channelData?.description ?? "",
       nowPlaying: currentVideoTitle ?? "",
       nextTrack: nextVideoTitle ?? "",
     });
@@ -315,9 +338,12 @@ export default function App() {
     // заранее готовим DJ
     prepareDjTransition();
 
-  }, [current, playlist, helloFinished]);
+  }, [current, playlist, helloFinished, channelData]);
 
   const prepareDjTransition = async () => {
+
+    setDjTransitionReady(false);
+
     const from = playlist[current];
     const to = playlist[(current + 1) % playlist.length];
 
@@ -337,6 +363,8 @@ export default function App() {
     });
 
     djDataRef.current = await res.json();
+
+    setDjTransitionReady(true);
   };
 
   const playDjHelloOverVideo = async () => {
@@ -407,11 +435,17 @@ export default function App() {
         to_title: to.artist + " - " + to.title,
       })
     });
-    djHelloDataRef.current = await res.json();
+    const data = await res.json();
+    djHelloDataRef.current = data;
+    djDataRef.current = data;
+
+    setDjTransitionReady(true);
+
+    return data;
   };
 
   useEffect(() => {
-    if (!playerReady || !playerRef.current) return;
+    if (!playerReady || !playerRef.current || !djTransitionReady) return;
 
     const interval = setInterval(() => {
       const player = playerRef.current;
@@ -419,21 +453,27 @@ export default function App() {
 
       let duration = player.getDuration();
       if (duration > 600) duration = 600;
-      duration = duration - 30; // отрубаем 30 секунд в конце для плавного перехода
+      duration = duration; // отрубаем 30 секунд в конце для плавного перехода
 
       const remaining = duration - player.getCurrentTime();
 
-      if (djDataRef.current && remaining < djDataRef.current.duration - 10) {
+      console.log("Remaining time:", remaining);
+      console.log("Current time:", player.getCurrentTime());
+
+      const dj_duration = 15;
+
+      if (djDataRef.current && remaining < dj_duration) {
+        console.log("Starting DJ transition, remaining:", remaining);
         clearInterval(interval);
-        playOverlayVideo(`http://localhost:8000/video?user_id=${userData.user_uid}&channel_id=${channelData.channel_uid}&filename=13637307_1920_1080_24fps.mp4`);
+        playOverlayVideo(`http://localhost:8000/video?user_id=${userData.user_uid}&channel_id=${channelData.channel_uid}&filename=default_video.mp4`);
         clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(smoothNext, (djDataRef.current.duration - 10) * 1000);
+        timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
         playDjOverVideo();
       }
     }, 500);
 
     return () => clearInterval(interval);
-  }, [current, playerReady]);
+  }, [current, playerReady, djTransitionReady]);
 
   const playDjOverVideo = async () => {
     if (!djDataRef.current || !playerRef.current) return;
@@ -457,34 +497,50 @@ export default function App() {
     audio.volume = 1;
     audio.play();
 
-    // 🎚 ducking YouTube
-    let ytVolume = 100;
+    const dj_duration = 15;
+    const durationMs = (dj_duration) * 1000;
+    const period = 50; // частота обновления
+    let elapsed = 0;
+
     duckIntervalRef.current = setInterval(() => {
-      ytVolume -= 1;
-      if (ytVolume <= 0) {
-        ytVolume = 0;
+      elapsed += period;
+
+      let progress = elapsed / durationMs;
+
+      if (progress >= 1) {
+        progress = 1;
         clearInterval(duckIntervalRef.current);
       }
-      playerRef.current.setVolume(ytVolume);
-    }, ((djDataRef.current.duration - 10) / 100) * 1000);
+
+      // 🔥 Параболическое затухание
+      const volume = Math.pow(1 - progress, 2) * 90;
+
+      if (playerRef.current) {
+        playerRef.current.setVolume(volume);
+      }
+
+    }, period);
   };
 
   // Плавный переход клипа через затемнение
-  const smoothNext = () => {
+  const smoothNext = (timeout = 2000) => {
     setIsTransitioning(true);
 
     setTimeout(() => {
-      handleNext();
+      handleNext(timeout - 2000);
       setIsTransitioning(false);
     }, 2000);
   };
 
   // Следующий клип
-  const handleNext = () => {
-    if (current === playlist.length - 1) {
+  const handleNext = (timeout = 0) => {
+    if (current === playlist.length - 1 || current === playlist.length - 2) {
       loadPlaylist();
     }
-    setCurrent(prev => (prev + 1) % playlist.length);
+
+    setTimeout(() => {
+      setCurrent(prev => (prev + 1) % playlist.length);
+    }, timeout - 10000);
   };
 
   const prevVideo = () => {
@@ -496,16 +552,16 @@ export default function App() {
   };
 
   // Ограничение 5 минут
-  const handleVideoDuration = () => {
-    if (!playerRef.current) return;
-    let duration = playerRef.current.getDuration();
-    if (duration > 600) {
-      duration = 600;
-    }
-    duration -= 30; // отрубаем 30 секунд в конце для плавного перехода
-    clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(smoothNext, duration * 1000);
-  };
+  // const handleVideoDuration = () => {
+  //   if (!playerRef.current) return;
+  //   let duration = playerRef.current.getDuration();
+  //   if (duration > 600) {
+  //     duration = 600;
+  //   }
+  //   // duration -= 30; // отрубаем 30 секунд в конце для плавного перехода
+  //   clearTimeout(timeoutRef.current);
+  //   timeoutRef.current = setTimeout(smoothNext, duration * 1000);
+  // };
 
   // Обновляем плеер при смене клипа
   // useEffect(() => {
@@ -570,12 +626,12 @@ export default function App() {
       setOverlayVisible(true);
 
       // Встроенный stopTime
-      const stopTime = djDataRef.current.duration - 3; // секунд, когда хотим остановить видео
+      let stopTime = djDataRef.current.duration - 3; // секунд, когда хотим остановить видео
+      let total_played = 0
 
       // Слушаем событие timeupdate
       const onTimeUpdate = () => {
-
-        if (videoEl.currentTime >= stopTime) {
+        if (videoEl.currentTime + total_played >= stopTime) {
           videoEl.removeEventListener("timeupdate", onTimeUpdate); // отписываемся
           setOverlayVisible(false);      // fade-out можно делать сразу
           setTimeout(() => {
@@ -586,6 +642,13 @@ export default function App() {
       };
 
       videoEl.addEventListener("timeupdate", onTimeUpdate);
+      videoEl.addEventListener("loadedmetadata", () => {
+        console.log(videoEl.duration);
+      });
+      videoEl.addEventListener("ended", () => {
+        total_played += videoEl.currentTime; // считаем реальное проигранное время, чтобы учесть паузы и перемотки
+        videoEl.play();
+      });
 
       // // ждём конца
       // videoEl.onended = () => {

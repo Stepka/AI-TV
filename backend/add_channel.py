@@ -52,7 +52,9 @@ def generate_style_from_description(description: str) -> str:
             },
             {
                 "role": "user",
-                "content": f"Based on this channel description:\n\n{description}\n\nGenerate a concise but vivid music style description."
+                "content": f"""Based on this channel description:\n\n{description}\n\nGenerate a concise but vivid music style description. 
+                First of all use common music genres (like pop, rock, jazz, classical, electronic, etc.) to describe the style. 
+                Then add a few unique details that make this channel special."""
             }
         ],
         temperature=0.9,
