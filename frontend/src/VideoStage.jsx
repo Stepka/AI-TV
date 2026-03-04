@@ -13,11 +13,11 @@ export default function VideoStage({
     <div
       style={{
         position: "relative",
-        width: isFullscreen ? "100vw" : "95%",  // почти весь контейнер
+        width: isFullscreen ? "100vw" : "80%",  // почти весь контейнер
         aspectRatio: "16 / 9",
         borderRadius: "12px",
         overflow: "hidden",
-        backgroundColor: "#000",
+        // backgroundColor: "#f00",
         transition: "width 0.3s",
       }}
     >
@@ -32,7 +32,7 @@ export default function VideoStage({
           width: "100%",
           height: "100%",
           transition: "2s opacity",
-          opacity: isTransitioning ? 0 : 1,
+          opacity: isTransitioning ? 0 : 0.3,
           zIndex: 1,
         }}
       />

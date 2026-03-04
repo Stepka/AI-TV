@@ -427,13 +427,33 @@ class Channel(BaseModel):
 class UserResponse(BaseModel):
     username: str
     user_uid: str
-    channels: List[Channel] = []
 
 
 # -----------------------------
 # Получение пользователя + каналов из базы
 # -----------------------------
-def fetch_user_with_channels(username: str) -> UserResponse:
+def fetch_user(username: str) -> UserResponse:
+    conn = sqlite3.connect(USERS_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    # 1) ищем пользователя
+    user_row = cur.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    if not user_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_uid = user_row["user_uid"]
+
+    conn.close()
+
+    return UserResponse(
+        username=username,
+        user_uid=user_uid
+    )
+
+
+def fetch_channels(username: str) -> List[Channel]:
     conn = sqlite3.connect(USERS_DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -464,11 +484,7 @@ def fetch_user_with_channels(username: str) -> UserResponse:
 
     conn.close()
 
-    return UserResponse(
-        username=username,
-        user_uid=user_uid,
-        channels=channels
-    )
+    return channels
 
 # -----------------------------
 # Эндпоинты
@@ -484,8 +500,13 @@ def login(req: LoginRequest):
 
 @app.get("/me")
 def me(username: str = Depends(get_current_user)):
-    user_data = fetch_user_with_channels(username)
+    user_data = fetch_user(username)
     return {"ok": True, "user": user_data.dict()}
+
+@app.get("/channels")
+def me(username: str = Depends(get_current_user)):
+    user_data = fetch_channels(username)
+    return {"ok": True, "channels": user_data}
 
 
 ### Основные эндпоинты для получения плейлиста, генерации текста и аудио для DJ переходов, а также получения видео по ID

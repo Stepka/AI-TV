@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AppButton from "./AppButton";
 
 export default function FullscreenButton() {
   const [isFs, setIsFs] = useState(!!document.fullscreenElement);
@@ -18,23 +19,10 @@ export default function FullscreenButton() {
   };
 
   return (
-    <button
+    <AppButton
       onClick={toggleFullscreen}
-      style={{
-        position: "absolute",
-        top: 12,
-        right: 12,
-        zIndex: 9999,
-        padding: "10px 14px",
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.2)",
-        background: "rgba(0,0,0,0.6)",
-        color: "#fff",
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
     >
       {isFs ? "Exit Fullscreen" : "Fullscreen"}
-    </button>
+    </AppButton>
   );
 }
