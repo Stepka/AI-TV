@@ -97,6 +97,13 @@ export default function App() {
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+  
+
+  function handleSelectChannel(newChannel) {
+    if (newChannel.channel_uid === selectedChannel?.channel_uid) return; // если кликнули по уже выбранному — ничего не делаем
+    setSelectedChannel(newChannel);
+  }
+
 
   return (
     <div className="main-layout">
@@ -120,7 +127,7 @@ export default function App() {
                 flexDirection: "column",
             }}
             >
-            <ChannelList token={authToken} onSelectChannel={setSelectedChannel} />
+            <ChannelList token={authToken} onSelectChannel={handleSelectChannel} />
             </div>
         )}
 

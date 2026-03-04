@@ -662,6 +662,7 @@ export default function App({ token, userData, channel }) {
         display: "flex",
         flexDirection: "column", // вот это делает вертикальный стэк
         alignItems: "center",    // центрируем все элементы по горизонтали
+        cursor: isFullscreen ? "none" : "default",
         // gap: isFullscreen ? 0 : 20,             // опционально, чтобы добавить расстояние между элементами
       }}
     >
@@ -698,7 +699,12 @@ export default function App({ token, userData, channel }) {
         }}
       >
         {isStreaming && (playlist.length == 0 || !helloReady || !helloFinished) && (
-            <div>Loading...</div>
+            <div 
+              style={{
+                opacity: !helloFinishedTransition ? 1 : 0,
+                transition: "3s opacity",
+              }}
+            >{!helloReady ? "Loading..." : "Hello! We are starting..."}</div>
         )}
       
         {/* Основной контент — 75% ширины */}
@@ -716,6 +722,7 @@ export default function App({ token, userData, channel }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              cursor: isFullscreen ? "none" : "default",
             }}
           >
             <VideoStage

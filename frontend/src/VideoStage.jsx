@@ -32,7 +32,7 @@ export default function VideoStage({
           width: "100%",
           height: "100%",
           transition: "2s opacity",
-          opacity: isTransitioning ? 0 : 0.3,
+          opacity: isTransitioning ? 0 : 1,
           zIndex: 1,
         }}
       />

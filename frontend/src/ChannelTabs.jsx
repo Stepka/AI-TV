@@ -16,6 +16,11 @@ export default function ChannelTabs({ token, userData, channel }) {
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+  
+  
+  useEffect(() => {
+    setActiveTab("description")
+  }, [channel]);
 
   return (
     <div
