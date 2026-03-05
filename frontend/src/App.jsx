@@ -99,9 +99,14 @@ export default function App() {
   }, []);
   
 
-  function handleSelectChannel(newChannel) {
+  function handleSelectChannel(newChannel) {       
     if (newChannel.channel_uid === selectedChannel?.channel_uid) return; // если кликнули по уже выбранному — ничего не делаем
     setSelectedChannel(newChannel);
+  }
+
+  function handleEditChannel(channel) {    
+    console.log("Editing channel:", channel);
+    setSelectedChannel(channel);
   }
 
 
@@ -143,7 +148,7 @@ export default function App() {
           }}
         >
           {selectedChannel && (
-            <ChannelTabs token={authToken} userData={userData} channel={selectedChannel} />
+            <ChannelTabs token={authToken} userData={userData} channel={selectedChannel} onEditChannel={setSelectedChannel} />
           )}
         </div>
       </div>

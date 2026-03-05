@@ -424,7 +424,7 @@ export default function App({ token, userData, channel }) {
       if (duration > 600) duration = 600;
       duration = duration; // отрубаем 30 секунд в конце для плавного перехода
 
-      const remaining = duration - player.getCurrentTime();
+      const remaining = duration - player.getCurrentTime() - 10;
 
       console.log("Remaining time:", remaining);
       console.log("Current time:", player.getCurrentTime());

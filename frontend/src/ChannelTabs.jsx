@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import Playlist from "./Playlist";
 import ChannelDescription from "./ChannelDescription";
+import ChannelManager from "./ChannelManager";
 import Stage from "./Stage";
 
-export default function ChannelTabs({ token, userData, channel }) {
-  const [activeTab, setActiveTab] = useState("description");
+export default function ChannelTabs({ token, userData, channel, onEditChannel }) {
+  const [activeTab, setActiveTab] = useState("channelManager");
     
   const [isFullscreen, setIsFullscreen] = useState(false);
     
@@ -19,7 +20,7 @@ export default function ChannelTabs({ token, userData, channel }) {
   
   
   useEffect(() => {
-    setActiveTab("description")
+    setActiveTab("channelManager")
   }, [channel]);
 
   return (
@@ -32,6 +33,7 @@ export default function ChannelTabs({ token, userData, channel }) {
         padding: isFullscreen ? 0 : 20,
         display: "flex",
         flexDirection: "column",
+        height: "100%", // или 100vh или фиксированная высота
         gap: 12,
       }}
     >
@@ -39,18 +41,18 @@ export default function ChannelTabs({ token, userData, channel }) {
       {!isFullscreen && (
         <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
           <button
-            onClick={() => setActiveTab("description")}
+            onClick={() => setActiveTab("channelManager")}
             style={{
               padding: "8px 16px",
               borderRadius: 8,
               border: "none",
-              background: activeTab === "description" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+              background: activeTab === "channelManager" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
               color: "#fff",
               cursor: "pointer",
               fontWeight: 600,
             }}
           >
-            Description
+            Channel
           </button>
           <button
             onClick={() => setActiveTab("stage")}
@@ -70,8 +72,8 @@ export default function ChannelTabs({ token, userData, channel }) {
       )}
 
       {/* Контент вкладки */}
-      <div style={{ flexGrow: 1, overflowY: "auto" }}>
-        {activeTab === "description" && <ChannelDescription channel={channel} />}
+      <div style={{ flexGrow: 1, overflowY: "auto", minHeight: 0 }}>
+        {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onChange={onEditChannel} />}
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
       </div>
     </div>

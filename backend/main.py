@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 import sqlite3, json
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import requests
 from dotenv import load_dotenv
@@ -428,6 +428,17 @@ class UserResponse(BaseModel):
     username: str
     user_uid: str
 
+class ChannelUpdate(BaseModel):
+    user_id: str
+    name: str
+    type: str
+    style: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    voice_json: Optional[str] = None
+    actions_json: Optional[str] = None
+    menu_json: Optional[str] = None
+
 
 # -----------------------------
 # Получение пользователя + каналов из базы
@@ -822,6 +833,46 @@ def get_video(
         )
 
     return {"error": "Video not found"}
+
+@app.put("/channels/{channel_uid}")
+def update_channel(channel_uid: str, payload: ChannelUpdate, user=Depends(get_current_user)):
+    conn = sqlite3.connect(USERS_DB_PATH)
+    cursor = conn.cursor()
+
+    print(user)
+
+    cursor.execute("""
+        UPDATE channels
+        SET name = ?,
+            type = ?,
+            style = ?,
+            description = ?,
+            location = ?,
+            voice_json = ?,
+            actions_json = ?,
+            menu_json = ?
+        WHERE channel_uid = ? AND user_uid = ?
+    """, (
+        payload.name,
+        payload.type,
+        payload.style,
+        payload.description,
+        payload.location,
+        payload.voice_json,
+        payload.actions_json,
+        payload.menu_json,
+        channel_uid,
+        payload.user_id
+    ))
+
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "ok"}
 
 
 ################################################ 
