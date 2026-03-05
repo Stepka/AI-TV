@@ -16,6 +16,8 @@ export default function App() {
 
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [userData, setUserData] = useState(null);
+
+  const [reloadChannelsTrigger, setReloadChannelsTrigger] = useState(0);
   
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -109,6 +111,22 @@ export default function App() {
     setSelectedChannel(channel);
   }
 
+  function handleDeleteChannel(channel_uid) {  
+
+    // Удаляем канал из состояния
+    // setChannels(prev => prev.filter(c => c.channel_uid !== channel_uid));
+
+    // Если удаляли выбранный канал — сбрасываем selection
+    console.log("Deleting channel:", channel_uid, "Selected channel:", selectedChannel?.channel_uid);
+    if (selectedChannel?.channel_uid === channel_uid) {
+        console.log("Deleted channel was selected, clearing selection");
+        setSelectedChannel(null);
+        localStorage.removeItem("current_channel");
+    }
+    setReloadChannelsTrigger(prev => prev + 1);
+  }
+  
+
 
   return (
     <div className="main-layout">
@@ -132,7 +150,7 @@ export default function App() {
                 flexDirection: "column",
             }}
             >
-            <ChannelList token={authToken} onSelectChannel={handleSelectChannel} />
+            <ChannelList token={authToken} onSelectChannel={handleSelectChannel} reloadChannelsTrigger={reloadChannelsTrigger} />
             </div>
         )}
 
@@ -148,7 +166,7 @@ export default function App() {
           }}
         >
           {selectedChannel && (
-            <ChannelTabs token={authToken} userData={userData} channel={selectedChannel} onEditChannel={setSelectedChannel} />
+            <ChannelTabs token={authToken} userData={userData} channel={selectedChannel} onEditChannel={setSelectedChannel} onDeleteChannel={handleDeleteChannel} />
           )}
         </div>
       </div>

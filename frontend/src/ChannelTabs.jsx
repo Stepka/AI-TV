@@ -4,7 +4,7 @@ import ChannelDescription from "./ChannelDescription";
 import ChannelManager from "./ChannelManager";
 import Stage from "./Stage";
 
-export default function ChannelTabs({ token, userData, channel, onEditChannel }) {
+export default function ChannelTabs({ token, userData, channel, onEditChannel, onDeleteChannel }) {
   const [activeTab, setActiveTab] = useState("channelManager");
     
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -73,7 +73,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel })
 
       {/* Контент вкладки */}
       <div style={{ flexGrow: 1, overflowY: "auto", minHeight: 0 }}>
-        {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onChange={onEditChannel} />}
+        {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
       </div>
     </div>

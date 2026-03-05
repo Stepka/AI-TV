@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
+import AppButton from "./AppButton"; // твоя кнопка
 
-export default function ChannelList({ token, onSelectChannel }) {
+export default function ChannelList({ token, onSelectChannel, reloadChannelsTrigger }) {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(
     localStorage.getItem("current_channel") || null
@@ -52,13 +53,30 @@ export default function ChannelList({ token, onSelectChannel }) {
     }
 
     loadChannels();
-  }, [token]);
+  }, [token, reloadChannelsTrigger]);
 
   function handleSelect(channel) {
     setSelectedChannel(channel.channel_uid);
     localStorage.setItem("current_channel", channel.channel_uid);
     onSelectChannel && onSelectChannel(channel);
   }
+
+  const handleAddChannel = () => {
+    const newChannel = {
+      channel_uid: crypto.randomUUID(), // или другой способ генерации уникального id
+      name: "New Channel",
+      type: "brand_space",
+      style: "",
+      description: "",
+      location: "",
+      voice: {"source":"silero","name":"xenia","sex":"female"},
+      actions: [],
+      menu: [],
+    };
+
+    setChannels(prev => [...prev, newChannel]);        // добавляем в массив
+    handleSelect(newChannel)
+  };
 
 
   if (loading) return <div>Loading channels...</div>;
@@ -78,6 +96,7 @@ export default function ChannelList({ token, onSelectChannel }) {
           </div>
         ))}
       </div>
+      <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Channel</AppButton>
     </div>
   );
 }

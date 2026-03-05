@@ -834,13 +834,15 @@ def get_video(
 
     return {"error": "Video not found"}
 
+
 @app.put("/channels/{channel_uid}")
 def update_channel(channel_uid: str, payload: ChannelUpdate, user=Depends(get_current_user)):
     conn = sqlite3.connect(USERS_DB_PATH)
     cursor = conn.cursor()
 
-    print(user)
+    print("Current user:", user)
 
+    # Пытаемся обновить
     cursor.execute("""
         UPDATE channels
         SET name = ?,
@@ -862,18 +864,54 @@ def update_channel(channel_uid: str, payload: ChannelUpdate, user=Depends(get_cu
         payload.actions_json,
         payload.menu_json,
         channel_uid,
-        payload.user_id
+        payload.user_id  # <- берем user_uid из user, не из payload
     ))
 
     if cursor.rowcount == 0:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Channel not found")
+        # Канал не найден — создаём новый
+        cursor.execute("""
+            INSERT INTO channels (
+                channel_uid, user_uid, name, type, style, description, location,
+                voice_json, actions_json, menu_json, created_at, last_played_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), '[]')
+        """, (
+            channel_uid,
+            payload.user_id,
+            payload.name,
+            payload.type,
+            payload.style,
+            payload.description,
+            payload.location,
+            payload.voice_json,
+            payload.actions_json,
+            payload.menu_json
+        ))
 
     conn.commit()
     conn.close()
 
-    return {"status": "ok"}
+    return {"status": "ok", "message": "Channel updated or created"}
 
+
+@app.delete("/channels/{channel_uid}")
+def delete_channel(channel_uid: str, user_uid: str = Query(...), user=Depends(get_current_user)):
+    conn = sqlite3.connect(USERS_DB_PATH)
+    cursor = conn.cursor()
+
+    # Пытаемся удалить канал текущего пользователя
+    cursor.execute("""
+        DELETE FROM channels
+        WHERE channel_uid = ? AND user_uid = ?
+    """, (channel_uid, user_uid))
+
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Channel not found or not owned by user")
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "ok", "message": "Channel deleted"}
 
 ################################################ 
 

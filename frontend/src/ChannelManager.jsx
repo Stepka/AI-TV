@@ -25,7 +25,7 @@ return (
 );
 }
 
-export default function ChannelManager({ token, channel,  userData, onChange }) {
+export default function ChannelManager({ token, channel,  userData, onSave, onDelete }) {
   const [loading, setLoading] = useState(false);
   const [editedChannel, setEditedChannel] = useState({ ...channel });
 
@@ -53,13 +53,11 @@ export default function ChannelManager({ token, channel,  userData, onChange }) 
     });
 
     setLoading(false);
-    onChange(editedChannel);
+    onSave(editedChannel);
     // loadChannels();
   };
 
   useEffect(() => {
-    console.log("Channel changed, updating editedChannel", channel);
-    console.log("Channel changed, updating editedChannel", editedChannel);
     setEditedChannel({ ...channel });
   }, [channel?.channel_uid]);
 
@@ -77,6 +75,32 @@ export default function ChannelManager({ token, channel,  userData, onChange }) 
         }
         return { ...prev, [field]: value };
     });
+  };
+
+  // Удаляем канал
+  const handleDeleteChannel = async (channel_uid) => {
+    if (!window.confirm("Are you sure you want to delete this channel?")) return;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/channels/${channel_uid}?user_uid=${userData.user_uid}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.detail);
+        return;
+      }
+        
+      onDelete(channel_uid);
+
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete channel");
+    }
   };
 
   return (
@@ -160,6 +184,12 @@ export default function ChannelManager({ token, channel,  userData, onChange }) 
             <div style={{ marginTop: 20 }}>
             <AppButton onClick={saveChannel} disabled={loading}>
                 {loading ? "Saving..." : "Save"}
+            </AppButton>
+
+            {/* Кнопка удаления */}
+            <AppButton
+                onClick={() => handleDeleteChannel(channel.channel_uid)}>
+                Delete
             </AppButton>
             </div>
         </div>
