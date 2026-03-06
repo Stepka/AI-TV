@@ -11,5 +11,7 @@ class Voice(BaseModel):
 class DJRequest(BaseModel):
     user_id: str
     channel_id: str
+    from_artist: str
     from_title: str
+    to_artist: str
     to_title: str

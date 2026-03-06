@@ -187,8 +187,10 @@ export default function App({ token, userData, channel }) {
       body: JSON.stringify({
         user_id: userData.user_uid, 
         channel_id: channel.channel_uid,
-        from_title: from.artist + " - " + from.title,
-        to_title: to.artist + " - " + to.title,
+        from_artist: from.artist,
+        from_title: from.title,
+        to_artist: to.artist,
+        to_title: to.title,
       })
     });
 
@@ -235,8 +237,10 @@ export default function App({ token, userData, channel }) {
       body: JSON.stringify({
         user_id: userData.user_uid, 
         channel_id: channel.channel_uid,
+        from_artist: "",
         from_title: "",
-        to_title: to.artist + " - " + to.title,
+        to_artist: to.artist,
+        to_title: to.title,
       })
     });
     const data = await res.json();

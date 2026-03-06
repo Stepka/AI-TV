@@ -24,7 +24,9 @@ def generate_dj_speech(req: DJRequest):
     text = generate_dj_text(
         user_uid=req.user_id,
         channel_uid=req.channel_id,
+        from_artist=req.from_artist,
         from_title=req.from_title,
+        to_artist=req.to_artist,
         to_title=req.to_title,
     )
 

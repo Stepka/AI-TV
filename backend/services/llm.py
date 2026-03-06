@@ -180,10 +180,10 @@ Format:
         raise Exception("Perplexity returned invalid JSON")
     
 
-def generate_dj_text(user_uid: str, channel_uid: str, from_title: str, to_title: str) -> str:
+def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
     meta = get_channel_by_id(user_uid, channel_uid)
     channel = meta['name']
-    text = generate_text(user_uid, channel_uid, from_title, to_title)
+    text = generate_text(user_uid, channel_uid, from_artist, from_title, to_artist, to_title)
     if from_title:
         if meta["type"] == "brand_space":
                 match random.random():
@@ -240,7 +240,7 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_title: str, to_title:
     return text
     
 
-def generate_text(user_uid: str, channel_uid: str, from_title: str, to_title: str) -> str:
+def generate_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
     
     meta = get_channel_by_id(user_uid, channel_uid)
 
@@ -262,16 +262,16 @@ def generate_text(user_uid: str, channel_uid: str, from_title: str, to_title: st
     prompt += f"""
 Сегодня {datetime.now()}. Если будешь в тексте упоминать время дня, то соотноси его с текущим временем. 
 """
-    if from_title is None:        
+    if from_title is None and from_artist is None:        
         prompt += f"""
-Теперь придумай представление для трека {to_title}, с которого начнется вещание. 
+Теперь придумай представление для трека {to_title} от исполнителя {to_artist}, с которого начнется вещание. 
 Это единственный трек, который надо будет упомняуть. Это твоя первая реплика в эфире, сделай ее привественной.
 
 """
     else:
         prompt += f"""
 Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
-Теперь придумай переход от трека {from_title}, который заканчивает играть, к треку {to_title}, который будет играть следующим. 
+Теперь придумай переход от трека {from_title} от исполнителя {from_artist}, который заканчивает играть, к треку {to_title} от исполнителя {to_artist}, который будет играть следующим. 
 Расскажи пару слов о треке, который будет играть, какие он эмоции вызовет. 
 
 """
