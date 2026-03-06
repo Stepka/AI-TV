@@ -4,7 +4,7 @@ import uuid
 import json
 from hashlib import sha256
 
-from auth import get_password_hash
+from backend.services.auth import get_password_hash
 
 DB_PATH = "data/users.db"
 BASE_CHANNELS_PATH = "channels_data"

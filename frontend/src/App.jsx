@@ -60,6 +60,40 @@ export default function App() {
       setLoginOpen(true);
     }
   }, [authToken]);
+  
+  useEffect(() => {
+    const onFsChange = () => {
+        setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+  
+  function handleSelectChannel(newChannel) {       
+    if (newChannel.channel_uid === selectedChannel?.channel_uid) return; // если кликнули по уже выбранному — ничего не делаем
+    setSelectedChannel(newChannel);
+  }
+
+  function handleEditChannel(channel) {    
+    console.log("Editing channel:", channel);
+    setSelectedChannel(channel);
+  }
+
+  function handleDeleteChannel(channel_uid) {  
+
+    // Удаляем канал из состояния
+    // setChannels(prev => prev.filter(c => c.channel_uid !== channel_uid));
+
+    // Если удаляли выбранный канал — сбрасываем selection
+    console.log("Deleting channel:", channel_uid, "Selected channel:", selectedChannel?.channel_uid);
+    if (selectedChannel?.channel_uid === channel_uid) {
+        console.log("Deleted channel was selected, clearing selection");
+        setSelectedChannel(null);
+        localStorage.removeItem("current_channel");
+    }
+    setReloadChannelsTrigger(prev => prev + 1);
+  }
 
   if (loginOpen) {
     return (
@@ -89,44 +123,6 @@ export default function App() {
       </div>
     );
   }
-  
-  
-  useEffect(() => {
-    const onFsChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
-  
-
-  function handleSelectChannel(newChannel) {       
-    if (newChannel.channel_uid === selectedChannel?.channel_uid) return; // если кликнули по уже выбранному — ничего не делаем
-    setSelectedChannel(newChannel);
-  }
-
-  function handleEditChannel(channel) {    
-    console.log("Editing channel:", channel);
-    setSelectedChannel(channel);
-  }
-
-  function handleDeleteChannel(channel_uid) {  
-
-    // Удаляем канал из состояния
-    // setChannels(prev => prev.filter(c => c.channel_uid !== channel_uid));
-
-    // Если удаляли выбранный канал — сбрасываем selection
-    console.log("Deleting channel:", channel_uid, "Selected channel:", selectedChannel?.channel_uid);
-    if (selectedChannel?.channel_uid === channel_uid) {
-        console.log("Deleted channel was selected, clearing selection");
-        setSelectedChannel(null);
-        localStorage.removeItem("current_channel");
-    }
-    setReloadChannelsTrigger(prev => prev + 1);
-  }
-  
-
 
   return (
     <div className="main-layout">

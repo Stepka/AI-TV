@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 import os
-import sqlite3
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -8,6 +7,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+
+from db.auth import get_user_by_username
 
 
 load_dotenv()
@@ -19,22 +20,6 @@ ACCESS_TOKEN_EXPIRE_HOURS = 24 * 30
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-DB_PATH = "data/users.db"
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def get_user_by_username(username: str):
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    row = cur.fetchone()
-
-    conn.close()
-    return row
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)

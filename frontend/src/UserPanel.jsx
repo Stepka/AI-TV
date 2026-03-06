@@ -14,7 +14,7 @@ export default function UserPanel({ token, onLogout, onGetUserData }) {
       setError("");
 
       try {
-        const res = await fetch("http://localhost:8000/me", {
+        const res = await fetch("http://localhost:8000/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 

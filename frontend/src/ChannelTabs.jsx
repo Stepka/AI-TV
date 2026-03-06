@@ -5,7 +5,7 @@ import ChannelManager from "./ChannelManager";
 import Stage from "./Stage";
 
 export default function ChannelTabs({ token, userData, channel, onEditChannel, onDeleteChannel }) {
-  const [activeTab, setActiveTab] = useState("channelManager");
+  const [activeTab, setActiveTab] = useState("stage");
     
   const [isFullscreen, setIsFullscreen] = useState(false);
     
@@ -20,7 +20,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
   
   
   useEffect(() => {
-    setActiveTab("channelManager")
+    setActiveTab("stage")
   }, [channel]);
 
   return (
@@ -41,20 +41,6 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
       {!isFullscreen && (
         <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
           <button
-            onClick={() => setActiveTab("channelManager")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === "channelManager" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Channel
-          </button>
-          <button
             onClick={() => setActiveTab("stage")}
             style={{
               padding: "8px 16px",
@@ -68,13 +54,27 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
           >
             DJ Stream
           </button>
+          <button
+            onClick={() => setActiveTab("channelManager")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: activeTab === "channelManager" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Edit Channel
+          </button>
         </div>
       )}
 
       {/* Контент вкладки */}
       <div style={{ flexGrow: 1, overflowY: "auto", minHeight: 0 }}>
-        {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
+        {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
       </div>
     </div>
   );
