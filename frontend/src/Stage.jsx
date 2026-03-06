@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import FullscreenButton from "./FullscreenButton";
 import AppButton from "./AppButton";
-import Sidebar from "./Sidebar";
 import VideoStage from "./VideoStage";
 import Playlist from "./Playlist";
 import './global.css';
@@ -12,22 +11,10 @@ export default function App({ token, userData, channel }) {
   
   const [isStreaming, setIsStreaming] = useState(false);
 
-  const [channelsList, setChannelsList] = useState([]);
-
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [username, setUsername] = useState("admin");
-  // const [userData, setUserData] = useState(null);
-  const [password, setPassword] = useState("");
-  const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-
-
-  // const [channel, setChannel] = useState(null);
-  // const [channelData, setChannelData] = useState(null);
   const [playlist, setPlaylist] = useState([]);
   const [current, setCurrent] = useState(0);
   const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [playlistReady, setPlaylistReady] = useState(false);  
   
   const [playerReady, setPlayerReady] = useState(false);
 
@@ -62,155 +49,10 @@ export default function App({ token, userData, channel }) {
     nextTrack: "",
   });
 
-  // async function doLogin() {
-  //   setAuthLoading(true);
-  //   setAuthError("");
-
-  //   try {
-  //     const res = await fetch("http://localhost:8000/auth/login", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ username, password }),
-  //     });
-
-  //     const data = await res.json();
-
-  //     if (!data.ok) {
-  //       setAuthError(data.error || "Login failed");
-  //       setAuthLoading(false);
-  //       return;
-  //     }
-
-  //     localStorage.setItem("token", data.access_token);
-  //     setAuthToken(data.access_token);
-  //     setLoginOpen(false);
-  //     // const channel_name = localStorage.getItem("current_channel");
-  //     // setChannel(channel_name || channelsList[0].name); // теперь можно установить канал
-  //     getMe();
-  //   } catch (e) {
-  //     setAuthError("Network error");
-  //   } finally {
-  //     setAuthLoading(false);
-  //     setChannel(null); // сбросить канал при выходе
-  //   }
-  // }
-
-  // async function getMe() {
-  //   const token = localStorage.getItem("token");
-  //   console.log("Checking auth with");
-
-  //   if (!token) {
-  //     setLoginOpen(true);
-  //     return;
-  //   }
-
-  //   fetch("http://localhost:8000/me", {
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   })
-  //     .then(res => res.json())
-  //     .then(data => {
-  //       if (data.ok) {
-  //         setUsername(data.user.username);
-  //         setUserData(data.user)
-  //         console.log("User:", data.user)
-  //         console.log("Username:", data.user.username)
-  //         setChannelsList(data.user.channels);
-  //         const channel_name = localStorage.getItem("current_channel");
-  //         console.log(channel_name)
-  //         const selected = data.user.channels.find((item) => item.name === channel_name);
-  //         console.log(selected);
-  //         if(selected) {
-  //           // setChannel(channel_name || data.user.channels[0].name); // теперь можно установить канал
-  //           setChannelData(selected);
-  //         } else {
-  //           // setChannel(data.user.channels[0].name); // теперь можно установить канал
-  //           setChannelData(data.user.channels[0]);
-  //         }
-  //       } else {
-  //         setLoginOpen(true);
-  //         localStorage.removeItem("token");
-  //       }
-  //     });
-  // }
-
-  // function doLogout() {
-  //   localStorage.removeItem("token");
-  //   setAuthToken("");
-  //   setChannel(null); // сбросить канал при выходе
-  //   setLoginOpen(true);
-  // }
-
-
-  // 1️⃣ Проверка логина
-  useEffect(() => {
-    // getMe();
-  }, []);
-
-  // // Получаем плейлист
-  // const loadPlaylist = async () => {
-  //   console.log("Loading playlist");
-  //   const token = localStorage.getItem("token");
-  //   const res = await fetch("http://127.0.0.1:8000/playlist", {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //       "Authorization": `Bearer ${token}`,
-  //     },
-  //     body: JSON.stringify({ user_id: userData.user_uid, channel_id: channelData.channel_uid, max_results: 10 })
-  //   });
-  //   const data = await res.json();
-  //   setPlaylist(prev => [...prev, ...data.playlist]);
-  //   console.log("Playlist loaded:", data.playlist);
-  //   setIsTransitioning(false);
-  //   return data.playlist; // возвращаем массив сразу
-  // };
-
-  // // 2️⃣ Эффект смены канала
-  // useEffect(() => {
-  //   if (!channel) return; // только если пользователь залогинен и канал выбран
-
-  //   localStorage.setItem("current_channel", channel); // сохраняем выбор канала
-
-  //   setIsBlackout(true);
-
-  //   const fadeOutTimeout = setTimeout(async () => {
-  //     if (djAudioRef.current) {
-  //       const audio = djAudioRef.current;
-
-  //       audio.pause();        // остановить воспроизведение
-  //       audio.currentTime = 0; // сбросить на начало
-
-  //       audio.src = "";       // убрать источник
-  //       audio.load();         // прервать загрузку
-
-  //       djAudioRef.current = null;
-  //     }
-  //     if (overlayRef.current) {
-  //       const video = overlayRef.current;
-  //       video.pause();
-  //       video.removeAttribute("src");
-  //       video.load();
-  //     }
-  //     setPlaylist([]);
-  //     setCurrent(0);
-  //     setUserData(null);
-  //     setChannelData(null);
-  //     setHelloReady(false);
-  //     setHelloFinished(false);
-  //     setHelloFinishedTransition(false);
-  //     getMe();
-  //   }, 100); // плавный fade-out
-
-  //   return () => {
-  //     clearTimeout(fadeOutTimeout);
-  //   };
-  // }, [channel]);
-
   useEffect(() => {
     if (!channel || !userData || !isStreaming || playlist.length === 0) return; // только если пользователь залогинен и канал выбран
 
     const fadeOutTimeout = setTimeout(async () => {
-      // const playlistData = await loadPlaylist();
 
       const helloData = await prepareDjHello(playlist);
 
@@ -237,7 +79,7 @@ export default function App({ token, userData, channel }) {
     return () => {
       clearTimeout(fadeOutTimeout);
     };
-  }, [isStreaming, playlist]);
+  }, [isStreaming, playlistReady]);
 
   // Загружаем IFrame API один раз
   useEffect(() => {
@@ -267,9 +109,6 @@ export default function App({ token, userData, channel }) {
 
           // Ставим громкость на 0
           event.target.setVolume(0);
-          // console.log(event.target.getVolume())
-
-          // handleVideoDuration();
           
           const duration = 10000; // общее время разгона (мс)
           const period = 50;
@@ -295,7 +134,6 @@ export default function App({ token, userData, channel }) {
         },
         onStateChange: (event) => {
           console.log(event.data)
-          // if (event.data === window.YT.PlayerState.ENDED) smoothNext();
         },
       },
       playerVars: {
@@ -330,7 +168,7 @@ export default function App({ token, userData, channel }) {
     // заранее готовим DJ
     prepareDjTransition();
 
-  }, [current, playlist, helloFinished, isStreaming]);
+  }, [current, helloFinished, isStreaming]);
 
   const prepareDjTransition = async () => {
 
@@ -383,9 +221,6 @@ export default function App({ token, userData, channel }) {
     audio.play();
 
     audio.onended = () => {
-      // возвращаем громкость
-      // playerRef.current.setVolume(100);
-      // setCurrent(prev => (prev + 1) % playlist.length);
     };
   };
 
@@ -501,7 +336,7 @@ export default function App({ token, userData, channel }) {
 
   // Следующий клип
   const handleNext = (timeout = 0) => {
-    if (current === playlist.length - 1 || current === playlist.length - 2) {
+    if (current === playlist.length - 1 || current === playlist.length - 2 || current === playlist.length - 3) {
       loadPlaylist();
     }
 
@@ -602,7 +437,7 @@ export default function App({ token, userData, channel }) {
     }, 50);
   };
   
-  const loadPlaylist = async () => {
+  const loadPlaylist = async (maxResults = 3) => {
     if (!channel || !token || !userData) return;
     setPlaylistLoading(true);
 
@@ -616,12 +451,13 @@ export default function App({ token, userData, channel }) {
         body: JSON.stringify({
           user_id: userData.user_uid,
           channel_id: channel.channel_uid,
-          max_results: 10,
+          max_results: maxResults,
         }),
       });
 
       const data = await res.json();
       setPlaylist(prev => [...prev, ...data.playlist]);
+      setPlaylistReady(true);
       console.log("Playlist loaded:", data.playlist);
     } catch (err) {
       console.error("Failed to load playlist:", err);
@@ -644,13 +480,6 @@ export default function App({ token, userData, channel }) {
     loadPlaylist();
     setIsStreaming(true);
   };
-  
-  // Сброс плейлиста при смене канала
-  // useEffect(() => {
-    
-  //   console.log("Creating player for videoId:", playlist[current]?.videoId);
-  //   setPlaylist([]);
-  // }, [channel]);
 
   return (
     <div
@@ -775,8 +604,4 @@ export default function App({ token, userData, channel }) {
       )}
     </div>
   );
-
-  const video = playlist[current];
-  const nextIndex = (current + 1) % playlist.length;
-  const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
 }

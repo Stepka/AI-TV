@@ -16,7 +16,7 @@ export default function Playlist({ token, userData, channel, onLoadPlaylist, pla
           }}
         >
           <AppButton
-            onClick={onLoadPlaylist}
+            onClick={() => onLoadPlaylist(10)}
             disabled={loading} // неактивна во время загрузки
           >
             {loading ? "Loading..." : "Load Playlist"}
