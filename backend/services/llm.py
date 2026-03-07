@@ -184,7 +184,16 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
     meta = get_channel_by_id(user_uid, channel_uid)
     channel = meta['name']
     text = generate_text(user_uid, channel_uid, from_artist, from_title, to_artist, to_title)
+    to_title_description = get_track_info_ppx(to_artist, to_title)
+    print("To track info:", to_title_description)
+
+    text += f"""Вот информация о треке {to_title} от исполнителя {to_artist}, который будет играть следующим: {to_title_description}. Используй эту информацию о треке при озвучивании, чтобы сделать речь более живой и интересной для слушателей."""
+
     if from_title:
+        from_title_description = get_track_info_ppx(from_artist, from_title)
+        text += f"""Вот информация о треке {from_title} от исполнителя {from_artist}, который будет играть следующим: {from_title_description}. Используй эту информацию о треке при озвучивании, чтобы сделать речь более живой и интересной для слушателей."""
+        print("From track info:", from_title_description)
+
         if meta["type"] == "brand_space":
                 match random.random():
                     case x if x <= 0.3:
@@ -938,3 +947,41 @@ def get_local_events_perplexity(
     except Exception:
         return {"ok": False, "error": "Perplexity returned invalid JSON", "raw": content}
 
+
+def get_track_info_ppx(artist: str, title: str) -> str:
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    url = "https://api.perplexity.ai/chat/completions"
+
+    prompt = f"""
+Artist: {artist}
+Track: {title}
+
+Given a music track or artist name, find a short factual description, notable fact, or recent news.
+Return exactly **one concise sentence (max 20 words)** describing the artist or the track.
+No lists, no extra commentary, no more than one sentence.
+
+"""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "sonar",
+        "messages": [
+            {"role": "system", "content": "Return only one sentence of plain text."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 1.0,
+    }
+
+    r = requests.post(url, headers=headers, json=payload, timeout=30)
+    r.raise_for_status()
+
+    content = r.json()["choices"][0]["message"]["content"].strip()
+
+    # убираем возможные переносы строк
+    content = content.replace("\n", " ").strip()
+
+    return content
