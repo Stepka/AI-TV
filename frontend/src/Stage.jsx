@@ -8,6 +8,7 @@ import './global.css';
 
 
 export default function App({ token, userData, channel }) {
+  const API_URL = import.meta.env.VITE_API_URL;
   
   const [isStreaming, setIsStreaming] = useState(false);
 
@@ -178,7 +179,7 @@ export default function App({ token, userData, channel }) {
     const to = playlist[(current + 1) % playlist.length];
 
     const token = localStorage.getItem("token");
-    const res = await fetch("http://127.0.0.1:8000/dj_transition", {
+    const res = await fetch(`${API_URL}/dj_transition`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -206,7 +207,7 @@ export default function App({ token, userData, channel }) {
     console.log(channel)
 
     const res = await fetch(
-      `http://127.0.0.1:8000/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djHelloDataRef.current.audio_filename}`,
+      `${API_URL}/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djHelloDataRef.current.audio_filename}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -228,7 +229,7 @@ export default function App({ token, userData, channel }) {
 
   const prepareDjHello = async (playlistArray) => {
     const to = playlistArray[current]; // берем из параметра
-    const res = await fetch("http://127.0.0.1:8000/dj_hello", {
+    const res = await fetch(`${API_URL}/dj_hello`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -273,7 +274,7 @@ export default function App({ token, userData, channel }) {
       if (djDataRef.current && remaining < dj_duration) {
         console.log("Starting DJ transition, remaining:", remaining);
         clearInterval(interval);
-        playOverlayVideo(`http://localhost:8000/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
+        playOverlayVideo(`${API_URL}/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
         clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
         playDjOverVideo();
@@ -287,7 +288,7 @@ export default function App({ token, userData, channel }) {
     if (!djDataRef.current || !playerRef.current) return;
 
     const res = await fetch(
-      `http://127.0.0.1:8000/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}`,
+      `${API_URL}/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -446,7 +447,7 @@ export default function App({ token, userData, channel }) {
     setPlaylistLoading(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/playlist", {
+      const res = await fetch(`${API_URL}/playlist`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

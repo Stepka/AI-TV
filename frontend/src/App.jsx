@@ -7,6 +7,8 @@ import Stage from "./Stage";
 import "./global.css";
 
 export default function App() {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
@@ -26,7 +28,7 @@ export default function App() {
     setAuthError("");
 
     try {
-      const res = await fetch("http://localhost:8000/auth/login", {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

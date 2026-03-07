@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton";
 
 export default function UserPanel({ token, onLogout, onGetUserData }) {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,7 +16,7 @@ export default function UserPanel({ token, onLogout, onGetUserData }) {
       setError("");
 
       try {
-        const res = await fetch("http://localhost:8000/auth/me", {
+        const res = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

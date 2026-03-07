@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton"; // твоя кнопка
 
 export default function ChannelList({ token, onSelectChannel, reloadChannelsTrigger }) {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(
     localStorage.getItem("current_channel") || null
@@ -18,7 +20,7 @@ export default function ChannelList({ token, onSelectChannel, reloadChannelsTrig
       setError("");
 
       try {
-        const res = await fetch("http://localhost:8000/channels", {
+        const res = await fetch(`${API_URL}/channels`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
