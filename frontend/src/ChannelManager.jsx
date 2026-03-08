@@ -26,6 +26,8 @@ return (
 }
 
 export default function ChannelManager({ token, channel,  userData, onSave, onDelete }) {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [loading, setLoading] = useState(false);
   const [editedChannel, setEditedChannel] = useState({ ...channel });
 
@@ -43,7 +45,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
         actions_json: JSON.stringify(editedChannel.actions),
         menu_json: JSON.stringify(editedChannel.menu),
     };
-    await fetch(`http://127.0.0.1:8000/channels/${editedChannel.channel_uid}`, {
+    await fetch(`${API_URL}/channels/${editedChannel.channel_uid}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -82,7 +84,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
     if (!window.confirm("Are you sure you want to delete this channel?")) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/channels/${channel_uid}?user_uid=${userData.user_uid}`, {
+      const res = await fetch(`${API_URL}/channels/${channel_uid}?user_uid=${userData.user_uid}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
