@@ -11,7 +11,7 @@ from services.youtube import get_video_duration, search_youtube_video
 router = APIRouter(prefix="/playlist", tags=["playlist"])
 
 
-@router.post("/")
+@router.post("")
 def get_playlist(req: PlaylistRequest):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
 
