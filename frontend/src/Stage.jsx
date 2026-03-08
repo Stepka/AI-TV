@@ -140,7 +140,7 @@ export default function App({ token, userData, channel }) {
       playerVars: {
         autoplay: 1,
         enablejsapi: 1,
-        origin: window.location.origin,
+        // origin: window.location.origin,
         // controls: 0,
         modestbranding: 1,
         rel: 0,
