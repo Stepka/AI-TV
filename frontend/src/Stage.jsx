@@ -102,6 +102,7 @@ export default function App({ token, userData, channel }) {
     playerRef.current = new window.YT.Player("player", {
       height: "405",
       width: "720",
+      host: "https://www.youtube.com",
       videoId: videoId,
       events: {
         onReady: (event) => {
