@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import TitlesOverlay from "./TitlesOverlay";
+import VkVideoPlayer from "./VkVideoPlayer";
 
 export default function VideoStage({
+  videoId,
   isTransitioning,
   overlaySrc,
   overlayRef,
@@ -9,6 +11,10 @@ export default function VideoStage({
   titles,
   isFullscreen,
 }) {
+
+  const oid = videoId ? videoId.split("_")[0] : null;
+  const id = videoId ? videoId.split("_")[1] : null;
+
   return (
     <div
       style={{
@@ -23,7 +29,7 @@ export default function VideoStage({
     >
 
       {/* YouTube */}
-      <div
+      {/* <div
         id="player"
         style={{
           position: "absolute",
@@ -35,7 +41,26 @@ export default function VideoStage({
           opacity: isTransitioning ? 0 : 1,
           zIndex: 1,
         }}
-      />
+      /> */}
+
+      {/* VK Video */}
+      <div 
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          transition: "2s opacity",
+          opacity: isTransitioning ? 0 : 1,
+          zIndex: 1,
+        }}>
+        <VkVideoPlayer
+          oid={oid}
+          id={id}
+          autoplay={1}
+        />
+      </div>
 
       {/* Overlay видео */}
       {overlaySrc && (

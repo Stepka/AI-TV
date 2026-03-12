@@ -19,8 +19,10 @@ export default function App({ token, userData, channel }) {
   
   const [playerReady, setPlayerReady] = useState(false);
 
+  const [videoId, setVideoId] = useState(null);
+
   const [isTransitioning, setIsTransitioning] = useState(true); // fade
-  const [isBlackout, setIsBlackout] = useState(true);           // чёрный экран
+  // const [isBlackout, setIsBlackout] = useState(true);           // чёрный экран
   const [helloReady, setHelloReady] = useState(false);
   const [helloFinished, setHelloFinished] = useState(false);
   const [helloFinishedTransition, setHelloFinishedTransition] = useState(false);
@@ -34,7 +36,7 @@ export default function App({ token, userData, channel }) {
 
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
-  const ytAPILoaded = useRef(false);
+  const externalPlayerAPILoaded = useRef(false);
   
   const [overlayBearerSrc, setOverlayBearerSrc] = useState(null);
   const [overlaySrc, setOverlaySrc] = useState(null);
@@ -62,7 +64,7 @@ export default function App({ token, userData, channel }) {
       playDjHelloOverVideo();
 
       const fadeInTimeout = setTimeout(() => {
-        setIsBlackout(false);
+        // setIsBlackout(false);
       }, helloData.duration * 1000 - 6900); // плавный fade-in
 
       const helloFinishedTimeout = setTimeout(() => {
@@ -84,78 +86,140 @@ export default function App({ token, userData, channel }) {
 
   // Загружаем IFrame API один раз
   useEffect(() => {
-    console.log("ytAPILoaded")
-    if (ytAPILoaded.current) return;
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
-    ytAPILoaded.current = true;
+    console.log("externalPlayerAPILoaded")
+    if (externalPlayerAPILoaded.current) return;
+
+    // const tag = document.createElement("script");
+    // tag.src = "https://www.youtube.com/iframe_api";
+    // document.body.appendChild(tag);
+
+    const script = document.createElement("script");
+    script.src = "https://vk.com/js/api/videoplayer.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    externalPlayerAPILoaded.current = true;
   }, []);
 
   // Создание плеера
-  const createPlayer = (videoId) => {
-    console.log("createPlayer")
+  // const createYoutubePlayer = (videoId) => {
+  //   console.log("createYoutubePlayer")
+  //   if (playerRef.current) playerRef.current.destroy();
+
+  //   setPlayerReady(false);
+    
+  //   playerRef.current = new window.YT.Player("player", {
+  //     height: "405",
+  //     width: "720",
+  //     host: "https://www.youtube.com",
+  //     videoId: videoId,
+  //     events: {
+  //       onReady: (event) => {
+  //         console.log("onReady")
+  //         setPlayerReady(true);
+
+  //         // Ставим громкость на 0
+  //         event.target.setVolume(0);
+          
+  //         const duration = 10000; // общее время разгона (мс)
+  //         const period = 50;
+
+  //         let elapsed = 0;
+
+  //         duckIntervalRef.current = setInterval(() => {
+  //           elapsed += period;
+
+  //           let progress = elapsed / duration;
+  //           if (progress >= 1) {
+  //             progress = 1;
+  //             clearInterval(duckIntervalRef.current);
+  //           }
+
+  //           // Парабола
+  //           const volume = Math.pow(progress, 2) * 90;
+
+  //           event.target.setVolume(volume);
+
+  //         }, period);
+
+  //       },
+  //       onStateChange: (event) => {
+  //         console.log(event.data)
+  //       },
+  //     },
+  //     playerVars: {
+  //       autoplay: 1,
+  //       enablejsapi: 1,
+  //       // origin: window.location.origin,
+  //       // controls: 0,
+  //       modestbranding: 1,
+  //       rel: 0,
+  //       iv_load_policy: 3
+  //     }
+  //   });
+  // };
+
+  // Создание плеера
+  const createVkPlayer = (videoId) => {
+    console.log("createVkPlayer: ", videoId);
     if (playerRef.current) playerRef.current.destroy();
 
     setPlayerReady(false);
     
-    playerRef.current = new window.YT.Player("player", {
-      height: "405",
-      width: "720",
-      host: "https://www.youtube.com",
-      videoId: videoId,
-      events: {
-        onReady: (event) => {
-          console.log("onReady")
-          setPlayerReady(true);
+    const iframe = document.querySelector("#vkplayer");    
+    playerRef.current = new window.VK.VideoPlayer(iframe);
 
-          // Ставим громкость на 0
-          event.target.setVolume(0);
-          
-          const duration = 10000; // общее время разгона (мс)
-          const period = 50;
+      playerRef.current.on("inited", () => {
+        console.log("VK player ready");
+        setPlayerReady(true);
+        
+        // Ставим громкость на 0
+        playerRef.current.setVolume(0);
+        
+        const duration = 10000; // общее время разгона (мс)
+        const period = 50;
 
-          let elapsed = 0;
+        let elapsed = 0;
 
-          duckIntervalRef.current = setInterval(() => {
-            elapsed += period;
+        duckIntervalRef.current = setInterval(() => {
+          elapsed += period;
 
-            let progress = elapsed / duration;
-            if (progress >= 1) {
-              progress = 1;
-              clearInterval(duckIntervalRef.current);
-            }
+          let progress = elapsed / duration;
+          if (progress >= 1) {
+            progress = 1;
+            clearInterval(duckIntervalRef.current);
+          }
 
-            // Парабола
-            const volume = Math.pow(progress, 2) * 90;
+          // Парабола
+          const volume = Math.pow(progress, 2);
 
-            event.target.setVolume(volume);
+          playerRef.current.setVolume(volume);
 
-          }, period);
+        }, period);
+      });
 
-        },
-        onStateChange: (event) => {
-          console.log(event.data)
-        },
-      },
-      playerVars: {
-        autoplay: 1,
-        enablejsapi: 1,
-        // origin: window.location.origin,
-        // controls: 0,
-        modestbranding: 1,
-        rel: 0,
-        iv_load_policy: 3
-      }
-    });
+      playerRef.current.on("ended", () => {
+        console.log("video finished");
+      });
+
+    setPlayerReady(false);
+
+    setVideoId(videoId);
+
+    // const dj_duration = 15; // длительность DJ перехода в секундах
+    // setTimeout(() => {
+    //   startTransition(dj_duration);
+    // }, (duration - dj_duration) * 1000);
   };
 
+
   useEffect(() => {
-    if (!playlist.length || !window.YT || !helloFinished || !channel || !isStreaming) return;
+    if (!playlist.length || !helloFinished || !channel || !isStreaming) return;
 
     console.log(channel);
     console.log("Creating player for videoId:", playlist[current].videoId);
-    createPlayer(playlist[current].videoId);
+    // createYoutubePlayer(playlist[current].videoId);
+    createVkPlayer(playlist[current].videoId, playlist[current].duration);
 
     const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
     const nextIndex = (current + 1) % playlist.length;
@@ -253,6 +317,13 @@ export default function App({ token, userData, channel }) {
 
     return data;
   };
+  
+  const startTransition = async (dj_duration) => {  
+    playOverlayVideo(`${API_URL}/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
+    playDjOverVideo();
+  };
 
   useEffect(() => {
     if (!playerReady || !playerRef.current || !djTransitionReady) return;
@@ -270,15 +341,13 @@ export default function App({ token, userData, channel }) {
       console.log("Remaining time:", remaining);
       console.log("Current time:", player.getCurrentTime());
 
-      const dj_duration = 15;
 
+      const dj_duration = 15;
       if (djDataRef.current && remaining < dj_duration) {
         console.log("Starting DJ transition, remaining:", remaining);
         clearInterval(interval);
-        playOverlayVideo(`${API_URL}/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
-        playDjOverVideo();
+
+        startTransition(dj_duration);
       }
     }, 500);
 
@@ -287,6 +356,7 @@ export default function App({ token, userData, channel }) {
 
   const playDjOverVideo = async () => {
     if (!djDataRef.current || !playerRef.current) return;
+    // if (!djDataRef.current) return;
 
     const res = await fetch(
       `${API_URL}/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}`,
@@ -321,7 +391,7 @@ export default function App({ token, userData, channel }) {
       }
 
       // 🔥 Параболическое затухание
-      const volume = Math.pow(1 - progress, 2) * 90;
+      const volume = Math.pow(1 - progress, 2);
 
       if (playerRef.current) {
         playerRef.current.setVolume(volume);
@@ -351,13 +421,13 @@ export default function App({ token, userData, channel }) {
     }, timeout - 10000);
   };
 
-  const prevVideo = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrent(prev => (prev - 1 + playlist.length) % playlist.length);
-      setIsTransitioning(false);
-    }, 300);
-  };
+  // const prevVideo = () => {
+  //   setIsTransitioning(true);
+  //   setTimeout(() => {
+  //     setCurrent(prev => (prev - 1 + playlist.length) % playlist.length);
+  //     setIsTransitioning(false);
+  //   }, 300);
+  // };
 
   // Декодируем HTML сущности
   const decodeHtml = (html) => {
@@ -567,6 +637,7 @@ export default function App({ token, userData, channel }) {
               overlayVisible={overlayVisible}
               titles={titles}
               isFullscreen={isFullscreen}
+              videoId={videoId}
             />
 
             {!isFullscreen && (
