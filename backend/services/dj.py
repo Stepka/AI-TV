@@ -88,7 +88,9 @@ def generate_dj_speech(req: DJRequest):
         h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
         filename = f"dj_{h}.wav"
-        write(f"channels_data/{req.user_id}/{req.channel_id}/speech/{filename}", sample_rate, audio)
+        dir_path = f"channels_data/{req.user_id}/{req.channel_id}/speech"
+        os.makedirs(dir_path, exist_ok=True)
+        write(f"{dir_path}/{filename}", sample_rate, audio)
           
 
     if is_speech:
