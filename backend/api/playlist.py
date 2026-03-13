@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter
 
 from services.vkvideo import search_vk_video
@@ -108,7 +107,12 @@ def get_playlist(req: PlaylistRequest):
     print("Selected videos:")
     print(videos)
 
-    save_last_played(req.user_id, req.channel_id, [{"artist": v['artist'], "title": v['title']} for v in videos])
+    last_played += [{"artist": v['artist'], "title": v['title']} for v in videos]
+    print()
+    print()    
+    print("Updated last played:", last_played)
+    print("Updated last played:", last_played[-20:])
+    save_last_played(req.user_id, req.channel_id, last_played[-20:])
 
     return {
         "playlist": videos,

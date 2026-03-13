@@ -10,7 +10,7 @@ const VkVideoPlayer = ({
   height = "100%",
 }) => {  
   
-  const src = `https://vk.com/video_ext.php?oid=${oid}&id=${id}&autoplay=${autoplay}&js_api=1`;
+  const src = `https://vk.com/video_ext.php?oid=${oid}&id=${id}&autoplay=${autoplay}&js_api=1&hd=2`;
 
   return (
     <div

@@ -67,7 +67,7 @@ def replace_words(text: str) -> str:
     
     # функция замены
     def repl(match):
-        return REPLACE_DICT[match.group(0)]
+        return REPLACE_DICT[match.group(0).lower()]
     
     return re.sub(pattern, repl, text, flags=re.IGNORECASE)
 

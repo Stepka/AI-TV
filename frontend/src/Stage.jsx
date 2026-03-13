@@ -175,6 +175,7 @@ export default function App({ token, userData, channel }) {
         
         // Ставим громкость на 0
         playerRef.current.setVolume(0);
+        playerRef.current.play();
         
         const duration = 10000; // общее время разгона (мс)
         const period = 50;
@@ -198,8 +199,28 @@ export default function App({ token, userData, channel }) {
         }, period);
       });
 
+      playerRef.current.on("adStarted", () => {
+        console.log("video adStarted");
+      });
+
+      playerRef.current.on("adCompleted", () => {
+        console.log("video adCompleted");
+      });
+
+      playerRef.current.on("started", () => {
+        console.log("video started");
+      });
+
+      playerRef.current.on("error", () => {
+        console.log("video error");
+        console.log(playerRef.current.getState());
+        console.log(playerRef.current.getErrorCode());
+        smoothNext()
+      });
+
       playerRef.current.on("ended", () => {
         console.log("video finished");
+        playerRef.current.pause();
       });
 
     setPlayerReady(false);
