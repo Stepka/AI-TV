@@ -237,6 +237,8 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         # print(text)
         # print("Adding emotions")
         # text = add_silero_emotions_llm(text)
+        # print("Add homographs")
+        # text = add_homographs(text)
     
     if meta["voice"]["source"] == "elevenlabs":
         print("Adding emotions")
@@ -649,6 +651,42 @@ BTC → би ти си
             {"role": "user", "content": prompt},
         ],
         temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
+def add_homographs(text: str) -> str:
+    prompt = f"""
+Перед тобой текст на русском языке.
+Твоя задача — расставить ударения во всех словах текста.
+
+Правила:
+- Ударение обозначается символом + перед ударной гласной.
+- Ударение должно быть в каждом слове, где есть гласная.
+- Если слово состоит из одной гласной, поставь + перед ней.
+- Не изменяй порядок слов.
+- Не добавляй новые слова.
+- Не удаляй слова.
+- Сохраняй всю пунктуацию и структуру текста.
+- Имена собственные и иностранные слова тоже должны получить ударение, если это возможно.
+- Если слово может иметь несколько вариантов ударения, выбери наиболее распространённый в современной речи.
+
+Формат ответа:
+- Верни только текст с расставленными ударениями.
+- Не добавляй комментарии, объяснения или дополнительный текст.
+
+Текст:
+{text}
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-5.2",
+        messages=[
+            {"role": "system", "content": "Отредактируй текст, расставив ударения в каждом слове."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.0,
     )
 
     return response.choices[0].message.content.strip()
