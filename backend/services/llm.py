@@ -164,7 +164,7 @@ Format:
     if content.upper() == "NONE":
         raise Exception("No suitable tracks found")
 
-    print(content)
+    # print(content)
     try:
         data = json.loads(content)["tracks"]
         return data
@@ -183,26 +183,23 @@ Format:
 def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
     meta = get_channel_by_id(user_uid, channel_uid)
     channel = meta['name']
-    text = generate_text(user_uid, channel_uid, from_artist, from_title, to_artist, to_title)
-    to_title_description = get_track_info_ppx(to_artist, to_title)
-    print("To track info:", to_title_description)
+    to_track_description = get_track_info_ppx(to_artist, to_title)
+    print("To track info:", to_track_description)
+    from_track_description = get_track_info_ppx(from_artist, from_title) if from_artist and from_title else ""
+    print("From track info:", from_track_description)
 
-    text += f"""Вот информация о треке {to_title} от исполнителя {to_artist}, который будет играть следующим: {to_title_description}. Используй эту информацию о треке при озвучивании, чтобы сделать речь более живой и интересной для слушателей."""
+    text = generate_text(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
 
     if from_title:
-        from_title_description = get_track_info_ppx(from_artist, from_title)
-        text += f"""Вот информация о треке {from_title} от исполнителя {from_artist}, который будет играть следующим: {from_title_description}. Используй эту информацию о треке при озвучивании, чтобы сделать речь более живой и интересной для слушателей."""
-        print("From track info:", from_title_description)
-
         if meta["type"] == "brand_space":
                 match random.random():
-                    case x if x <= 0.3:
+                    case x if x <= 0.4:
                         print("Adding promo")
                         text = add_promo(text, user_uid, channel_uid)
-                    case x if x <= 0.6:
+                    case x if x <= 0.8:
                         print("Adding menu")
                         text = add_menu(text, user_uid, channel_uid)
-                    case x if x <= 0.7:
+                    case x if x <= 0.9:
                         print("Adding weather")
                         text = add_weather(text, user_uid, channel_uid)
                     # case x if x <= 0.9:
@@ -251,39 +248,50 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
     return text
     
 
-def generate_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
+def generate_text(user_uid: str, channel_uid: str, 
+                  from_artist: str, from_title: str, from_track_description: str, 
+                  to_artist: str, to_title: str, to_track_description: str) -> str:
     
     meta = get_channel_by_id(user_uid, channel_uid)
 
     channel = meta['name']
 
     prompt = f"""
-Ты — радио-диджей брендированного музыкального канала {channel}. 
+Ты — радио-диджей брендированного музыкального канала "{channel}". 
 """
     
     if meta["type"] == "brand_space":
         prompt += f"""
-Ты играешь музыку в заведении {meta["name"]}, вот его описание: {meta["description"]}.
-Упоминай в тексте заведение и его атмосферу, а также особенности музыки канала.
+Ты играешь музыку в заведении "{meta["name"]}", вот его описание: {meta["description"]}.
+Упоминай в тексте заведение и его атмосферу и описание.
 """
     else:
         prompt += f"""
-Ты играешь музыку на канале {meta["name"]}, вот его описание: {meta["description"]}.
+Ты играешь музыку на канале "{meta["name"]}", вот его описание: {meta["description"]}.
 """
     prompt += f"""
-Сегодня {datetime.now()}. Если будешь в тексте упоминать время дня, то соотноси его с текущим временем. 
+Сегодня {datetime.now()}. Если будешь в тексте упоминать время дня, то соотноси его с текущим временем и временем дня. 
 """
     if from_title is None and from_artist is None:        
         prompt += f"""
-Теперь придумай представление для трека {to_title} от исполнителя {to_artist}, с которого начнется вещание. 
+Теперь представь трек "{to_title}" от исполнителя "{to_artist}", с которого начнется вещание. 
 Это единственный трек, который надо будет упомняуть. Это твоя первая реплика в эфире, сделай ее привественной.
+
+Используй это описание и факты о треке: {to_track_description}. Только не сильно увлекайся цифрами.
 
 """
     else:
         prompt += f"""
-Нужно плавно и в стиле канала ({meta["style"]}) перейти от одного клипа к другому.
-Теперь придумай переход от трека {from_title} от исполнителя {from_artist}, который заканчивает играть, к треку {to_title} от исполнителя {to_artist}, который будет играть следующим. 
-Расскажи пару слов о треке, который будет играть, какие он эмоции вызовет. 
+Нужно плавно и в стиле канала перейти от одного клипа к другому.
+Теперь придумай переход от трека "{from_title}" от исполнителя "{from_artist}", который заканчивает играть, 
+к треку "{to_title}" от исполнителя "{to_artist}", который будет играть следующим. 
+Расскажи пару слов о треке, который будет играть. 
+
+ Стиль канала: ({meta["style"]})
+
+Используй это описание и факты о треках: 
+- {from_artist} - {from_title}: {from_track_description}
+- {to_artist} - {to_title}: {to_track_description}
 
 """
     
@@ -298,6 +306,8 @@ def generate_text(user_uid: str, channel_uid: str, from_artist: str, from_title:
 — живо, уверенно, как на музыкальном ТВ
 — 1–2 предложения
 """
+    
+    print("Prompt for DJ text generation:", prompt)
 
     response = llm_client.chat.completions.create(
         model="gpt-4o-mini",
@@ -503,11 +513,13 @@ def shortener(text, user_uid: str, channel_uid: str, max_symbols: int) -> str:
 6. Описание эмоций или настроения от треков.
 7. Факты о треках.
 8. Любые дополнительные описания треков.
+9. Описание канала.
 
 Требования:
 - Сохраняй грамматическую согласованность предложений.
 - Текст должен звучать естественно.
 - Если возможно, оставь логичный переход между треками.
+- Нельзя удалять промо тексты об акциях и позициях меню, если они есть в тексте.
 
 Текст для сокращения:
 

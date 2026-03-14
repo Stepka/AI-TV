@@ -6,6 +6,7 @@ from db.youtube import YouTubeCache
 from models.playlist import PlaylistRequest
 from services.llm import check_title_llm, generate_playlist_llm, generate_playlist_ppx
 from services.youtube import get_video_duration, search_youtube_video
+import json
 
 
 router = APIRouter(prefix="/playlist", tags=["playlist"])
@@ -28,7 +29,8 @@ def get_playlist(req: PlaylistRequest):
     gpt_tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results, last_played)
     print(f"GPT tracks found: {len(gpt_tracks)}")
     tracks += gpt_tracks
-    print(f"Generated tracks {len(tracks)}:", tracks)
+    print(f"Generated tracks {len(tracks)}:")
+    print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
     videos = []
     for track in tracks:       
