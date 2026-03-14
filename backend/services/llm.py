@@ -61,7 +61,7 @@ Format:
   ]
 }}
 """
-    print(prompt)
+    # print(prompt)
 
     response = llm_client.chat.completions.create(
         model="gpt-4o-mini",  # быстрый и дешёвый для MVP
@@ -139,7 +139,7 @@ Format:
   ]
 }}
 """
-    print(prompt)
+    # print(prompt)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -217,11 +217,13 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         # print("Adding promo")
         # text = add_promo(text, user_uid, channel_uid)
 
-    if len(text) > 700:
-        print(text)
+    if len(text) > 500:
+        print("Text is too long, shortening")
         print("Text length before shortening:", len(text))
-        text = shortener(text, user_uid, channel_uid, max_symbols=700)
+        print(text)
+        text = shortener(text, user_uid, channel_uid, max_symbols=500)
         print("Text length after shortening:", len(text))
+        print(text)
     
     if meta["voice"]["source"] == "silero":
         print("Converting text to Russian")
@@ -487,16 +489,31 @@ def shortener(text, user_uid: str, channel_uid: str, max_symbols: int) -> str:
     channel = meta['name']
 
     prompt = f"""
-Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
-Сократи этот текст, чтобы он был длиной меньше {max_symbols} символов. 
-Ты можешь выкинуть ненужные предложения, например приветствия.
-Ты можешь перефразировать предложения, опуская ненужные слова. 
-При этом сохраняй согласованность слов в предлодениях.
+Перед тобой текст для радио-диджея, который ведёт эфир на канале {channel} и делает переход между треками.
+Сократи этот текст так, чтобы его длина была ококло {max_symbols} символов.
 
-Вот текст, который нужно сократить: {text}
+Сокращай текст по следующему приоритету (сначала удаляй элементы из верхних пунктов, пока длина текста не достигнет {max_symbols} символов, 
+как только текст станет короче {max_symbols} символов, прекрати сокращение, даже если останется не удалённый пункт из списка):
+1. Предложения с приветствиями, прощаниями и финальными фразами
+(например: «Приятного прослушивания», «Оставайтесь с нами», «Не переключайтесь» и т.п.).
+2. Упоминание автора трека, который уже прозвучал.
+3. Упоминание названия трека, который уже прозвучал.
+4. Упоминание автора следующего трека.
+5. Упоминание названия следующего трека.
+6. Описание эмоций или настроения от треков.
+7. Факты о треках.
+8. Любые дополнительные описания треков.
 
-Верни сокращенный текст, который диджей может сказать в эфире,
-не нарушая при этом стиль канала.
+Требования:
+- Сохраняй грамматическую согласованность предложений.
+- Текст должен звучать естественно.
+- Если возможно, оставь логичный переход между треками.
+
+Текст для сокращения:
+
+{text}
+
+Верни только сокращённый текст, без пояснений.
 """
 
     response = llm_client.chat.completions.create(

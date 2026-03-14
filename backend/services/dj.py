@@ -30,6 +30,7 @@ def generate_dj_speech(req: DJRequest):
         to_title=req.to_title,
     )
 
+    print()
     print("Generated text:", text)
     
     meta = get_channel_by_id(req.user_id, req.channel_id)
