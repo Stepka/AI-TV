@@ -10,6 +10,7 @@ export default function VideoStage({
   overlayVisible,
   titles,
   isFullscreen,
+  videoSource,
 }) {
 
   const oid = videoId ? videoId.split("_")[0] : null;
@@ -29,38 +30,42 @@ export default function VideoStage({
     >
 
       {/* YouTube */}
-      {/* <div
-        id="player"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          transition: "2s opacity",
-          opacity: isTransitioning ? 0 : 1,
-          zIndex: 1,
-        }}
-      /> */}
+      {videoSource === "youtube" && (
+        <div
+          id="YTPlayer"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            transition: "2s opacity",
+            opacity: isTransitioning ? 0 : 1,
+            zIndex: 1,
+          }}
+        />
+      )}
 
       {/* VK Video */}
-      <div 
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          transition: "2s opacity",
+      {videoSource === "vk" && (
+        <div 
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            transition: "2s opacity",
           opacity: isTransitioning ? 0 : 1,
           zIndex: 1,
         }}>
-        <VkVideoPlayer
-          oid={oid}
-          id={id}
-          autoplay={1}
-        />
-      </div>
+          <VkVideoPlayer
+            oid={oid}
+            id={id}
+            autoplay={1}
+          />
+        </div>
+      )}
 
       {/* Overlay видео */}
       {overlaySrc && (

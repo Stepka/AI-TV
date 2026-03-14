@@ -20,6 +20,7 @@ export default function App({ token, userData, channel }) {
   const [playerReady, setPlayerReady] = useState(false);
 
   const [videoId, setVideoId] = useState(null);
+  const [videoSource, setVideoSource] = useState(null);
 
   const [isTransitioning, setIsTransitioning] = useState(true); // fade
   // const [isBlackout, setIsBlackout] = useState(true);           // чёрный экран
@@ -89,9 +90,9 @@ export default function App({ token, userData, channel }) {
     console.log("externalPlayerAPILoaded")
     if (externalPlayerAPILoaded.current) return;
 
-    // const tag = document.createElement("script");
-    // tag.src = "https://www.youtube.com/iframe_api";
-    // document.body.appendChild(tag);
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.body.appendChild(tag);
 
     const script = document.createElement("script");
     script.src = "https://vk.com/js/api/videoplayer.js";
@@ -102,62 +103,75 @@ export default function App({ token, userData, channel }) {
   }, []);
 
   // Создание плеера
-  // const createYoutubePlayer = (videoId) => {
-  //   console.log("createYoutubePlayer")
-  //   if (playerRef.current) playerRef.current.destroy();
+  const createYoutubePlayer = (videoId) => {
+    console.log("createYoutubePlayer")
+    if (playerRef.current) playerRef.current.destroy();
 
-  //   setPlayerReady(false);
+    setPlayerReady(false);
+
+    setVideoSource("youtube");
+
+    const interval = setInterval(() => {
+      const iframe = document.querySelector("#YTPlayer");
+      console.log("Looking for YouTube player iframe...", iframe);
+
+      if (iframe) {
+        clearInterval(interval);
+        console.log("youtube player найден");
     
-  //   playerRef.current = new window.YT.Player("player", {
-  //     height: "405",
-  //     width: "720",
-  //     host: "https://www.youtube.com",
-  //     videoId: videoId,
-  //     events: {
-  //       onReady: (event) => {
-  //         console.log("onReady")
-  //         setPlayerReady(true);
+        playerRef.current = new window.YT.Player("YTPlayer", {
+          height: "405",
+          width: "720",
+          host: "https://www.youtube.com",
+          videoId: videoId,
+          events: {
+            onReady: (event) => {
+              console.log("onReady")
+              setPlayerReady(true);
 
-  //         // Ставим громкость на 0
-  //         event.target.setVolume(0);
-          
-  //         const duration = 10000; // общее время разгона (мс)
-  //         const period = 50;
+              // Ставим громкость на 0
+              event.target.setVolume(0);
+              
+              const duration = 10000; // общее время разгона (мс)
+              const period = 50;
 
-  //         let elapsed = 0;
+              let elapsed = 0;
 
-  //         duckIntervalRef.current = setInterval(() => {
-  //           elapsed += period;
+              duckIntervalRef.current = setInterval(() => {
+                elapsed += period;
 
-  //           let progress = elapsed / duration;
-  //           if (progress >= 1) {
-  //             progress = 1;
-  //             clearInterval(duckIntervalRef.current);
-  //           }
+                let progress = elapsed / duration;
+                if (progress >= 1) {
+                  progress = 1;
+                  clearInterval(duckIntervalRef.current);
+                }
 
-  //           // Парабола
-  //           const volume = Math.pow(progress, 2) * 90;
+                // Парабола
+                const volume = Math.pow(progress, 2) * 90;
 
-  //           event.target.setVolume(volume);
+                event.target.setVolume(volume);
 
-  //         }, period);
+              }, period);
 
-  //       },
-  //       onStateChange: (event) => {
-  //         console.log(event.data)
-  //       },
-  //     },
-  //     playerVars: {
-  //       autoplay: 1,
-  //       enablejsapi: 1,
-  //       // origin: window.location.origin,
-  //       // controls: 0,
-  //       modestbranding: 1,
-  //       rel: 0,
-  //       iv_load_policy: 3
-  //     }
-  //   });
-  // };
+            },
+            onStateChange: (event) => {
+              console.log(event.data)
+            },
+          },
+          playerVars: {
+            autoplay: 1,
+            enablejsapi: 1,
+            // origin: window.location.origin,
+            // controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            iv_load_policy: 3
+          }
+        });
+        
+      }
+    }, 50);
+  };
 
   // Создание плеера
   const createVkPlayer = (videoId) => {
@@ -165,67 +179,81 @@ export default function App({ token, userData, channel }) {
     if (playerRef.current) playerRef.current.destroy();
 
     setPlayerReady(false);
-    
-    const iframe = document.querySelector("#vkplayer");    
-    playerRef.current = new window.VK.VideoPlayer(iframe);
 
-      playerRef.current.on("inited", () => {
-        console.log("VK player ready");
-        setPlayerReady(true);
-        
-        // Ставим громкость на 0
-        playerRef.current.setVolume(0);
-        playerRef.current.play();
-        
-        const duration = 10000; // общее время разгона (мс)
-        const period = 50;
+    setVideoSource("vk");    
 
-        let elapsed = 0;
+    const interval = setInterval(() => {
+      const iframe = document.querySelector("#vkplayer");
+      console.log("Looking for YouTube player iframe...", iframe);
 
-        duckIntervalRef.current = setInterval(() => {
-          elapsed += period;
+      if (iframe) {
+        clearInterval(interval);
+        console.log("vk iframe найден");
 
-          let progress = elapsed / duration;
-          if (progress >= 1) {
-            progress = 1;
-            clearInterval(duckIntervalRef.current);
-          }
+        iframe.onload = () => {
+      
+          playerRef.current = new window.VK.VideoPlayer(iframe);
 
-          // Парабола
-          const volume = Math.pow(progress, 2);
+          playerRef.current.on("inited", () => {
+            console.log("VK player ready");
+            setPlayerReady(true);
+            
+            // Ставим громкость на 0
+            playerRef.current.setVolume(0);
+            playerRef.current.play();
+            
+            const duration = 10000; // общее время разгона (мс)
+            const period = 50;
 
-          playerRef.current.setVolume(volume);
+            let elapsed = 0;
 
-        }, period);
-      });
+            duckIntervalRef.current = setInterval(() => {
+              elapsed += period;
 
-      playerRef.current.on("adStarted", () => {
-        console.log("video adStarted");
-      });
+              let progress = elapsed / duration;
+              if (progress >= 1) {
+                progress = 1;
+                clearInterval(duckIntervalRef.current);
+              }
 
-      playerRef.current.on("adCompleted", () => {
-        console.log("video adCompleted");
-      });
+              // Парабола
+              const volume = Math.pow(progress, 2);
 
-      playerRef.current.on("started", () => {
-        console.log("video started");
-      });
+              playerRef.current.setVolume(volume);
 
-      playerRef.current.on("error", () => {
-        console.log("video error");
-        console.log(playerRef.current.getState());
-        console.log(playerRef.current.getErrorCode());
-        smoothNext()
-      });
+            }, period);
+          });
 
-      playerRef.current.on("ended", () => {
-        console.log("video finished");
-        playerRef.current.pause();
-      });
+          playerRef.current.on("adStarted", () => {
+            console.log("video adStarted");
+          });
 
-    setPlayerReady(false);
+          playerRef.current.on("adCompleted", () => {
+            console.log("video adCompleted");
+          });
 
-    setVideoId(videoId);
+          playerRef.current.on("started", () => {
+            console.log("video started");
+          });
+
+          playerRef.current.on("error", () => {
+            console.log("video error");
+            console.log(playerRef.current.getState());
+            console.log(playerRef.current.getErrorCode());
+            smoothNext()
+          });
+
+          playerRef.current.on("ended", () => {
+            console.log("video finished");
+            playerRef.current.pause();
+          });
+
+          setPlayerReady(false);
+
+          setVideoId(videoId);
+        };
+      }
+    }, 50);
 
     // const dj_duration = 15; // длительность DJ перехода в секундах
     // setTimeout(() => {
@@ -238,9 +266,14 @@ export default function App({ token, userData, channel }) {
     if (!playlist.length || !helloFinished || !channel || !isStreaming) return;
 
     console.log(channel);
-    console.log("Creating player for videoId:", playlist[current].videoId);
+    console.log("Creating player for videoId:", playlist[current].videoId, "source:", playlist[current].source);
+    if (playlist[current].source == "youtube") {
+      createYoutubePlayer(playlist[current].videoId);
+    } else if (playlist[current].source == "vk") {
+      createVkPlayer(playlist[current].videoId);
+    }
     // createYoutubePlayer(playlist[current].videoId);
-    createVkPlayer(playlist[current].videoId, playlist[current].duration);
+    // createVkPlayer(playlist[current].videoId, playlist[current].duration);
 
     const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
     const nextIndex = (current + 1) % playlist.length;
@@ -412,8 +445,7 @@ export default function App({ token, userData, channel }) {
       }
 
       // 🔥 Параболическое затухание
-      const volume = Math.pow(1 - progress, 2);
-
+      const volume = videoSource === "youtube" ? Math.pow(1 - progress, 2) * 90 : Math.pow(1 - progress, 2);
       if (playerRef.current) {
         playerRef.current.setVolume(volume);
       }
@@ -659,6 +691,7 @@ export default function App({ token, userData, channel }) {
               titles={titles}
               isFullscreen={isFullscreen}
               videoId={videoId}
+              videoSource={videoSource}
             />
 
             {!isFullscreen && (
