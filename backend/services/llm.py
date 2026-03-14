@@ -214,11 +214,11 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         # print("Adding promo")
         # text = add_promo(text, user_uid, channel_uid)
 
-    if len(text) > 500:
+    if len(text) > 600:
         print("Text is too long, shortening")
         print("Text length before shortening:", len(text))
         print(text)
-        text = shortener(text, user_uid, channel_uid, max_symbols=500)
+        text = shortener(text, user_uid, channel_uid, max_symbols=600)
         print("Text length after shortening:", len(text))
         print(text)
     
@@ -305,7 +305,7 @@ def generate_text(user_uid: str, channel_uid: str,
 — Не переводи на русский названия треков или трека
 — от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
 — разговорный стиль
-— живо, уверенно, как на музыкальном ТВ
+— не придумывай ничего от себя, а используй только информацию, описания и факты, которые тебе передали
 — 1–2 предложения
 """
     
