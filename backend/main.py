@@ -43,7 +43,7 @@ app.add_middleware(
     allow_origins=[
         "https://84.32.97.178", "https://84.32.97.178:3030", 
         "https://cyberculturecorp.com", "https://cyberculturecorp.com:3030", 
-        "http://localhost:5173"],
+        "http://localhost:5173", "http://localhost:3030"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

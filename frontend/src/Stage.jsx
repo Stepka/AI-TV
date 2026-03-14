@@ -162,6 +162,7 @@ export default function App({ token, userData, channel }) {
             autoplay: 1,
             enablejsapi: 1,
             // origin: window.location.origin,
+            origin: "http://localhost:5000",
             // controls: 0,
             modestbranding: 1,
             rel: 0,
