@@ -9,13 +9,15 @@ function createWindow() {
   // Мини-сервер для отдачи dist
   const appServer = express();
   appServer.use(serveStatic(path.join(__dirname, "../dist"))); // dist от Vite
-  server = appServer.listen(5000, () => {
-    console.log("Server started on http://localhost:5000");
+  server = appServer.listen(3030, () => {
+    console.log("Server started on http://localhost:3030");
   });
 
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    // fullscreen: true,
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -23,10 +25,10 @@ function createWindow() {
   });
 
   // Загружаем через локальный сервер
-  win.loadURL("http://localhost:5000");
+  win.loadURL("http://localhost:3030");
   
   // Опционально DevTools
-  win.webContents.openDevTools();
+  // win.webContents.openDevTools();
 }
 
 // Закрываем сервер при выходе

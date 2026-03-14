@@ -32,88 +32,96 @@ def get_playlist(req: PlaylistRequest):
     print(f"Generated tracks {len(tracks)}:")
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
+    # video_sources = ["youtube", "vk"]
+    video_sources = ["vk"]
+
     videos = []
     for track in tracks:       
 
         ###################
 
         # continue
-    
-        video_id = cache.get_video(track['artist'], track['title'])
+
         video_duration = -1
-        if not video_id:
+        for video_source in video_sources:
+            if video_source == "youtube":
+                video_id = cache.get_video(track['artist'], track['title'])
+                video_duration = -1
+                if not video_id:
 
-            found = find_tracks(track['artist'], track['title'])
+                    found = find_tracks(track['artist'], track['title'])
 
-            if len(found) > 0:
-                print(found)
-                video_id = found[0]['youtubeId']
+                    if len(found) > 0:
+                        print(found)
+                        video_id = found[0]['youtubeId']
+                        
+                    else:
+                        # поиск через YouTube API
+                        print("Searching YouTube for:", track)
+
+                        query = f"{track['artist']} {track['title']} official music video"
+                        yt_video = None
+                        yt_video = search_youtube_video(query)
+                        print("YouTube search result:", yt_video)
+                        # yt_video = search_vk_video(query)
+                        # print("VK search result:", yt_video)
+
+                        if yt_video:
+                            matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'])
+                            if matched:
+                                video_id = yt_video["videoId"]
+
+                                try:
+                                    video_duration = get_video_duration(video_id)
+                                    if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
+                                        continue
+                                    cache.save_video(track['artist'], track['title'], video_id)
+                                except Exception as e:
+                                    print(e)
+                                    continue
                 
-            else:
-                # поиск через YouTube API
-                print("Searching YouTube for:", track)
-
+                if video_id:
+                    videos.append({
+                        "artist": track['artist'],
+                        "title": track['title'],
+                        "videoId": video_id,
+                        "duration": video_duration,
+                        "match": track['match'],
+                        "source": video_source
+                    })
+                    break  # если нашли видео на YouTube, не ищем на других платформах
+    
+            if video_source == "vk":
                 query = f"{track['artist']} {track['title']} official music video"
-                yt_video = None
-                yt_video = search_youtube_video(query)
-                print("YouTube search result:", yt_video)
-                # yt_video = search_vk_video(query)
-                # print("VK search result:", yt_video)
-
-                if yt_video:
-                    matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'])
+                vk_video = search_vk_video(query)
+                print("VK search result:", vk_video)
+                
+                video_id = None
+                if vk_video:
+                    matched = check_title_llm(track['artist'] + " - " + track['title'], vk_video['title'])
                     if matched:
-                        video_id = yt_video["videoId"]
+                        video_id = vk_video["videoId"]
 
                         try:
-                            video_duration = get_video_duration(video_id)
+                            video_duration = vk_video.get("duration", 0)
                             if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
                                 continue
-                            cache.save_video(track['artist'], track['title'], video_id)
+                            # cache.save_video(track['artist'], track['title'], video_id)
                         except Exception as e:
                             print(e)
                             continue
             
-        if video_id:
-            videos.append({
-                "artist": track['artist'],
-                "title": track['title'],
-                "videoId": video_id,
-                "duration": video_duration,
-                "match": track['match'],
-                "source": "youtube"
-            })
-        else:            
-
-            query = f"{track['artist']} {track['title']} official music video"
-            vk_video = search_vk_video(query)
-            print("VK search result:", vk_video)
-            
-            video_id = None
-            if vk_video:
-                matched = check_title_llm(track['artist'] + " - " + track['title'], vk_video['title'])
-                if matched:
-                    video_id = vk_video["videoId"]
-
-                    try:
-                        video_duration = vk_video.get("duration", 0)
-                        if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
-                            continue
-                        # cache.save_video(track['artist'], track['title'], video_id)
-                    except Exception as e:
-                        print(e)
-                        continue
-            
-            if video_id:
-                videos.append({
-                    "artist": track['artist'],
-                    "title": track['title'],
-                    "videoId": video_id,
-                    "duration": vk_video.get("duration", 0),
-                    "match": track['match'],
-                    "source": "vk"
-                })
-            
+                if video_id:
+                    videos.append({
+                        "artist": track['artist'],
+                        "title": track['title'],
+                        "videoId": video_id,
+                        "duration": vk_video.get("duration", 0),
+                        "match": track['match'],
+                        "source": video_source
+                    })
+                    break  # если нашли видео на VK, не ищем на других платформах
+                   
     
     indexed = [(i, t) for i, t in enumerate(videos)]
     top_n = sorted(indexed, key=lambda x: float(x[1]["match"]), reverse=True)[:req.max_results]

@@ -123,6 +123,7 @@ export default function App({ token, userData, channel }) {
           height: "405",
           width: "720",
           host: "https://www.youtube.com",
+          // host: "https://www.youtube-nocookie.com",          
           videoId: videoId,
           events: {
             onReady: (event) => {
@@ -162,7 +163,7 @@ export default function App({ token, userData, channel }) {
             autoplay: 1,
             enablejsapi: 1,
             // origin: window.location.origin,
-            origin: "http://localhost:5000",
+            origin: "http://localhost:3030",
             // controls: 0,
             modestbranding: 1,
             rel: 0,
