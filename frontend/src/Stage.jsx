@@ -182,6 +182,8 @@ export default function App({ token, userData, channel }) {
 
     setPlayerReady(false);
 
+    setVideoId(videoId);
+
     setVideoSource("vk");    
 
     const interval = setInterval(() => {
@@ -192,7 +194,9 @@ export default function App({ token, userData, channel }) {
         clearInterval(interval);
         console.log("vk iframe найден");
 
-        iframe.onload = () => {
+        // iframe.onload = () => {
+
+          console.log("vk iframe loaded, creating player...");
       
           playerRef.current = new window.VK.VideoPlayer(iframe);
 
@@ -242,7 +246,9 @@ export default function App({ token, userData, channel }) {
             console.log("video error");
             console.log(playerRef.current.getState());
             console.log(playerRef.current.getErrorCode());
-            smoothNext()
+            if (playerRef.current.getErrorCode() != 1000) {
+              smoothNext();
+            }
           });
 
           playerRef.current.on("ended", () => {
@@ -251,9 +257,7 @@ export default function App({ token, userData, channel }) {
           });
 
           setPlayerReady(false);
-
-          setVideoId(videoId);
-        };
+        // };
       }
     }, 50);
 
@@ -394,8 +398,8 @@ export default function App({ token, userData, channel }) {
 
       const remaining = duration - player.getCurrentTime() - 10;
 
-      console.log("Remaining time:", remaining);
-      console.log("Current time:", player.getCurrentTime());
+      // console.log("Remaining time:", remaining);
+      // console.log("Current time:", player.getCurrentTime());
 
 
       const dj_duration = 15;

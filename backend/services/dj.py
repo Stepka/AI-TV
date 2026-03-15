@@ -15,7 +15,7 @@ from models.dj import DJRequest
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 silero_model, _ = silero_tts(language='ru',
-                                 speaker='v5_1_ru')
+                                 speaker='v5_2_ru')
 
 
 def generate_dj_speech(req: DJRequest):
@@ -65,6 +65,11 @@ def generate_dj_speech(req: DJRequest):
                 audio = silero_model.apply_tts(
                     # ssml_text=ssml_text,
                     text=text,
+                    speaker=meta["voice"]["name"],
+                    put_accent=True,
+                    put_yo=True,
+                    put_stress_homo=True,
+                    put_yo_homo=True,
                     sample_rate=sample_rate
                 )
                 audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
