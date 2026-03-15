@@ -246,9 +246,10 @@ export default function App({ token, userData, channel }) {
             console.log("video error");
             console.log(playerRef.current.getState());
             console.log(playerRef.current.getErrorCode());
-            if (playerRef.current.getErrorCode() != 1000) {
-              smoothNext();
-            }
+            // if (playerRef.current.getErrorCode() != 1000) {
+            //   smoothNext();
+            // }
+            smoothNext();
           });
 
           playerRef.current.on("ended", () => {
@@ -295,6 +296,25 @@ export default function App({ token, userData, channel }) {
     prepareDjTransition();
 
   }, [current, helloFinished, isStreaming]);
+
+
+  useEffect(() => {
+    if (!playlist.length ) return;
+
+    console.log("Updating titles for current and next video");
+    console.log(playlist);
+
+    const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
+    const nextIndex = (current + 1) % playlist.length;
+    const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
+    setTitles({
+      topTitle: channel?.name ?? "Без названия",
+      topSub: channel?.description ?? "",
+      nowPlaying: currentVideoTitle ?? "",
+      nextTrack: nextVideoTitle ?? "",
+    });
+
+  }, [playlist]);
 
   const prepareDjTransition = async () => {
 
@@ -475,6 +495,9 @@ export default function App({ token, userData, channel }) {
       loadPlaylist();
     }
 
+    console.log("handleNext called with timeout:", timeout);
+    console.log(playlist);
+    console.log(current);
     setTimeout(() => {
       setCurrent(prev => (prev + 1) % playlist.length);
     }, timeout - 10000);
@@ -592,6 +615,7 @@ export default function App({ token, userData, channel }) {
 
       const data = await res.json();
       setPlaylist(prev => [...prev, ...data.playlist]);
+
       setPlaylistReady(true);
       console.log("Playlist loaded:", data.playlist);
     } catch (err) {

@@ -31,8 +31,11 @@ def get_playlist(req: PlaylistRequest):
     tracks += gpt_tracks
     print(f"Generated tracks {len(tracks)}:")
 
-    tracks = get_track_info_list_ppx(tracks)
-    print(json.dumps(tracks, ensure_ascii=False, indent=2))
+    try:
+        tracks = get_track_info_list_ppx(tracks)
+        print(json.dumps(tracks, ensure_ascii=False, indent=2))
+    except Exception as e:
+        print(e)
 
     tracks = check_style_match_level(req.user_id, req.channel_id, tracks)
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
@@ -40,6 +43,7 @@ def get_playlist(req: PlaylistRequest):
     
 
     video_sources = ["youtube", "vk"]
+    # video_sources = ["youtube"]
     # video_sources = ["vk"]
 
     videos = []
