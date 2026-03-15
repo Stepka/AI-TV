@@ -4,7 +4,7 @@ from services.vkvideo import search_vk_video
 from db.playlist import find_tracks, get_last_played, save_last_played
 from db.youtube import YouTubeCache
 from models.playlist import PlaylistRequest
-from services.llm import check_title_llm, generate_playlist_llm, generate_playlist_ppx
+from services.llm import check_style_match_level, check_title_llm, generate_playlist_llm, generate_playlist_ppx, get_track_info_list_ppx
 from services.youtube import get_video_duration, search_youtube_video
 import json
 
@@ -30,10 +30,17 @@ def get_playlist(req: PlaylistRequest):
     print(f"GPT tracks found: {len(gpt_tracks)}")
     tracks += gpt_tracks
     print(f"Generated tracks {len(tracks)}:")
+
+    tracks = get_track_info_list_ppx(tracks)
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
-    # video_sources = ["youtube", "vk"]
-    video_sources = ["vk"]
+    tracks = check_style_match_level(req.user_id, req.channel_id, tracks)
+    print(json.dumps(tracks, ensure_ascii=False, indent=2))
+
+    
+
+    video_sources = ["youtube", "vk"]
+    # video_sources = ["vk"]
 
     videos = []
     for track in tracks:       

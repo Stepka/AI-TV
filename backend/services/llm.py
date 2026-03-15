@@ -53,11 +53,11 @@ Rules:
 Also exclude tracks, that already played on this channel recently. 
 Here is the list of recently played tracks: {last_played_str}
 
-Return ONLY valid JSON. Add infoormation about how well the track matches the channel style in "match" field (0-100). The higher the better.
+Return ONLY valid JSON. 
 Format:
 {{
   "tracks": [
-  {{ "artist": "Artist name", "title": "Song title", "match": "0-100" }}
+  {{ "artist": "Artist name", "title": "Song title" }}
   ]
 }}
 """
@@ -129,13 +129,11 @@ Rules:
 Also exclude tracks, that already played on this channel recently. 
 Here is the list of recently played tracks: {last_played_str}
 
-Add information about how well the track matches the channel style in "match" field (0-100). The higher the better.
-
 Return ONLY valid JSON. Do not use markdown.
 Format:
 {{
   "tracks": [
-  {{ "artist": "Artist name", "title": "Song title", "match": "0-100" }}
+  {{ "artist": "Artist name", "title": "Song title" }}
   ]
 }}
 """
@@ -178,6 +176,54 @@ Format:
             print(content)
             raise Exception("Perplexity returned invalid JSON")
         raise Exception("Perplexity returned invalid JSON")
+    
+
+
+
+def check_style_match_level(user_uid: str, channel_uid: str, tracks: List[dict]):
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    if not meta:
+        raise ValueError("Unknown channel")
+
+    prompt = f"""
+
+You got a json with a list of tracks for the channel "{meta['name']}".
+
+Add information to the given json about how well the track matches the channel style in "match" field (0-100). The higher the better. 
+
+Channel style: {meta["style"]}
+
+Json: {json.dumps(tracks)}
+
+Return updated json.
+
+Format:
+{{
+  "tracks": [
+  {{ "artist": "Artist name", "title": "Song title", "info": "Song info", "match": 0-100 }}
+  ]
+}}
+"""
+    # print(prompt)
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",  # быстрый и дешёвый для MVP
+        messages=[
+            {"role": "system", "content": "Add information to the given json about how well the track matches the channel style"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.5,
+        response_format={"type": "json_object"}
+    )
+
+    content = response.choices[0].message.content.strip()
+
+    try:
+        return json.loads(content)["tracks"]
+    except json.JSONDecodeError:
+        # защита от мусора
+        raise RuntimeError(f"LLM returned invalid JSON: {content}")
     
 
 def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
@@ -1052,3 +1098,65 @@ No lists, no extra commentary, no more than one sentence.
     content = content.replace("\n", " ").strip()
 
     return content
+
+
+def get_track_info_list_ppx(tracks) -> str:
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    url = "https://api.perplexity.ai/chat/completions"
+
+    prompt = f"""
+You got a json with a list of tracks. Each track has an artist and a title.
+
+For each track make the following: 
+Given a music track and artist name, find a short track description with basic info about track including genre.
+Search exactly **one concise sentence (max 20 words)** describing the track. You can use Soundcharts, ACRCloud, or TheAudioDB.
+No lists, no extra commentary, no more than one sentence. Add found info to the field "info" for each track in the json.
+
+Json: {json.dumps(tracks)}
+
+Return updated json.
+
+Format:
+{{
+  "tracks": [
+  {{ "artist": "Artist name", "title": "Song title", "info": "Song info" }}
+  ]
+}}
+
+"""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "sonar",
+        "messages": [
+            {"role": "system", "content": "Return valid json. No markdown."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 1.0,
+    }
+
+    r = requests.post(url, headers=headers, json=payload, timeout=30)
+    r.raise_for_status()
+
+    content = r.json()["choices"][0]["message"]["content"].strip()
+
+    # убираем возможные переносы строк
+    content = content.replace("\n", " ").strip()
+
+    try:
+        data = json.loads(content)["tracks"]
+        return data
+    except Exception as e:
+        print(e)
+        try:
+            data = json.loads(content.replace("```json", "").replace("```", ""))["tracks"]
+            return data
+        except Exception as e:
+            print(e)
+            print(content)
+            raise Exception("Perplexity returned invalid JSON")
+        raise Exception("Perplexity returned invalid JSON")
