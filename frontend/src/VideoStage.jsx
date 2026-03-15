@@ -89,13 +89,13 @@ export default function VideoStage({
         />
       )}
 
-      {/* <TitlesOverlay
+      <TitlesOverlay
         topTitle={titles.topTitle}
         topSub={titles.topSub}
         nowPlaying={titles.nowPlaying}
         nextTrack={titles.nextTrack}
         zIndex={60}
-      /> */}
+      />
     </div>
   );
 }
