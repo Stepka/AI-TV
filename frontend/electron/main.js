@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, session } = require("electron");
 const path = require("path");
 const express = require("express");
 const serveStatic = require("serve-static");
@@ -28,7 +28,7 @@ function createWindow() {
   win.loadURL("http://localhost:3030");
   
   // Опционально DevTools
-  // win.webContents.openDevTools();
+  win.webContents.openDevTools();
 }
 
 // Закрываем сервер при выходе
@@ -37,4 +37,19 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+
+  // Блокируем телеметрию VK player
+  session.defaultSession.webRequest.onBeforeRequest(
+    {
+      urls: [
+        "*://vk.com/video.php?act=track_player_events*",
+        "*://vk.com/al_video.php?act=log*",
+        "*://vk.com/al_video.php?act=stats*"
+      ]
+    },
+    (details, callback) => callback({ cancel: true })
+  );
+
+  createWindow();
+});

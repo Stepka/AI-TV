@@ -96,41 +96,44 @@ def get_weather(city: str) -> dict:
     Без API ключей. Достаточно точная для DJ-вставки.
     """
 
-    # 1) Geocoding
-    geo_url = "https://geocoding-api.open-meteo.com/v1/search"
-    geo_params = {"name": city, "count": 1, "language": "ru", "format": "json"}
-    geo = requests.get(geo_url, params=geo_params, timeout=10).json()
+    try:
+        # 1) Geocoding
+        geo_url = "https://geocoding-api.open-meteo.com/v1/search"
+        geo_params = {"name": city, "count": 1, "language": "ru", "format": "json"}
+        geo = requests.get(geo_url, params=geo_params, timeout=10).json()
 
-    if not geo.get("results"):
-        return {"ok": False, "error": f"City not found: {city}"}
+        if not geo.get("results"):
+            return {"ok": False, "error": f"City not found: {city}"}
 
-    place = geo["results"][0]
-    lat, lon = place["latitude"], place["longitude"]
+        place = geo["results"][0]
+        lat, lon = place["latitude"], place["longitude"]
 
-    # 2) Weather
-    weather_url = "https://api.open-meteo.com/v1/forecast"
-    weather_params = {
-        "latitude": lat,
-        "longitude": lon,
-        "current": "temperature_2m,apparent_temperature,precipitation,wind_speed_10m",
-        "timezone": "auto"
-    }
-    w = requests.get(weather_url, params=weather_params, timeout=10).json()
+        # 2) Weather
+        weather_url = "https://api.open-meteo.com/v1/forecast"
+        weather_params = {
+            "latitude": lat,
+            "longitude": lon,
+            "current": "temperature_2m,apparent_temperature,precipitation,wind_speed_10m",
+            "timezone": "auto"
+        }
+        w = requests.get(weather_url, params=weather_params, timeout=10).json()
 
-    current = w.get("current", {})
-    if not current:
-        return {"ok": False, "error": "No current weather in response"}
+        current = w.get("current", {})
+        if not current:
+            return {"ok": False, "error": "No current weather in response"}
 
-    return {
-        "ok": True,
-        "city": place.get("name", city),
-        "country": place.get("country", ""),
-        "temperature_c": current.get("temperature_2m"),
-        "feels_like_c": current.get("apparent_temperature"),
-        "wind_m_s": current.get("wind_speed_10m"),
-        "precip_mm": current.get("precipitation"),
-        "time": current.get("time"),
-    }
+        return {
+            "ok": True,
+            "city": place.get("name", city),
+            "country": place.get("country", ""),
+            "temperature_c": current.get("temperature_2m"),
+            "feels_like_c": current.get("apparent_temperature"),
+            "wind_m_s": current.get("wind_speed_10m"),
+            "precip_mm": current.get("precipitation"),
+            "time": current.get("time"),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 def rms(audio_int16):
