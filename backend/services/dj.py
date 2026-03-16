@@ -16,6 +16,7 @@ elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 silero_model, _ = silero_tts(language='ru',
                                  speaker='v5_2_ru')
+silero_model.packages[0].ext_alph = {}
 
 
 def generate_dj_speech(req: DJRequest):

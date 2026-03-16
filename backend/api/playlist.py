@@ -40,8 +40,6 @@ def get_playlist(req: PlaylistRequest):
     tracks = check_style_match_level(req.user_id, req.channel_id, tracks)
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
-    
-
     video_sources = ["youtube", "vk"]
     # video_sources = ["youtube"]
     # video_sources = ["vk"]
