@@ -5,9 +5,34 @@ import re
 import requests
 
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
+YOUTUBE_API_KEYS = os.getenv("YOUTUBE_API_KEYS").strip().split(",")
+YOUTUBE_API_KEY_INDEX = 0
+YOUTUBE_API_KEY = YOUTUBE_API_KEYS[YOUTUBE_API_KEY_INDEX] if YOUTUBE_API_KEYS else None
 
 
+def retry_with_next_api_key(func):
+    def wrapper(*args, **kwargs):
+        attempts = 0
+        result = func(*args, **kwargs)
+        while result is None and attempts < len(YOUTUBE_API_KEYS) - 1:
+            next_youtube_api_key()
+            result = func(*args, **kwargs)
+            attempts += 1
+        return result
+    return wrapper
+
+
+def next_youtube_api_key():
+    global YOUTUBE_API_KEY_INDEX, YOUTUBE_API_KEY
+    if not YOUTUBE_API_KEYS:
+        YOUTUBE_API_KEY = None
+        return None
+    YOUTUBE_API_KEY_INDEX = (YOUTUBE_API_KEY_INDEX + 1) % len(YOUTUBE_API_KEYS)
+    YOUTUBE_API_KEY = YOUTUBE_API_KEYS[YOUTUBE_API_KEY_INDEX]
+    return YOUTUBE_API_KEY
+
+
+@retry_with_next_api_key
 def search_youtube_video(query: str):
     url = "https://www.googleapis.com/youtube/v3/search"
     params = {
@@ -33,6 +58,7 @@ def search_youtube_video(query: str):
     }
 
 
+@retry_with_next_api_key
 def get_video_duration(video_id: str) -> str:
     url = "https://www.googleapis.com/youtube/v3/videos"
     params = {

@@ -7,6 +7,7 @@ from typing import List
 from openai import OpenAI
 import os
 
+import pandas as pd
 import requests
 
 from services.common import convert_latin_to_cyrillic, get_weather, replace_words
@@ -227,73 +228,79 @@ Format:
     
 
 def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
-    meta = get_channel_by_id(user_uid, channel_uid)
-    channel = meta['name']
-    to_track_description = get_track_info_ppx(to_artist, to_title)
-    print("To track info:", to_track_description)
-    from_track_description = get_track_info_ppx(from_artist, from_title) if from_artist and from_title else ""
-    print("From track info:", from_track_description)
+    try: 
+        meta = get_channel_by_id(user_uid, channel_uid)
+        channel = meta['name']
+        to_track_description = get_track_info_ppx(to_artist, to_title)
+        print("To track info:", to_track_description)
+        from_track_description = get_track_info_ppx(from_artist, from_title) if from_artist and from_title else ""
+        print("From track info:", from_track_description)
 
-    text = generate_text(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
+        text = generate_text(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
 
-    if from_title:
-        if meta["type"] == "brand_space":
-                match random.random():
-                    case x if x <= 0.4:
-                        print("Adding promo")
-                        text = add_promo(text, user_uid, channel_uid)
-                    case x if x <= 0.8:
-                        print("Adding menu")
-                        text = add_menu(text, user_uid, channel_uid)
-                    case x if x <= 0.9:
-                        print("Adding weather")
-                        text = add_weather(text, user_uid, channel_uid)
-                    # case x if x <= 0.9:
-                    #     print("Adding local events")
-                    #     text = add_local_events(text, channel)
-                    # case x if x <= 1:
-                    #     print("Adding local news")
-                    #     text = add_local_news(text, channel)
-    else:
-        print("Adding weather")
-        text = add_weather(text, user_uid, channel_uid)
-        # print("Adding promo")
-        # text = add_promo(text, user_uid, channel_uid)
+        if from_title:
+            if meta["type"] == "brand_space":
+                    match random.random():
+                        case x if x <= 0.4:
+                            print("Adding promo")
+                            text = add_promo(text, user_uid, channel_uid)
+                        case x if x <= 0.8:
+                            print("Adding menu")
+                            text = add_menu(text, user_uid, channel_uid)
+                        case x if x <= 0.9:
+                            print("Adding weather")
+                            text = add_weather(text, user_uid, channel_uid)
+                        # case x if x <= 0.9:
+                        #     print("Adding local events")
+                        #     text = add_local_events(text, channel)
+                        # case x if x <= 1:
+                        #     print("Adding local news")
+                        #     text = add_local_news(text, channel)
+        else:
+            print("Adding weather")
+            text = add_weather(text, user_uid, channel_uid)
+            # print("Adding promo")
+            # text = add_promo(text, user_uid, channel_uid)
 
-    if len(text) > 600:
-        print("Text is too long, shortening")
-        print("Text length before shortening:", len(text))
-        print(text)
-        text = shortener(text, user_uid, channel_uid, max_symbols=600)
-        print("Text length after shortening:", len(text))
-        print(text)
-    
-    if meta["voice"]["source"] == "silero":
-        print("Converting text to Russian")
-        text = convert_to_russian(text, from_title, to_title)
-        print(text)
-        print("Converting digits to words")
-        text = convert_digits(text)        
-        print(text)
-        # print("Converting abbreviatures")
-        # text = convert_abbreviatures(text)       
-        # print(text) 
-        print("Replacing words")
-        text = replace_words(text)
-        # print(text)
-        # print("Adding emotions")
-        # text = add_silero_emotions_llm(text)
-        # print("Add homographs")
-        # text = add_homographs(text)
-    
-    if meta["voice"]["source"] == "elevenlabs":
-        print("Adding emotions")
-        text = add_emotions_llm(text)
-
-    # text = add_pauses_llm(text)
+        if len(text) > 600:
+            print("Text is too long, shortening")
+            print("Text length before shortening:", len(text))
+            print(text)
+            text = shortener(text, user_uid, channel_uid, max_symbols=600)
+            print("Text length after shortening:", len(text))
+            print(text)
         
-    print("Text length after all:", len(text))
-    return text
+        if meta["voice"]["source"] == "silero":
+            print("Converting text to Russian")
+            text = convert_to_russian(text, from_title, to_title)
+            print(text)
+            print("Converting digits to words")
+            text = convert_digits(text)        
+            print(text)
+            # print("Converting abbreviatures")
+            # text = convert_abbreviatures(text)       
+            # print(text) 
+            print("Replacing words")
+            text = replace_words(text)
+            # print(text)
+            # print("Adding emotions")
+            # text = add_silero_emotions_llm(text)
+            # print("Add homographs")
+            # text = add_homographs(text)
+        
+        if meta["voice"]["source"] == "elevenlabs":
+            print("Adding emotions")
+            text = add_emotions_llm(text)
+
+        # text = add_pauses_llm(text)
+            
+        print("Text length after all:", len(text))
+        return text
+    
+    except Exception as e:
+        print("ERROR!", e)
+        text = f"Вы на волнах канала {meta['name']}. Продолжаем!"
+        return text
     
 
 def generate_text(user_uid: str, channel_uid: str, 
@@ -738,7 +745,7 @@ def add_homographs(text: str) -> str:
     return response.choices[0].message.content.strip()
     
 
-def check_title_llm(searching_title: str, found_title: str) -> dict:
+def check_title_llm(searching_title: str, found_title: str, video_source: str) -> dict:
     prompt = f"""
 Ты сравниваешь два названия треков и определяешь, один и тот же ли это трек.
 
@@ -748,19 +755,27 @@ B = "{found_title}"
 
 Правила:
 - Игнорируй HTML entities (&amp; -> &)
-- Игнорируй мусорные префиксы релиза типа "EP", "Radio Edit", "Original Mix"
+- Игнорируй мусорные префиксы релиза типа "EP", "Radio Edit", "Original Mix", "Extended Mix", "Remastered", "Remix", 
+"feat.", "featuring", "ft.", "vs.", "version", "edit" и т.п. в названии трека, а также в имени артиста. Они не влияют на совпадение треков.
 - Если артист тот же и название трека совпадает — это MATCH, даже если в B добавлены feat / ремикс / дополнительные артисты
 - Если артист в B совпадает с артистом в A, а название трека в B содержит название из A — это может быть MATCH
 - Если артист в B совпадает с артистом в A, а название трека в B содержит часть названия из A — это может быть MATCH
 - в score ставь число от 0 до 100, которое отражает степень совпадения. 100 — идеально совпало, 0 — совершенно разные треки.
+- Если исполнитель совпадает, то это минимум 70 баллов
+- Если совпадает или похоже только название трека - то это 50 баллов
+- Если совпадает и исполнитель и название трека - то это 100 баллов
+- Если исполнитель совпадает, а название трека похоже - то это 90 баллов
+- Если исполнитель не совпадает, а название трека совпадает - то это 30 баллов
+- Если совпадает название трека, но разные исполнители - то это 30 баллов
+- Если исполнитель похож, а название трека совпадает - то это 70 баллов
 - match - это score >= 90
 
 Верни строго JSON:
 {{
   "match": true/false,
   "score": 0-100,
-  "normalized_a": "...",
-  "normalized_b": "...",
+  "normalized_a": "Артист А - Трэк А",
+  "normalized_b": "Артист B - Трэк B",
   "reason": "коротко"
 }}
 """
@@ -777,7 +792,21 @@ B = "{found_title}"
 
     result = json.loads(response.choices[0].message.content)
 
+    
+    result["original_a"] = searching_title
+    result["original_b"] = found_title
+    result["source"] = video_source
+
     print("Title match result:", result)
+
+    file = "check_title_llm.csv"
+    columns = ["match", "score", "original_a", "original_b", "normalized_a", "normalized_b", "reason", "source"]
+    if os.path.exists(file):
+        df = pd.read_csv(file)
+    else:
+        df = pd.DataFrame(columns=columns)
+    df.loc[len(df)] = result
+    df.to_csv(file, index=False)
 
     return result['match']
     

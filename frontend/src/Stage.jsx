@@ -754,7 +754,7 @@ export default function App({ token, userData, channel }) {
 
         {/* Fullscreen кнопка справа сверху */}
         {!isFullscreen && isStreaming && (
-          <div style={{ position: "absolute", top: 8, right: 8 }}>
+          <div style={{ position: "absolute", top: 8, right: 8, zIndex: 150 }}>
             <FullscreenButton />
           </div>
         )}

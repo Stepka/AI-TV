@@ -40,7 +40,8 @@ def get_playlist(req: PlaylistRequest):
     tracks = check_style_match_level(req.user_id, req.channel_id, tracks)
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
-    video_sources = ["youtube", "vk"]
+    # video_sources = ["youtube", "vk"]
+    video_sources = ["vk", "youtube"]
     # video_sources = ["youtube"]
     # video_sources = ["vk"]
 
@@ -76,13 +77,15 @@ def get_playlist(req: PlaylistRequest):
                         # print("VK search result:", yt_video)
 
                         if yt_video:
-                            matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'])
+                            matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'], video_source)
+                            # matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['channelTitle'] + " - " + yt_video['title'])
                             if matched:
                                 video_id = yt_video["videoId"]
 
                                 try:
                                     video_duration = get_video_duration(video_id)
                                     if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
+                                        print(f"Video duration {video_duration} - skip")
                                         continue
                                     cache.save_video(track['artist'], track['title'], video_id)
                                 except Exception as e:
@@ -107,13 +110,14 @@ def get_playlist(req: PlaylistRequest):
                 
                 video_id = None
                 if vk_video:
-                    matched = check_title_llm(track['artist'] + " - " + track['title'], vk_video['title'])
+                    matched = check_title_llm(track['artist'] + " - " + track['title'], vk_video['title'], video_source)
                     if matched:
                         video_id = vk_video["videoId"]
 
                         try:
                             video_duration = vk_video.get("duration", 0)
                             if not video_duration or video_duration < 60 or video_duration > 15*60:  # фильтр по длительности (не больше 15 минут)
+                                print(f"Video duration {video_duration} - skip")
                                 continue
                             # cache.save_video(track['artist'], track['title'], video_id)
                         except Exception as e:
