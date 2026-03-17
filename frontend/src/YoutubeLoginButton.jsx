@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function GoogleLoginButton({ onSuccess }) {
     
   const CLIENT_ID = import.meta.env.VITE_GOOGLE_AUTH_CLIENT_ID;
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -16,6 +17,25 @@ export default function GoogleLoginButton({ onSuccess }) {
       window.google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: handleCredentialResponse,
+        auto_select: true
+      });
+
+      window.google.accounts.id.prompt((notification) => {
+
+        if (notification.isNotDisplayed()) {
+            console.log("User not logged in to Google");
+        }
+
+        if (notification.isSkippedMoment()) {
+            console.log("User logged in but skipped login");
+            // setHasSession(true);
+        }
+
+        if (notification.isDisplayed()) {
+            console.log("User has Google session");
+            // setHasSession(true);
+        }
+
       });
 
       window.google.accounts.id.renderButton(
@@ -39,7 +59,7 @@ export default function GoogleLoginButton({ onSuccess }) {
     }
   };
 
-  return (
+  return !hasSession ? (
     <div id="google-login-button"></div>
-  );
+  ) : null;
 }

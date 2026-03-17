@@ -14,6 +14,20 @@ router = APIRouter(prefix="/playlist", tags=["playlist"])
 
 @router.post("")
 def get_playlist(req: PlaylistRequest):
+    videos = []
+
+    while len(videos) < req.max_results:
+        print("Search for videos... ")
+        found = _get_playlist(req)
+        videos.extend(found)
+        print(f"Collected videos num: {len(videos)}")
+
+    return {
+        "playlist": videos,
+        "source": "llm+youtube"
+    }
+
+def _get_playlist(req: PlaylistRequest):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
 
     # tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results*4)
@@ -150,7 +164,4 @@ def get_playlist(req: PlaylistRequest):
     print("Updated last played:", last_played[-20:])
     save_last_played(req.user_id, req.channel_id, last_played[-20:])
 
-    return {
-        "playlist": videos,
-        "source": "llm+youtube"
-    }
+    return videos

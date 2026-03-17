@@ -13,6 +13,7 @@ export default function App({ token, userData, channel }) {
   const [isStreaming, setIsStreaming] = useState(false);
 
   const [playlist, setPlaylist] = useState([]);
+  const playlistRef = useRef(playlist);
   const [current, setCurrent] = useState(0);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [playlistReady, setPlaylistReady] = useState(false);  
@@ -303,6 +304,7 @@ export default function App({ token, userData, channel }) {
 
     console.log("Updating titles for current and next video");
     console.log(playlist);
+    playlistRef.current = playlist;
 
     const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
     const nextIndex = (current + 1) % playlist.length;
@@ -491,15 +493,18 @@ export default function App({ token, userData, channel }) {
 
   // Следующий клип
   const handleNext = (timeout = 0) => {
-    if (current === playlist.length - 1 || current === playlist.length - 2 || current === playlist.length - 3) {
+    const list = playlistRef.current;
+
+    if (current === list.length - 1 || current === list.length - 2 || current === list.length - 3) {
       loadPlaylist();
     }
 
     console.log("handleNext called with timeout:", timeout);
-    console.log(playlist);
+    console.log("current playlist", list);
+    console.log("old playlist", playlist);
     console.log(current);
     setTimeout(() => {
-      setCurrent(prev => (prev + 1) % playlist.length);
+      setCurrent(prev => (prev + 1) % list.length);
     }, timeout - 10000);
   };
 

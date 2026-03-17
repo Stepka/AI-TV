@@ -9,6 +9,7 @@ import os
 
 import pandas as pd
 import requests
+from rapidfuzz import fuzz
 
 from services.common import convert_latin_to_cyrillic, get_weather, replace_words
 from db.channels import get_channel_by_id
@@ -774,8 +775,10 @@ B = "{found_title}"
 {{
   "match": true/false,
   "score": 0-100,
-  "normalized_a": "Артист А - Трэк А",
-  "normalized_b": "Артист B - Трэк B",
+  "normalized_artist_a": "Артист А",
+  "normalized_title_a": "Название трека А",
+  "normalized_artist_b": "Артист B",
+  "normalized_title_b": "Название трека B",
   "reason": "коротко"
 }}
 """
@@ -800,13 +803,26 @@ B = "{found_title}"
     print("Title match result:", result)
 
     file = "check_title_llm.csv"
-    columns = ["match", "score", "original_a", "original_b", "normalized_a", "normalized_b", "reason", "source"]
+    columns = ["match", "score", "original_a", "original_b", "normalized_artist_a", "normalized_title_a", "normalized_artist_b", "normalized_title_b", "reason", "source"]
     if os.path.exists(file):
         df = pd.read_csv(file)
     else:
         df = pd.DataFrame(columns=columns)
     df.loc[len(df)] = result
     df.to_csv(file, index=False)
+
+    a = "Solle - Land of Light"
+    b = "Within Silence - Land of Light"
+
+    artist_score = fuzz.ratio(result["normalized_artist_a"], result["normalized_artist_b"])
+    print()
+    print(f"Artist score: {artist_score}")
+    title_score = fuzz.ratio(result["normalized_title_a"], result["normalized_title_b"])
+    print(f"Title score: {title_score}")
+    print()
+
+    if result['match']: 
+        result['match'] = artist_score > 90 and title_score > 90
 
     return result['match']
     
