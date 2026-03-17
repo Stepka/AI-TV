@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton";
+import YoutubeLoginButton from "./YoutubeLoginButton";
 
 export default function UserPanel({ token, onLogout, onGetUserData }) {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -56,6 +57,8 @@ export default function UserPanel({ token, onLogout, onGetUserData }) {
         <AppButton onClick={onLogout}>
           Logout
         </AppButton>
+
+        <YoutubeLoginButton/>
       </div>
     </header>
   );
