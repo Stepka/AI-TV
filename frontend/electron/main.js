@@ -28,7 +28,7 @@ function createWindow() {
   win.loadURL("http://localhost:3030");
   
   // Опционально DevTools
-  win.webContents.openDevTools();
+  // win.webContents.openDevTools();
 }
 
 // Закрываем сервер при выходе

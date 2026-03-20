@@ -16,18 +16,23 @@ router = APIRouter(prefix="/playlist", tags=["playlist"])
 def get_playlist(req: PlaylistRequest):
     videos = []
 
-    while len(videos) < req.max_results:
+    retries = 3
+    match_level = 70
+
+    while len(videos) < req.max_results and retries > 0:
         print("Search for videos... ")
-        found = _get_playlist(req)
+        found = _get_playlist(req, match_level)
         videos.extend(found)
         print(f"Collected videos num: {len(videos)}")
+        match_level -= 10
+        retries -= 1
 
     return {
         "playlist": videos,
         "source": "llm+youtube"
     }
 
-def _get_playlist(req: PlaylistRequest):
+def _get_playlist(req: PlaylistRequest, match_level = 80):
     cache = YouTubeCache()  # при первом запуске база создастся автоматически
 
     # tracks = generate_playlist_llm(req.user_id, req.channel_id, req.max_results*4)
@@ -51,7 +56,13 @@ def _get_playlist(req: PlaylistRequest):
     except Exception as e:
         print(e)
 
-    tracks = check_style_match_level(req.user_id, req.channel_id, tracks)
+    tracks = check_style_match_level(req.user_id, req.channel_id, tracks) 
+
+    tracks = [t for t in tracks if t["match"] >= match_level]   
+
+    last_played += [{"artist": v['artist'], "title": v['title']} for v in tracks]
+    save_last_played(req.user_id, req.channel_id, last_played[-25:])
+
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
     # video_sources = ["youtube", "vk"]
@@ -84,14 +95,18 @@ def _get_playlist(req: PlaylistRequest):
                         print("Searching YouTube for:", track)
 
                         query = f"{track['artist']} {track['title']} official music video"
-                        yt_video = None
-                        yt_video = search_youtube_video(query)
+                        yt_video = None                        
+                        try:
+                            yt_video = search_youtube_video(query)
+                        except Exception as e:
+                            print(e)
+                            
                         print("YouTube search result:", yt_video)
                         # yt_video = search_vk_video(query)
                         # print("VK search result:", yt_video)
 
                         if yt_video:
-                            matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'], video_source)
+                            matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['title'] + ' (' + yt_video['channelTitle'] + ')', video_source)
                             # matched = check_title_llm(track['artist'] + " - " + track['title'], yt_video['channelTitle'] + " - " + yt_video['title'])
                             if matched:
                                 video_id = yt_video["videoId"]
@@ -119,7 +134,11 @@ def _get_playlist(req: PlaylistRequest):
     
             if video_source == "vk":
                 query = f"{track['artist']} {track['title']} official music video"
-                vk_video = search_vk_video(query)
+                vk_video = None
+                try:
+                    vk_video = search_vk_video(query)
+                except Exception as e:
+                    print(e)
                 print("VK search result:", vk_video)
                 
                 video_id = None
@@ -148,20 +167,13 @@ def _get_playlist(req: PlaylistRequest):
                         "source": video_source
                     })
                     break  # если нашли видео на VK, не ищем на других платформах
-                   
+                       
     
     indexed = [(i, t) for i, t in enumerate(videos)]
-    top_n = sorted(indexed, key=lambda x: float(x[1]["match"]), reverse=True)[:req.max_results]
-    videos = [t for i, t in sorted(top_n, key=lambda x: x[0])]
+    top_n = sorted(indexed, key=lambda x: float(x[1]["match"]), reverse=True)
+    videos = [t for i, t in sorted(top_n, key=lambda x: x[0])][:req.max_results]
 
     print("Selected videos:")
     print(videos)
-
-    last_played += [{"artist": v['artist'], "title": v['title']} for v in videos]
-    print()
-    print()    
-    print("Updated last played:", last_played)
-    print("Updated last played:", last_played[-20:])
-    save_last_played(req.user_id, req.channel_id, last_played[-20:])
 
     return videos

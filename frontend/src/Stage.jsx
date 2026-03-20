@@ -35,6 +35,7 @@ export default function App({ token, userData, channel }) {
   const djDataRef = useRef(null);
   const djHelloDataRef = useRef(null);
   const duckIntervalRef = useRef(null);
+  const trackTimeoutInterval = useRef(null);
 
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -149,7 +150,7 @@ export default function App({ token, userData, channel }) {
                 }
 
                 // Парабола
-                const volume = Math.pow(progress, 2) * 90;
+                const volume = Math.pow(progress, 2) * 0.75 * 90;
 
                 event.target.setVolume(volume);
 
@@ -203,6 +204,8 @@ export default function App({ token, userData, channel }) {
 
           playerRef.current.on("inited", () => {
             console.log("VK player ready");
+            console.log("Volume:", playerRef.current.getVolume())
+            console.log("Muted:", playerRef.current.isMuted())
             setPlayerReady(true);
             
             // Ставим громкость на 0
@@ -224,11 +227,27 @@ export default function App({ token, userData, channel }) {
               }
 
               // Парабола
-              const volume = Math.pow(progress, 2);
+              const volume = Math.pow(progress, 2) * 0.75;
 
               playerRef.current.setVolume(volume);
 
+              console.log("Volume:", playerRef.current.getVolume())
+              console.log("Muted:", playerRef.current.isMuted())
+
             }, period);
+            
+            if (playlist[current].duration > 0) {
+              trackTimeoutInterval.current = setInterval(() => {              
+
+                  const dj_duration = 15;
+                  console.log("Timeout")
+                  console.log("Starting DJ transition, remaining:", remaining);
+                  clearInterval(trackTimeoutInterval);
+
+                  startTransition(dj_duration);
+              }, playlist[current].duration);
+            }
+
           });
 
           playerRef.current.on("adStarted", () => {
@@ -401,6 +420,7 @@ export default function App({ token, userData, channel }) {
   };
   
   const startTransition = async (dj_duration) => {  
+    clearInterval(trackTimeoutInterval);
     playOverlayVideo(`${API_URL}/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
     clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
@@ -473,7 +493,7 @@ export default function App({ token, userData, channel }) {
       }
 
       // 🔥 Параболическое затухание
-      const volume = videoSource === "youtube" ? Math.pow(1 - progress, 2) * 90 : Math.pow(1 - progress, 2);
+      const volume = videoSource === "youtube" ? Math.pow(1 - progress, 2) * 0.75 * 90 : Math.pow(1 - progress, 2) * 0.75;
       if (playerRef.current) {
         playerRef.current.setVolume(volume);
       }

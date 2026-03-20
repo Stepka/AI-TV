@@ -43,17 +43,17 @@ Style: {meta["style"]}
 Rules:
 - EXACTLY {count} items
 - Each item must include artist and title
+- No long DJ sets, DJ mixes, etc
 - No live versions
-- Prefer no remixes
+- No compilations
 - Today {datetime.now()}. Detect part of the day and prefer tracks that fit this part of the day 
-- Prefer tracks with the video clip on Youtube
+- Prefer tracks with the video clip on Youtube or on VK Video
 - Try to make different playlist with different tracks each time
 - Avoid duplicate artists
 - Use various artists in generated playlist. Add not more 2 tracks from a single artist
 - Do not arrange tracks on its popularity
 
-Also exclude tracks, that already played on this channel recently. 
-Here is the list of recently played tracks: {last_played_str}
+Also exclude this tracks: {last_played_str}
 
 Return ONLY valid JSON. 
 Format:
@@ -115,21 +115,20 @@ Rules:
 - EXACTLY {count} items
 - Each item must include artist and title
 - No live versions
+- No compilations
 - No long DJ sets, DJ mixes, etc
-- Prefer no remixes
 - Today {datetime.now()}. Detect part of the day and prefer tracks that fit this part of the day 
 - Try to select tracks with duration from 2 to 10 minutes, avoid tracks with duration more than 10 minutes
-- Prefer tracks with the video clip on Youtube
+- Prefer tracks with the video clip on Youtube or on VK Video
 - Try to make different playlist with different tracks each time
 - Avoid duplicate artists
-- If possible make query music databases, YouTube, Spotify, or music streaming platforms
+- If possible make query on YouTube, VK Video
 - If there are few tracks anyway return those tracks
 - Use various artists in generated playlist. Add not more 2 tracks from a single artist
 - Use different sources
 - Do not arrange tracks on its popularity
 
-Also exclude tracks, that already played on this channel recently. 
-Here is the list of recently played tracks: {last_played_str}
+Also exclude this tracks: {last_played_str}
 
 Return ONLY valid JSON. Do not use markdown.
 Format:
@@ -263,11 +262,11 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
             # print("Adding promo")
             # text = add_promo(text, user_uid, channel_uid)
 
-        if len(text) > 600:
+        if len(text) > 500:
             print("Text is too long, shortening")
             print("Text length before shortening:", len(text))
             print(text)
-            text = shortener(text, user_uid, channel_uid, max_symbols=600)
+            text = shortener(text, user_uid, channel_uid, max_symbols=500)
             print("Text length after shortening:", len(text))
             print(text)
         
@@ -294,6 +293,10 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
             text = add_emotions_llm(text)
 
         # text = add_pauses_llm(text)
+        
+        if len(text) > 1000:
+            print("ERROR!", text)
+            text = f"Вы на волнах канала {meta['name']}. Продолжаем!"
             
         print("Text length after all:", len(text))
         return text

@@ -82,22 +82,25 @@ def generate_dj_speech(req: DJRequest):
     is_speech = False
     audio = None
     while audio is None and retries > 0:
-        audio = generate_speech()
-        is_speech = has_speech(audio, sample_rate, threshold=0.5)
-        retries -= 1
-        duration_seconds = 30
-        # Количество сэмплов
-        num_samples = audio.shape[0]
-        # Длительность в секундах
-        duration_seconds = num_samples / sample_rate
-        print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
-        raw = f"{req.user_id}|{req.channel_id}|{req.from_title}|{req.to_title}"
-        h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+        try:
+            retries -= 1
+            audio = generate_speech()
+            is_speech = has_speech(audio, sample_rate, threshold=0.5)
+            duration_seconds = 30
+            # Количество сэмплов
+            num_samples = audio.shape[0]
+            # Длительность в секундах
+            duration_seconds = num_samples / sample_rate
+            print(f"Generated {duration_seconds:.2f} sec audio with {meta["voice"]["source"]}")
+            raw = f"{req.user_id}|{req.channel_id}|{req.from_title}|{req.to_title}"
+            h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
-        filename = f"dj_{h}.wav"
-        dir_path = f"channels_data/{req.user_id}/{req.channel_id}/speech"
-        os.makedirs(dir_path, exist_ok=True)
-        write(f"{dir_path}/{filename}", sample_rate, audio)
+            filename = f"dj_{h}.wav"
+            dir_path = f"channels_data/{req.user_id}/{req.channel_id}/speech"
+            os.makedirs(dir_path, exist_ok=True)
+            write(f"{dir_path}/{filename}", sample_rate, audio)
+        except Exception as e:
+            print("ERROR!", e)
           
 
     if is_speech:
