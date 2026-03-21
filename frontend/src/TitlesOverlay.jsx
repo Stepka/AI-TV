@@ -15,7 +15,7 @@ export default function TitlesOverlay({
         width: "100%",
         height: "100%",
         pointerEvents: "none",
-        opacity: 0.3,
+        // opacity: 0.5,
         zIndex,
       }}
     >
@@ -96,8 +96,8 @@ export default function TitlesOverlay({
             d="
                 M 0 1080
                 L 1920 1080
-                L 1920 950
-                C 1600 980, 960 900, 0 900
+                L 1920 850
+                C 1600 980, 960 800, 0 850
                 Z
             "
           />

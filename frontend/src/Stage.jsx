@@ -140,6 +140,7 @@ export default function App({ token, userData, channel }) {
 
               let elapsed = 0;
 
+              clearInterval(duckIntervalRef.current);
               duckIntervalRef.current = setInterval(() => {
                 elapsed += period;
 
@@ -153,6 +154,7 @@ export default function App({ token, userData, channel }) {
                 const volume = Math.pow(progress, 2) * 0.75 * 90;
 
                 event.target.setVolume(volume);
+                console.log("crYtPl Volume:", playerRef.current.getVolume())
 
               }, period);
 
@@ -217,6 +219,7 @@ export default function App({ token, userData, channel }) {
 
             let elapsed = 0;
 
+            clearInterval(duckIntervalRef.current);
             duckIntervalRef.current = setInterval(() => {
               elapsed += period;
 
@@ -231,22 +234,23 @@ export default function App({ token, userData, channel }) {
 
               playerRef.current.setVolume(volume);
 
-              console.log("Volume:", playerRef.current.getVolume())
-              console.log("Muted:", playerRef.current.isMuted())
+              console.log("crVkPl Volume:", playerRef.current.getVolume())
+              // console.log("Muted:", playerRef.current.isMuted())
 
             }, period);
             
-            if (playlist[current].duration > 0) {
-              trackTimeoutInterval.current = setInterval(() => {              
+            // console.log("Muted:", playlist[current].duration)
+            // if (playlist[current].duration > 0) {
+            //   trackTimeoutInterval.current = setInterval(() => {              
 
-                  const dj_duration = 15;
-                  console.log("Timeout")
-                  console.log("Starting DJ transition, remaining:", remaining);
-                  clearInterval(trackTimeoutInterval);
+            //       const dj_duration = 15;
+            //       console.log("Timeout")
+            //       console.log("Starting DJ transition");
+            //       clearInterval(trackTimeoutInterval);
 
-                  startTransition(dj_duration);
-              }, playlist[current].duration);
-            }
+            //       startTransition(dj_duration);
+            //   }, (playlist[current].duration + 15) * 1000);
+            // }
 
           });
 
@@ -482,6 +486,7 @@ export default function App({ token, userData, channel }) {
     const period = 50; // частота обновления
     let elapsed = 0;
 
+    clearInterval(duckIntervalRef.current);
     duckIntervalRef.current = setInterval(() => {
       elapsed += period;
 
@@ -496,6 +501,7 @@ export default function App({ token, userData, channel }) {
       const volume = videoSource === "youtube" ? Math.pow(1 - progress, 2) * 0.75 * 90 : Math.pow(1 - progress, 2) * 0.75;
       if (playerRef.current) {
         playerRef.current.setVolume(volume);
+        console.log("plDjOvVi Volume:", playerRef.current.getVolume())
       }
 
     }, period);
@@ -524,7 +530,16 @@ export default function App({ token, userData, channel }) {
     console.log("old playlist", playlist);
     console.log(current);
     setTimeout(() => {
-      setCurrent(prev => (prev + 1) % list.length);
+      if (current == 0 && list.length == 1) {
+        
+        if (playlist[current].source == "youtube") {
+          createYoutubePlayer(playlist[current].videoId);
+        } else if (playlist[current].source == "vk") {
+          createVkPlayer(playlist[current].videoId);
+        }
+      } else {
+        setCurrent(prev => (prev + 1) % list.length);
+      }
     }, timeout - 10000);
   };
 

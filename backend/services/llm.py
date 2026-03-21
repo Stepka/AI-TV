@@ -236,7 +236,10 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         from_track_description = get_track_info_ppx(from_artist, from_title) if from_artist and from_title else ""
         print("From track info:", from_track_description)
 
-        text = generate_text(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
+        if meta["type"] == "brand_space":
+            text = generate_text_brand_space(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
+        else: 
+            text = generate_text_music_tv(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
 
         if from_title:
             if meta["type"] == "brand_space":
@@ -257,10 +260,10 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
                         #     print("Adding local news")
                         #     text = add_local_news(text, channel)
         else:
-            print("Adding weather")
-            text = add_weather(text, user_uid, channel_uid)
-            # print("Adding promo")
-            # text = add_promo(text, user_uid, channel_uid)
+            # print("Adding weather")
+            # text = add_weather(text, user_uid, channel_uid)
+            print("Adding promo")
+            text = add_promo(text, user_uid, channel_uid)
 
         if len(text) > 500:
             print("Text is too long, shortening")
@@ -290,7 +293,7 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         
         if meta["voice"]["source"] == "elevenlabs":
             print("Adding emotions")
-            text = add_emotions_llm(text)
+            text = add_emotions_llm(text, user_uid, channel_uid)
 
         # text = add_pauses_llm(text)
         
@@ -307,7 +310,7 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         return text
     
 
-def generate_text(user_uid: str, channel_uid: str, 
+def generate_text_music_tv(user_uid: str, channel_uid: str, 
                   from_artist: str, from_title: str, from_track_description: str, 
                   to_artist: str, to_title: str, to_track_description: str) -> str:
     
@@ -317,18 +320,9 @@ def generate_text(user_uid: str, channel_uid: str,
 
     prompt = f"""
 Ты — радио-диджей брендированного музыкального канала "{channel}". 
-"""
-    
-    if meta["type"] == "brand_space":
-        prompt += f"""
-Ты играешь музыку в заведении "{meta["name"]}", вот его описание: {meta["description"]}.
-Упоминай в тексте заведение и его атмосферу и описание.
-"""
-    else:
-        prompt += f"""
+
 Ты играешь музыку на канале "{meta["name"]}", вот его описание: {meta["description"]}.
-"""
-    prompt += f"""
+
 Сегодня {datetime.now()}. Если будешь в тексте упоминать время дня, то соотноси его с текущим временем и временем дня. 
 """
     if from_title is None and from_artist is None:        
@@ -366,7 +360,72 @@ def generate_text(user_uid: str, channel_uid: str,
 — 1–2 предложения
 """
     
-    print("Prompt for DJ text generation:", prompt)
+    # print("Prompt for DJ text generation:", prompt)
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You write short DJ speech for radio."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
+def generate_text_brand_space(user_uid: str, channel_uid: str, 
+                  from_artist: str, from_title: str, from_track_description: str, 
+                  to_artist: str, to_title: str, to_track_description: str) -> str:
+    
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
+
+    prompt = f"""
+Ты — радио-диджей брендированного музыкального канала "{channel}". 
+
+Ты играешь музыку в заведении "{meta["name"]}", вот его описание: {meta["description"]}.
+Упоминай в тексте заведение и его атмосферу и описание.
+
+Сегодня {datetime.now()}. Если будешь в тексте упоминать время дня, то соотноси его с текущим временем и временем дня. 
+"""
+    if from_title is None and from_artist is None:        
+        prompt += f"""
+Теперь представь трек "{to_title}" от исполнителя "{to_artist}", с которого начнется вещание. 
+Это единственный трек, который надо будет упомняуть. Это твоя первая реплика в эфире, сделай ее привественной.
+
+Используй это описание и факты о треке: {to_track_description}. Только не сильно увлекайся цифрами.
+
+"""
+    else:
+        prompt += f"""
+Нужно перейти от одного клипа к другому, вскользь упомянув треки, которые играют, но больше рассказывая о заведении.
+Придумай короткий переход от трека "{from_title}" от исполнителя "{from_artist}", который заканчивает играть, 
+к треку "{to_title}" от исполнителя "{to_artist}", который будет играть следующим. Сами треки не обязательно упомянать.
+Расскажи пару слов о треке, который будет играть, используя информацию ниже. 
+
+Музыкальный стиль канала: ({meta["style"]})
+
+Используй это описание и факты о треках: 
+- {from_artist} - {from_title}: {from_track_description}
+- {to_artist} - {to_title}: {to_track_description}
+
+"""
+    
+    prompt += f"""
+Требования к тексту:
+— русский язык
+— нельзя использовать слова на английском или других языках, кроме русского
+— Имена исполнителей или исполнителя пиши в русской фонетической передаче 
+— Не переводи на русский названия треков или трека
+— от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
+— разговорный стиль
+— не придумывай ничего от себя, а используй только информацию, описания и факты, которые тебе передали
+— 1–2 предложения
+"""
+    
+    # print("Prompt for DJ text generation:", prompt)
 
     response = llm_client.chat.completions.create(
         model="gpt-4o-mini",
@@ -390,6 +449,7 @@ def add_menu(text, user_uid: str, channel_uid: str) -> str:
 Добавь в этот текст информацию об одной позиции в меню заведения {meta["name"]}, которое играет на канале {channel}.
 Вот текст, который нужно дополнить: {text}
 Вот позиция в меню: {random.choice(meta["menu"])}
+В конце информации о позиции добавь призыв к дейстивю, например: подробности спрашивайте у наших сотрудников.
 
 Верни дополненный текст, который диджей может сказать в эфире, чтобы прорекламировать заведение и его предложения, 
 не нарушая при этом стиль канала и не делая прямой рекламы.
@@ -418,6 +478,7 @@ def add_promo(text, user_uid: str, channel_uid: str) -> str:
 Добавь в этот текст информацию об одной из акций заведения {meta["name"]}, которое играет на канале {channel}.
 Вот текст, который нужно дополнить: {text}
 Вот акция: {random.choice(meta["actions"]) if meta["actions"] else "Нет акций"}
+В конце информации об акции добавь призыв к дейстивю, например: подробности спрашивайте у наших сотрудников.
 
 Верни дополненный текст, который диджей может сказать в эфире, чтобы прорекламировать заведение и его предложения, 
 не нарушая при этом стиль канала и не делая прямой рекламы.
@@ -830,7 +891,10 @@ B = "{found_title}"
     return result['match']
     
 
-def add_emotions_llm(text: str) -> dict:
+def add_emotions_llm(text: str, user_uid: str, channel_uid: str) -> dict:
+    
+    meta = get_channel_by_id(user_uid, channel_uid)
+    
     prompt = f"""
 Ты — редактор текста для озвучки в ElevenLabs (модель eleven_v3).
 
@@ -838,7 +902,7 @@ def add_emotions_llm(text: str) -> dict:
 
 Правила:
 
-Добавляй короткие эмоциональные подсказки, которые уместны в тексте в квадратных скобках на английском.
+Добавляй короткие эмоциональные подсказки, которые уместны в тексте и соответсвуют музыкальному стилю заведения, в квадратных скобках на английском.
 Эти подсказки не должны быть длинными.
 Добавляй это перед кусочком текста, который надо озвучить с такой эмоцией.
 Максимум 4-5 штук на весь текст.
@@ -850,6 +914,10 @@ def add_emotions_llm(text: str) -> dict:
 
 Добавляй паузы в виде троеточий в середине предложений - это уже без квадратных строк, прямо в текст.
 Максимум 2-3 штуки на весь текст.
+
+Мущыкальный стиль: {meta["style"]}
+
+Описание заведения: {meta["description"]}
 
 Вот твой текст: {text}
 
