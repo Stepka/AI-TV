@@ -11,6 +11,7 @@ import pandas as pd
 import requests
 from rapidfuzz import fuzz
 
+from models.channels import Channel
 from services.common import convert_latin_to_cyrillic, get_weather, replace_words
 from db.channels import get_channel_by_id
 
@@ -1277,3 +1278,89 @@ Format:
             print(content)
             raise Exception("Perplexity returned invalid JSON")
         raise Exception("Perplexity returned invalid JSON")
+
+def extract_channel_with_perplexity(url: str, channel_uid: str) -> Channel:
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    perplexity_url = "https://api.perplexity.ai/chat/completions"
+    
+    prompt = f"""
+Проанализируй сайт по ссылке и заполни объект Channel. Заполняй максимально близко к текстам, которые найдешь на сайте.
+Заполняй без сносок. 
+
+Ссылка: {url}
+
+Верни строго JSON без комментариев:
+
+{{
+  "name": "...",
+  "type": "brand_space",
+  "style": "...",
+  "description": "...",
+  "location": "...",
+  "voice": {{
+    "source": "elevenlabs",
+    "name": "elevenlabs",
+    "prompt": "...",
+    "sex": "..."
+  }},
+  "actions": ["..."],
+  "menu": ["..."]
+}}
+
+Правила:
+- style: музыкальный стиль (например: ambient techno, lounge jazz), подходящий заведению по его описанию и атмосфере
+- voice: 
+    - sex: male или female 
+    - prompt: промпт для elevenlabs для генерации голоса, подходящий под стиль музыки и атмосферу заведения
+- actions: конкретные акции, которые размещены на сайте, отдельное поле на каждую акцию
+- menu: если есть — список товаров/услуг с ценами, отдельное поле на каждую позицию меню
+- location: только город
+"""
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "sonar-pro",
+        "messages": [
+            {"role": "system", "content": "Return valid json. No markdown."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,
+    }
+
+    r = requests.post(perplexity_url, headers=headers, json=payload, timeout=30)
+    r.raise_for_status()
+
+    content = r.json()["choices"][0]["message"]["content"].strip()
+
+    # убираем возможные переносы строк
+    content = content.replace("\n", " ").strip()
+
+    try:
+        data = json.loads(content)
+
+        return Channel(
+            channel_uid=channel_uid,
+            url=url,
+            **data
+        )
+    except Exception as e:
+        print(e)
+        try:
+            data = json.loads(content.replace("```json", "").replace("```", ""))
+
+            return Channel(
+                channel_uid=channel_uid,
+                url=url,
+                **data
+            )
+        except Exception as e:
+            print(e)
+            print(content)
+            raise Exception("Perplexity returned invalid JSON")
+        raise Exception("Perplexity returned invalid JSON")
+
+    return None

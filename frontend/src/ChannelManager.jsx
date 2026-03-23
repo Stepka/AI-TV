@@ -44,6 +44,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
         voice_json: JSON.stringify({"source": editedChannel.voice.source, "name": editedChannel.voice.name, "sex": editedChannel.voice.sex}),
         actions_json: JSON.stringify(editedChannel.actions),
         menu_json: JSON.stringify(editedChannel.menu),
+        url: editedChannel.url,
     };
     await fetch(`${API_URL}/channels/${editedChannel.channel_uid}`, {
       method: "PUT",
@@ -105,6 +106,31 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
     }
   };
 
+  
+  const handleFillWithLLMChannel = async () => {
+
+    const payload = {
+        user_id: userData.user_uid,
+        url: editedChannel.url,
+    };
+    const res = await fetch(`${API_URL}/channels/${editedChannel.channel_uid}/fill_with_llm`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      console.log("result: " + result.channel);
+      setEditedChannel({ ...result.channel });
+      return;
+    }
+  };
+
+
   return (
     <div style={{ 
             display: "flex",     
@@ -131,6 +157,15 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
 
             <Input label="Type" value={editedChannel.type}
             onChange={v => handleChange("type", v)} />
+
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <Input label="URL" value={editedChannel.url}
+              onChange={v => handleChange("url", v)} />
+              <AppButton
+                  onClick={handleFillWithLLMChannel}>
+                  Fill with LLM
+              </AppButton>
+            </div>
 
             <Textarea label="Style" value={editedChannel.style || ""}
             onChange={v => handleChange("style", v)} />

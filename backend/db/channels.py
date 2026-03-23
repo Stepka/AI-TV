@@ -34,7 +34,8 @@ def fetch_channels(username: str) -> List[Channel]:
             location=row["location"] if row["location"] is not None else "",
             voice=Voice(**json.loads(row["voice_json"])),
             actions=json.loads(row["actions_json"] or "[]"),
-            menu=json.loads(row["menu_json"] or "[]")
+            menu=json.loads(row["menu_json"] or "[]"),
+            url=row["url"],
         ))
 
     conn.close()
@@ -66,6 +67,7 @@ def get_channel_by_id(user_uid: str, channel_id: str):
         "voice": json.loads(row["voice_json"] or "{}"),
         "actions": json.loads(row["actions_json"] or "[]"),
         "menu": json.loads(row["menu_json"] or "[]"),
+        "url": row["url"],
     }
 
 
@@ -84,7 +86,8 @@ def update_channel(channel_uid: str, payload: ChannelUpdate):
             location = ?,
             voice_json = ?,
             actions_json = ?,
-            menu_json = ?
+            menu_json = ?,
+            url = ?
         WHERE channel_uid = ? AND user_uid = ?
     """, (
         payload.name,
@@ -95,6 +98,7 @@ def update_channel(channel_uid: str, payload: ChannelUpdate):
         payload.voice_json,
         payload.actions_json,
         payload.menu_json,
+        payload.url,
         channel_uid,
         payload.user_id
     ))
@@ -104,8 +108,8 @@ def update_channel(channel_uid: str, payload: ChannelUpdate):
         cursor.execute("""
             INSERT INTO channels (
                 channel_uid, user_uid, name, type, style, description, location,
-                voice_json, actions_json, menu_json, created_at, last_played_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), '[]')
+                voice_json, actions_json, menu_json, created_at, last_played_json, url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), '[]', ?)
         """, (
             channel_uid,
             payload.user_id,
@@ -116,7 +120,8 @@ def update_channel(channel_uid: str, payload: ChannelUpdate):
             payload.location,
             payload.voice_json,
             payload.actions_json,
-            payload.menu_json
+            payload.menu_json,
+            payload.url
         ))
 
     conn.commit()

@@ -1,4 +1,6 @@
 
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -6,6 +8,7 @@ class Voice(BaseModel):
     source: str
     name: str
     sex: str
+    prompt: Optional[str] = ""
 
     
 class DJRequest(BaseModel):
