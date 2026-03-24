@@ -3,6 +3,7 @@ from datetime import datetime
 import hashlib
 import random
 import re
+from fastapi.staticfiles import StaticFiles
 import numpy as np
 
 from fastapi import Depends, FastAPI, Query
@@ -54,6 +55,8 @@ app.include_router(channels.router)
 app.include_router(media.router)
 app.include_router(playlist.router)
 app.include_router(dj.router)
+
+app.mount("/channels_data", StaticFiles(directory="channels_data"), name="channels_data")
 
 
 @app.get("/")

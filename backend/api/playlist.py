@@ -1,5 +1,8 @@
+import random
+
 from fastapi import APIRouter
 
+from api.media import list_ai_audio
 from services.vkvideo import search_vk_video
 from db.playlist import find_tracks, get_last_played, save_last_played
 from db.youtube import YouTubeCache
@@ -66,9 +69,11 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
     # video_sources = ["youtube", "vk"]
-    video_sources = ["vk", "youtube"]
+    # video_sources = ["vk", "youtube"]
     # video_sources = ["youtube"]
     # video_sources = ["vk"]
+    # video_sources = ["ai_audio"]
+    video_sources = ["vk", "youtube", "ai_audio"]
 
     videos = []
     for track in tracks:       
@@ -167,6 +172,19 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
                         "source": video_source
                     })
                     break  # если нашли видео на VK, не ищем на других платформах
+
+            if video_source == "ai_audio":
+                tracks = list_ai_audio(req.user_id, req.channel_id)
+                if len(tracks) > 0:
+                    track = random.choice(tracks["files"])
+                    videos.append({
+                        "artist": "AI",
+                        "title": track["name"],
+                        "videoId": track["url"],
+                        "duration": -1,
+                        "match": 100,
+                        "source": video_source
+                    })
                        
     
     indexed = [(i, t) for i, t in enumerate(videos)]

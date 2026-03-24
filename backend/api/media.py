@@ -1,13 +1,20 @@
 import os
+from pathlib import Path
+import time
 
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import FileResponse
+import requests
+from models.channels import Channel
+from db.channels import get_channel_by_id
+from services.sona import generate_music, get_music_result
+from models.media import GenerateAITrackRequest
 from services.auth import get_current_user
 
-router = APIRouter(tags=["media"])
+router = APIRouter(prefix="/media", tags=["media"])
 
 
-@router.get("/audio")
+@router.get("/speech")
 def get_audio(filename: str, user_id: str, channel_id: str, user=Depends(get_current_user)):
     print("Serving audio file:", user_id, channel_id, filename)
     return FileResponse(f"channels_data/{user_id}/{channel_id}/speech/{filename}", media_type="audio/wav", filename=filename)
@@ -53,3 +60,39 @@ def get_video(
         )
 
     return {"error": "Video not found"}
+
+
+@router.get("/ai_audio_library")
+def list_ai_audio(
+    user_id: str = Query(...),
+    channel_id: str = Query(...)
+):
+    base_path = Path("channels_data") / user_id / channel_id / "ai_audio_library"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for file in base_path.glob("*"):
+        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+            files.append({
+                "name": file.name,
+                "url": f"channels_data/{user_id}/{channel_id}/ai_audio_library/{file.name}"
+            })
+    return {"files": files}
+
+
+@router.post("/generate_ai_track")
+def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
+    
+    
+    channel = get_channel_by_id(req.user_id, req.channel_id)
+    channel = Channel(**channel)
+
+    task = generate_music(style=channel.style, title=channel.name)
+    task_id = task["data"]["task_id"]
+
+    # потом polling
+    result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library")
+
+    print(result)
+
+    return {"track": "ok"}

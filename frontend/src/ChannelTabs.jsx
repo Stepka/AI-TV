@@ -3,6 +3,7 @@ import Playlist from "./Playlist";
 import ChannelDescription from "./ChannelDescription";
 import ChannelManager from "./ChannelManager";
 import Stage from "./Stage";
+import AIAudioLibrary from "./AIAudioLibrary";
 
 export default function ChannelTabs({ token, userData, channel, onEditChannel, onDeleteChannel }) {
   const [activeTab, setActiveTab] = useState("stage");
@@ -68,6 +69,20 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
           >
             Edit Channel
           </button>
+          <button
+            onClick={() => setActiveTab("aiAudioLibrary")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: activeTab === "aiAudioLibrary" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            AI Audio Library
+          </button>
         </div>
       )}
 
@@ -75,6 +90,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
       <div style={{ flexGrow: 1, overflowY: "auto", minHeight: 0 }}>
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
         {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
+        {activeTab === "aiAudioLibrary" && <AIAudioLibrary token={token} userData={userData} channel={channel} />}
       </div>
     </div>
   );

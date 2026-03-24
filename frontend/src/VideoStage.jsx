@@ -67,6 +67,23 @@ export default function VideoStage({
         </div>
       )}
 
+      {/* AI Audio */}
+      {videoSource === "ai_audio" && (
+        <div
+          id="ai_audio_player"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            transition: "2s opacity",
+            opacity: isTransitioning ? 0 : 1,
+            zIndex: 1,
+          }}
+        />
+      )}
+
       {/* Overlay видео */}
       {overlaySrc && (
         <video

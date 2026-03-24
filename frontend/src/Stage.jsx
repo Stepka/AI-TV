@@ -3,6 +3,7 @@ import FullscreenButton from "./FullscreenButton";
 import AppButton from "./AppButton";
 import VideoStage from "./VideoStage";
 import Playlist from "./Playlist";
+import AIAudioPlayer from "./AIAudioPlayer"
 import './global.css';
 
 
@@ -292,6 +293,68 @@ export default function App({ token, userData, channel }) {
     // }, (duration - dj_duration) * 1000);
   };
 
+  // Создание плеера
+  const createAIAudioPlayer = (videoId) => {
+    console.log("createAIAudioPlayer: ", videoId);
+    if (playerRef.current) playerRef.current.destroy();
+
+    setPlayerReady(false);
+
+    setVideoId(videoId);
+
+    setVideoSource("ai_audio");    
+
+    const interval = setInterval(() => {
+      const iframe = document.querySelector("#ai_audio_player");
+      console.log("Looking for AI Audio player iframe...", iframe);
+
+      if (iframe) {
+        clearInterval(interval);
+    
+        playerRef.current = new AIAudioPlayer("ai_audio_player", {         
+          src: `${API_URL}/${videoId}`,
+        });
+
+        // Ставим громкость на 0
+        playerRef.current.setVolume(0);
+        
+        const duration = 10000; // общее время разгона (мс)
+        const period = 50;
+
+        let elapsed = 0;
+
+        clearInterval(duckIntervalRef.current);
+        duckIntervalRef.current = setInterval(() => {
+          elapsed += period;
+
+          let progress = elapsed / duration;
+          if (progress >= 1) {
+            progress = 1;
+            clearInterval(duckIntervalRef.current);
+          }
+
+          // Парабола
+          const volume = Math.pow(progress, 2) * 0.75;
+
+          playerRef.current.setVolume(volume);
+          console.log("crAIPl Volume:", playerRef.current.getVolume())
+
+        }, period);
+
+        // play / pause / stop
+        playerRef.current.play();
+        playerRef.current.onEnded(() => playerRef.current.destroy());
+
+        setPlayerReady(true);
+      }
+    }, 50);
+
+    // const dj_duration = 15; // длительность DJ перехода в секундах
+    // setTimeout(() => {
+    //   startTransition(dj_duration);
+    // }, (duration - dj_duration) * 1000);
+  };
+
 
   useEffect(() => {
     if (!playlist.length || !helloFinished || !channel || !isStreaming) return;
@@ -302,6 +365,8 @@ export default function App({ token, userData, channel }) {
       createYoutubePlayer(playlist[current].videoId);
     } else if (playlist[current].source == "vk") {
       createVkPlayer(playlist[current].videoId);
+    } else if (playlist[current].source == "ai_audio") {
+      createAIAudioPlayer(playlist[current].videoId);
     }
     // createYoutubePlayer(playlist[current].videoId);
     // createVkPlayer(playlist[current].videoId, playlist[current].duration);
@@ -373,11 +438,8 @@ export default function App({ token, userData, channel }) {
   const playDjHelloOverVideo = async () => {
     if (!djHelloDataRef.current || !userData || !channel) return;
 
-    console.log(userData)
-    console.log(channel)
-
     const res = await fetch(
-      `${API_URL}/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djHelloDataRef.current.audio_filename}`,
+      `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djHelloDataRef.current.audio_filename}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -390,12 +452,42 @@ export default function App({ token, userData, channel }) {
     const audio = new Audio(url);
     djAudioRef.current = audio;
 
+    // важное: сброс позиции
+    audio.currentTime = 0;
+    audio.volume = 0.5;
+    // const interval = setInterval(() => {
+    //   if (audio) {
+    //     console.log("Current time:", audio.currentTime.toFixed(2));
+    //     console.log("Current volume:", audio.volume.toFixed(2));
+    //   }
+    // }, 500);
+
+    audio.load();
+    console.log("Current time:", audio.currentTime.toFixed(2));
+    console.log("Current volume:", audio.volume.toFixed(2));
+    
+    await wait(3000);
+
+    audio.pause();
+
+    // await wait(3000);
+
+    audio.currentTime = 0;
     audio.volume = 1;
-    audio.play();
+
+    await audio.play();
+    console.log("Current time:", audio.currentTime.toFixed(2));
+    console.log("Current volume:", audio.volume.toFixed(2));
 
     audio.onended = () => {
+      // тут можно cleanup
+      URL.revokeObjectURL(url); // чтобы не было утечки памяти
     };
   };
+  
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
   const prepareDjHello = async (playlistArray) => {
     const to = playlistArray[current]; // берем из параметра
@@ -425,7 +517,7 @@ export default function App({ token, userData, channel }) {
   
   const startTransition = async (dj_duration) => {  
     clearInterval(trackTimeoutInterval);
-    playOverlayVideo(`${API_URL}/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
+    playOverlayVideo(`${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
     clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
     playDjOverVideo();
@@ -465,7 +557,7 @@ export default function App({ token, userData, channel }) {
     // if (!djDataRef.current) return;
 
     const res = await fetch(
-      `${API_URL}/audio?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}`,
+      `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
