@@ -230,6 +230,12 @@ Format:
 
 def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_title: str, to_artist: str, to_title: str) -> str:
     try: 
+
+        # if from_title:
+        #     if random.random() > 0.33:
+        #         text = generate_short_text(user_uid, channel_uid)
+        #         return text
+
         meta = get_channel_by_id(user_uid, channel_uid)
         channel = meta['name']
         to_track_description = get_track_info_ppx(to_artist, to_title)
@@ -424,6 +430,41 @@ def generate_text_brand_space(user_uid: str, channel_uid: str,
 — разговорный стиль
 — не придумывай ничего от себя, а используй только информацию, описания и факты, которые тебе передали
 — 1–2 предложения
+"""
+    
+    # print("Prompt for DJ text generation:", prompt)
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You write short DJ speech for radio."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
+def generate_short_text(user_uid: str, channel_uid: str) -> str:
+    
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
+
+    prompt = f"""
+Ты — радио-диджей брендированного музыкального канала "{channel}". 
+
+Ты играешь музыку в заведении "{meta["name"]}", вот его описание: {meta["description"]}.
+
+Сделай очень короткий текст перехода к слудующей песне, вроде "Мы прололжаем в {meta["name"]}"
+
+Требования к тексту:
+— русский язык
+— нельзя использовать слова на английском или других языках, кроме русского
+— от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
+— разговорный стиль
+— 1 предложение в несколько слов
 """
     
     # print("Prompt for DJ text generation:", prompt)

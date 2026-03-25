@@ -69,11 +69,11 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
     # video_sources = ["youtube", "vk"]
-    # video_sources = ["vk", "youtube"]
+    video_sources = ["vk", "youtube"]
     # video_sources = ["youtube"]
     # video_sources = ["vk"]
     # video_sources = ["ai_audio"]
-    video_sources = ["vk", "youtube", "ai_audio"]
+    # video_sources = ["vk", "youtube", "ai_audio"]
 
     videos = []
     for track in tracks:       
@@ -179,7 +179,7 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
                     track = random.choice(tracks["files"])
                     videos.append({
                         "artist": "AI",
-                        "title": track["name"],
+                        "title": "Generated track",
                         "videoId": track["url"],
                         "duration": -1,
                         "match": 100,
@@ -193,5 +193,19 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
 
     print("Selected videos:")
     print(videos)
+
+    for i in range(req.max_results - len(videos)):
+        tracks = list_ai_audio(req.user_id, req.channel_id)
+        if len(tracks) > 0:
+            track = random.choice(tracks["files"])
+            videos.append({
+                "artist": "AI",
+                "title": "Generated track",
+                "videoId": track["url"],
+                "duration": -1,
+                "match": 100,
+                "source": video_source
+            })
+
 
     return videos

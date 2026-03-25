@@ -313,6 +313,7 @@ export default function App({ token, userData, channel }) {
     
         playerRef.current = new AIAudioPlayer("ai_audio_player", {         
           src: `${API_URL}/${videoId}`,
+          videoSrc: `${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`
         });
 
         // Ставим громкость на 0
@@ -571,6 +572,10 @@ export default function App({ token, userData, channel }) {
     djAudioRef.current = audio;
 
     audio.volume = 1;
+    audio.onended = () => {
+      console.log("dj ended")
+      // handleNext();
+    };
     audio.play();
 
     const dj_duration = 15;
@@ -597,6 +602,8 @@ export default function App({ token, userData, channel }) {
       }
 
     }, period);
+
+    
   };
 
   // Плавный переход клипа через затемнение
@@ -701,6 +708,7 @@ export default function App({ token, userData, channel }) {
 
       // Встроенный stopTime
       let stopTime = djDataRef.current.duration - 3; // секунд, когда хотим остановить видео
+      if (stopTime < 25) stopTime = 25;
       let total_played = 0
 
       // Слушаем событие timeupdate
