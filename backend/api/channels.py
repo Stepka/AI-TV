@@ -55,6 +55,8 @@ def fill_channel_with_llm(channel_uid: str, payload: FillChannelWithLLM, user=De
 
     channel.voice.name = voice.voice_id
 
+    channel.sources = ["ai_audio"]
+
     print(channel)
 
     return {

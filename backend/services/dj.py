@@ -15,7 +15,7 @@ from models.dj import DJRequest
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 silero_model, _ = silero_tts(language='ru',
-                                 speaker='v5_2_ru')
+                                 speaker='v5_cis_base_nostress')
 silero_model.packages[0].ext_alph = {}
 
 

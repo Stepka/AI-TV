@@ -486,6 +486,9 @@ def add_menu(text, user_uid: str, channel_uid: str) -> str:
     meta = get_channel_by_id(user_uid, channel_uid)
     channel = meta['name']
 
+    if len(meta["menu"]) <= 0:
+        return text
+
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
 Добавь в этот текст информацию об одной позиции в меню заведения {meta["name"]}, которое играет на канале {channel}.
@@ -514,6 +517,9 @@ def add_promo(text, user_uid: str, channel_uid: str) -> str:
     meta = get_channel_by_id(user_uid, channel_uid)
 
     channel = meta['name']
+    
+    if len(meta["actions"]) <= 0:
+        return text
 
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.

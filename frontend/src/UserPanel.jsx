@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton";
 import YoutubeLoginButton from "./YoutubeLoginButton";
 
-export default function UserPanel({ token, onLogout, onGetUserData }) {
+export default function UserPanel({ token, onLogout, onGetUserData, onAddUser }) {
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [userData, setUserData] = useState(null);
@@ -33,6 +33,8 @@ export default function UserPanel({ token, onLogout, onGetUserData }) {
         //   username: str
         //   user_uid: str
 
+        console.log(data.user)
+
         setUserData(data.user);
         onGetUserData(data.user);
       } catch (err) {
@@ -53,10 +55,16 @@ export default function UserPanel({ token, onLogout, onGetUserData }) {
         {loading && <span style={{ opacity: 0.6 }}>Loading...</span>}
         {error && <span style={{ color: "tomato" }}>{error}</span>}
         {!loading && !error && <span>{userData?.username}</span>}
+        {!loading && !error && <span>{userData?.tokens} tokens</span>}
 
         <AppButton onClick={onLogout}>
           Logout
         </AppButton>
+
+        {userData?.role =="admin" && (<AppButton onClick={onAddUser}>
+          Add User
+        </AppButton>
+        )}
 
         <YoutubeLoginButton/>
       </div>

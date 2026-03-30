@@ -44,6 +44,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
         voice_json: JSON.stringify({"source": editedChannel.voice.source, "name": editedChannel.voice.name, "sex": editedChannel.voice.sex}),
         actions_json: JSON.stringify(editedChannel.actions),
         menu_json: JSON.stringify(editedChannel.menu),
+        sources_json: JSON.stringify(editedChannel.sources),
         url: editedChannel.url,
     };
     await fetch(`${API_URL}/channels/${editedChannel.channel_uid}`, {
@@ -191,6 +192,19 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
 
             <Input label="Sex" value={editedChannel.voice.sex || ""}
             onChange={v => handleChange("voice.sex", v)} />
+
+            <br />
+            <br />
+            <br />
+            <h3>Edit Media Sources</h3>
+            <br />
+            <hr style={{ marginBottom: 20, borderColor: "rgba(255,255,255,0.1)" }} />
+
+            <ListEditor
+                label="Media Sources"
+                value={editedChannel.sources || "[ai_audio]"}
+                onChange={v => handleChange("sources", v)}
+            />
 
             <br />
             <br />

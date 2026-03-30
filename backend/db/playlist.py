@@ -60,3 +60,20 @@ def find_tracks(artist: str, title: str, limit: int = 3):
     conn.close()
 
     return [dict(r) for r in rows]
+
+
+def get_video_sources(user_uid: str, channel_id: str):
+    conn = get_db()
+    cur = conn.cursor()
+
+    row = cur.execute("""
+        SELECT * FROM channels
+        WHERE user_uid = ? AND channel_uid = ?
+    """, (user_uid, channel_id)).fetchone()
+
+    conn.close()
+
+    if not row:
+        return []
+
+    return json.loads(row["sources_json"] or "[]")

@@ -87,7 +87,7 @@ def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
     channel = get_channel_by_id(req.user_id, req.channel_id)
     channel = Channel(**channel)
 
-    task = generate_music(style=channel.style, title=channel.name)
+    task = generate_music(style=channel.style, title=channel.name, prompt=f"{channel.name}, {channel.name}, {channel.name}", instrumental=False)
     task_id = task["data"]["task_id"]
 
     # потом polling

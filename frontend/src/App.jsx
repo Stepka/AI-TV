@@ -15,6 +15,8 @@ export default function App() {
   const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  
+  const [addUserOpen, setAddUserOpen] = useState(false);
 
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -96,6 +98,39 @@ export default function App() {
     }
     setReloadChannelsTrigger(prev => prev + 1);
   }
+  
+  async function onAddUser() {
+    if (authToken) {
+      setAddUserOpen(true);
+    }
+  };
+  
+  async function doAddUser() {
+
+    try {
+      const res = await fetch(`${API_URL}/auth/add_user`, {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${authToken}`, 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+      console.log(data)
+      if (!data.ok) {
+        setAuthError("Failed to add user");
+        return;
+      }
+      setAddUserOpen(false);
+
+    } catch {
+      setAuthError("Network error");
+    } finally {
+      // setAddUserOpen(false);
+    }
+  };
 
   if (loginOpen) {
     return (
@@ -126,11 +161,40 @@ export default function App() {
     );
   }
 
+  if (addUserOpen) {
+    return (
+      <div className="center-screen">
+        <div className="login-card">
+          <h2>Add User</h2>
+
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
+          />
+
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+          />
+
+          {authError && <div className="error">{authError}</div>}
+
+          <AppButton onClick={doAddUser} disabled={authLoading}>
+            {authLoading ? "Adding user..." : "Add user"}
+          </AppButton>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="main-layout">
       {/* Верхняя панель */}
       {!isFullscreen && (
-        <UserPanel token={authToken} onLogout={doLogout} onGetUserData={setUserData}/>
+        <UserPanel token={authToken} onLogout={doLogout} onGetUserData={setUserData} onAddUser={onAddUser}/>
       )}
 
       {/* Основной контент: боковая панель + контент */}

@@ -15,6 +15,7 @@ class Channel(BaseModel):
     voice: Voice
     actions: List[str] = []
     menu: List[str] = []
+    sources: List[str] = []
     url: str = ""
 
 
@@ -28,6 +29,7 @@ class ChannelUpdate(BaseModel):
     voice_json: Optional[str] = None
     actions_json: Optional[str] = None
     menu_json: Optional[str] = None
+    sources_json: Optional[str] = None
     url: Optional[str] = None
 
 

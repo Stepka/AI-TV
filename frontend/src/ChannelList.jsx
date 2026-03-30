@@ -83,7 +83,14 @@ export default function ChannelList({ token, onSelectChannel, reloadChannelsTrig
 
   if (loading) return <div>Loading channels...</div>;
   if (error) return <div style={{ color: "tomato" }}>{error}</div>;
-  if (!channels.length) return <div>No channels available</div>;
+  if (!channels.length) {
+    return (
+      <div className="channel-list-wrapper">
+        <div>No channels available</div>
+        <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Channel</AppButton>
+      </div>
+    );
+  }
 
   return (
     <div className="channel-list-wrapper">

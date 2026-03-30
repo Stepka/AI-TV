@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from api.media import list_ai_audio
 from services.vkvideo import search_vk_video
-from db.playlist import find_tracks, get_last_played, save_last_played
+from db.playlist import find_tracks, get_last_played, get_video_sources, save_last_played
 from db.youtube import YouTubeCache
 from models.playlist import PlaylistRequest
 from services.llm import check_style_match_level, check_title_llm, generate_playlist_llm, generate_playlist_ppx, get_track_info_list_ppx
@@ -68,8 +68,9 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
 
     print(json.dumps(tracks, ensure_ascii=False, indent=2))
 
+    video_sources = get_video_sources(req.user_id, req.channel_id)
     # video_sources = ["youtube", "vk"]
-    video_sources = ["vk", "youtube"]
+    # video_sources = ["vk", "youtube"]
     # video_sources = ["youtube"]
     # video_sources = ["vk"]
     # video_sources = ["ai_audio"]
