@@ -16,7 +16,7 @@ from models.dj import DJRequest
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 silero_model, _ = silero_tts(language='ru',
-                                 speaker='v5_cis_base_nostress')
+                                 speaker='v5_4_ru')
 silero_model.packages[0].ext_alph = {}
 accentor = load_accentor(lang='ru')
 
@@ -64,11 +64,11 @@ def generate_dj_speech(req: DJRequest):
                 print("Generated audio with elevenlabs")
             
             case _:
-                ssml_text = f"<speak>{text}</speak>"
-                stress_text = accentor(text)
+                # ssml_text = f"<speak>{text}</speak>"
+                # stress_text = accentor(text)
                 audio = silero_model.apply_tts(
                     # ssml_text=ssml_text,
-                    text=stress_text,
+                    text=text,
                     speaker=meta["voice"]["name"],
                     put_accent=True,
                     put_yo=True,
