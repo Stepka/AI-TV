@@ -79,6 +79,7 @@ def list_ai_audio(
                 "name": file.name,
                 "url": f"channels_data/{user_id}/{channel_id}/ai_audio_library/{file.name}"
             })
+    files = sorted(files, key=lambda x: x["name"])
     return {"files": files}
 
 
