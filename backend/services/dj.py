@@ -40,6 +40,7 @@ def generate_dj_speech(req: DJRequest):
 
     def generate_speech():
         audio = None
+        print(f"Generating with {meta["voice"]["source"]} and {meta["voice"]["name"]}")
         match meta["voice"]["source"]:
         
             case "elevenlabs":

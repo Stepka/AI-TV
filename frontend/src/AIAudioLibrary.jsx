@@ -59,6 +59,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
     <h2>🎧 Audio Library</h2>
+    <span>Available generations: {userData?.ai_tracks_num}</span>
 
     <AppButton onClick={() => generate()} disabled={isGenerating}>
         {isGenerating ? "Generating..." : "🎵 Generate track"}
