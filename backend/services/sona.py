@@ -43,13 +43,14 @@ def get_music_result(
         task_id: str,
         save_dir: str,
         timeout: int = 300,
-        interval: int = 15):
+        interval: int = 15, 
+        start_index: int = 0):
     
     save_path = Path(save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
 
     start_time = time.time()
-
+    
     while True:
         # 1. проверяем статус
         response = requests.get(
@@ -71,10 +72,10 @@ def get_music_result(
         if all_complete:
             downloaded_files = []
 
-            for item in items:
+            for i, item in enumerate(items):
                 audio_url = item["audio_url"]
                 title = item.get("title", "track")
-                track_id = item["id"]
+                track_id = start_index + i + 1
 
                 filename = f"{title}_{track_id}.mp3".replace(" ", "_")
                 file_path = save_path / filename

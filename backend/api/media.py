@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import random
 import time
 
 from fastapi import APIRouter, Query, Depends
@@ -7,6 +8,7 @@ from fastapi.responses import FileResponse
 import requests
 from models.channels import Channel
 from db.channels import get_channel_by_id
+from db.subscription import spend_subscription
 from services.sona import generate_music, get_music_result
 from models.media import GenerateAITrackRequest
 from services.auth import get_current_user
@@ -83,15 +85,26 @@ def list_ai_audio(
 @router.post("/generate_ai_track")
 def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
     
+    success = spend_subscription(req.user_id, "ai_tracks_num")
+    if not success:
+        return {"track": "error", "error": "ai_tracks_num limit exceeded"}
     
     channel = get_channel_by_id(req.user_id, req.channel_id)
     channel = Channel(**channel)
 
-    task = generate_music(style=channel.style, title=channel.name, prompt=f"{channel.name}, {channel.name}, {channel.name}", instrumental=False)
+    if random.random() < 0.2:
+        instrumental = False
+    else:
+        instrumental = True
+
+    task = generate_music(style=channel.style, title=channel.name, prompt=f"{channel.name}, {channel.name}, {channel.name}", instrumental=instrumental)
     task_id = task["data"]["task_id"]
 
+
+    tracks = list_ai_audio(req.user_id, req.channel_id)
+    start_index = len(tracks)
     # потом polling
-    result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library")
+    result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library", start_index=start_index)
 
     print(result)
 

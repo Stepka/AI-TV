@@ -41,6 +41,30 @@ def fetch_user(username: str) -> UserResponse:
         **user_row, subscription=subscription
     )
 
+
+def fetch_user_by_id(user_id: str) -> UserResponse:
+    conn = get_db()
+    cur = conn.cursor()
+
+    user_row = cur.execute("SELECT * FROM users WHERE user_uid = ?", (user_id,)).fetchone()
+    if not user_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    subscription_row = cur.execute("SELECT * FROM subscriptions WHERE id = ?", (user_row["subscription_id"],)).fetchone()
+    if not subscription_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    conn.close()
+
+    subscription = Subscription(**subscription_row)
+
+    return UserResponse(
+        **user_row, subscription=subscription
+    )
+
+
 def create_user(payload: CreateUserRequest) -> UserResponse:
     conn = get_db()
     cur = conn.cursor()

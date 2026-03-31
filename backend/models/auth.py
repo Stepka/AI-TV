@@ -25,6 +25,10 @@ class UserResponse(BaseModel):
     role: str
     tokens: int
     subscription: Subscription
+    ai_tracks_num: int
+    prerecord_welcome_num: int
+    prerecord_ad_num: int
+    voice_num: int
 
 
 class Subscription(BaseModel):
