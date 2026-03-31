@@ -19,6 +19,11 @@ class CreateUserRequest(BaseModel):
     password_hash: str
 
 
+class Subscription(BaseModel):
+    id: int
+    name: str
+
+
 class UserResponse(BaseModel):
     username: str
     user_uid: str
@@ -29,8 +34,3 @@ class UserResponse(BaseModel):
     prerecord_welcome_num: int
     prerecord_ad_num: int
     voice_num: int
-
-
-class Subscription(BaseModel):
-    id: int
-    name: str
