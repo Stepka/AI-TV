@@ -69,8 +69,6 @@ def get_music_result(
         # 2. проверяем, все ли готовы
         all_complete = all(item.get("status") == "complete" for item in items)
 
-        print("complete")
-
         if all_complete:
             downloaded_files = []
 

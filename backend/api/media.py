@@ -103,6 +103,7 @@ def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
 
     tracks = list_ai_audio(req.user_id, req.channel_id)
     start_index = len(tracks)
+    print(f"start_index: {start_index}")
     # потом polling
     result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library", start_index=start_index)
 
