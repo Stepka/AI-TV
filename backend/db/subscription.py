@@ -21,7 +21,7 @@ def fetch_subscription(subscription_id: int) -> Subscription:
     return subscription
 
 
-def spend_subscription(user_id: str, field: str) -> bool:
+def spend_subscription(user_id: str, field: str, decrement: int = 1) -> bool:
     user = fetch_user_by_id(user_id)
 
     value = getattr(user, field)
@@ -43,7 +43,7 @@ def spend_subscription(user_id: str, field: str) -> bool:
         SET {field} = ?
         WHERE user_uid = ?
     """, (
-        value - 1, user_id
+        value - decrement, user_id
     ))
 
     conn.commit()

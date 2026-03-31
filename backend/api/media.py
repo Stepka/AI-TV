@@ -85,7 +85,7 @@ def list_ai_audio(
 @router.post("/generate_ai_track")
 def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
     
-    success = spend_subscription(req.user_id, "ai_tracks_num")
+    success = spend_subscription(req.user_id, "ai_tracks_num", decrement = 2)
     if not success:
         return {"track": "error", "error": "ai_tracks_num limit exceeded"}
     
