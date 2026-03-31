@@ -6,9 +6,16 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class AddUserRequest(BaseModel):
+    username: str
+    password: str
+    subscription: str
+
+
 class CreateUserRequest(BaseModel):
     username: str
     password: str
+    subscription: str
     password_hash: str
 
 
@@ -17,3 +24,9 @@ class UserResponse(BaseModel):
     user_uid: str
     role: str
     tokens: int
+    subscription: Subscription
+
+
+class Subscription(BaseModel):
+    id: int
+    name: str

@@ -12,6 +12,7 @@ export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [subscription, setSubscription] = useState("");
   const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
@@ -114,7 +115,7 @@ export default function App() {
           Authorization: `Bearer ${authToken}`, 
           "Content-Type": "application/json" 
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, subscription }),
       });
 
       const data = await res.json();
@@ -178,6 +179,12 @@ export default function App() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+          />
+
+          <input
+            value={subscription}
+            onChange={(e) => setSubscription(e.target.value)}
+            placeholder="Subscription"
           />
 
           {authError && <div className="error">{authError}</div>}
