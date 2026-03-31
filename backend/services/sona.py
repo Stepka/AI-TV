@@ -69,6 +69,8 @@ def get_music_result(
         # 2. проверяем, все ли готовы
         all_complete = all(item.get("status") == "complete" for item in items)
 
+        print("complete")
+
         if all_complete:
             downloaded_files = []
 
@@ -81,6 +83,7 @@ def get_music_result(
                 file_path = save_path / filename
 
                 # 3. скачиваем файл
+                print(f"download {audio_url}...")
                 audio_response = requests.get(audio_url)
                 audio_response.raise_for_status()
 
