@@ -76,10 +76,12 @@ def list_ai_audio(
     for file in base_path.glob("*"):
         if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
             files.append({
+                "index": int(file.name.split("_")[-1].split(".")[0]),
                 "name": file.name,
                 "url": f"channels_data/{user_id}/{channel_id}/ai_audio_library/{file.name}"
             })
-    files = sorted(files, key=lambda x: x["name"])
+            
+    files = sorted(files, key=lambda x: x["index"])
     return {"files": files}
 
 
