@@ -52,45 +52,50 @@ def get_music_result(
     start_time = time.time()
     
     while True:
-        # 1. проверяем статус
-        response = requests.get(
-            f"https://aimusicapi.org/api/feed?workId={task_id}"
-        )
-        response.raise_for_status()
-        data = response.json()
-        print(data)
+        try:
+            # 1. проверяем статус
+            response = requests.get(
+                f"https://aimusicapi.org/api/feed?workId={task_id}"
+            )
+            response.raise_for_status()
+            data = response.json()
+            print(data)
 
-        items = data.get("data", {}).get("response_data", [])
+            items = data.get("data", {}).get("response_data", [])
 
-        if not items:
-            continue
-            # raise Exception("No data returned")
+            if not items:
+                continue
+                # raise Exception("No data returned")
 
-        # 2. проверяем, все ли готовы
-        all_complete = all(item.get("status") == "complete" for item in items)
+            # 2. проверяем, все ли готовы
+            all_complete = all(item.get("status") == "complete" for item in items)
 
-        if all_complete:
-            downloaded_files = []
+            if all_complete:
+                downloaded_files = []
 
-            for i, item in enumerate(items):
-                audio_url = item["audio_url"]
-                title = item.get("title", "track")
-                track_id = start_index + i + 1
+                for i, item in enumerate(items):
+                    audio_url = item["audio_url"]
+                    title = item.get("title", "track")
+                    track_id = start_index + i + 1
 
-                filename = f"{title}_{track_id}.mp3".replace(" ", "_")
-                file_path = save_path / filename
+                    filename = f"{title}_{track_id}.mp3".replace(" ", "_")
+                    file_path = save_path / filename
 
-                # 3. скачиваем файл
-                print(f"download {audio_url}...")
-                audio_response = requests.get(audio_url)
-                audio_response.raise_for_status()
+                    # 3. скачиваем файл
+                    print(f"download {audio_url}...")
+                    audio_response = requests.get(audio_url)
+                    audio_response.raise_for_status()
 
-                with open(file_path, "wb") as f:
-                    f.write(audio_response.content)
+                    with open(file_path, "wb") as f:
+                        f.write(audio_response.content)
 
-                downloaded_files.append(str(file_path))
+                    downloaded_files.append(str(file_path))
 
-            return downloaded_files
+                return downloaded_files
+            
+        except Exception as e:
+            print(e)
+            raise e
 
         # 4. таймаут
         if time.time() - start_time > timeout:
