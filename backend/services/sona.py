@@ -64,6 +64,7 @@ def get_music_result(
             items = data.get("data", {}).get("response_data", [])
 
             if not items:
+                time.sleep(interval)
                 continue
                 # raise Exception("No data returned")
 
