@@ -86,7 +86,7 @@ def list_ai_audio(
 
 
 @router.post("/generate_ai_track")
-def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
+def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user)):
     
     success = spend_subscription(req.user_id, "ai_tracks_num", decrement = 2)
     if not success:
@@ -108,7 +108,14 @@ def dj_transition(req: GenerateAITrackRequest, user=Depends(get_current_user)):
     start_index = len(tracks["files"])
     print(f"start_index: {start_index}")
     # потом polling
-    result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library", start_index=start_index)
+    attempts = 3
+    while attempts > 0:
+        try:
+            attempts -= 1
+            result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library", start_index=start_index)
+            break
+        except Exception as e:
+            print(e)
 
     print(result)
 
