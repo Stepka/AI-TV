@@ -244,7 +244,8 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
         print("From track info:", from_track_description)
 
         if meta["type"] == "brand_space":
-            text = generate_text_brand_space(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
+            # text = generate_text_brand_space(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
+            text = generate_short_text(user_uid, channel_uid)
         else: 
             text = generate_text_music_tv(user_uid, channel_uid, from_artist, from_title, from_track_description, to_artist, to_title, to_track_description)
 
@@ -457,14 +458,14 @@ def generate_short_text(user_uid: str, channel_uid: str) -> str:
 
 Ты играешь музыку в заведении "{meta["name"]}", вот его описание: {meta["description"]}.
 
-Сделай очень короткий текст перехода к слудующей песне, вроде "Мы прололжаем в {meta["name"]}"
+Сделай очень короткий текст перехода к слудующей песне, вроде "Мы прололжаем в {meta["name"]}" и в двух словах расскажи про заведение, в котором ты играешь. 
 
 Требования к тексту:
 — русский язык
 — нельзя использовать слова на английском или других языках, кроме русского
 — от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
 — разговорный стиль
-— 1 предложение в несколько слов
+— 1 предложение
 """
     
     # print("Prompt for DJ text generation:", prompt)
