@@ -21,9 +21,9 @@ router = APIRouter(prefix="/media", tags=["media"])
 
 
 @router.get("/speech")
-def get_audio(filename: str, user_id: str, channel_id: str, user=Depends(get_current_user)):
+def get_audio(filename: str, user_id: str, channel_id: str, type: str, user=Depends(get_current_user)):
     print("Serving audio file:", user_id, channel_id, filename)
-    return FileResponse(f"channels_data/{user_id}/{channel_id}/speech/{filename}", media_type="audio/wav", filename=filename)
+    return FileResponse(f"channels_data/{user_id}/{channel_id}/{type}/{filename}", media_type="audio/wav", filename=filename)
 
 
 @router.get("/video")
@@ -94,7 +94,7 @@ def list_prerecord_brand_phrases_library(
     user_id: str = Query(...),
     channel_id: str = Query(...)
 ):
-    base_path = Path("channels_data") / user_id / channel_id / "prerecord_brand_phrases"
+    base_path = Path("channels_data") / user_id / channel_id / "prerecord_brand_speech"
     base_path.mkdir(parents=True, exist_ok=True)
 
     files = []
@@ -103,7 +103,7 @@ def list_prerecord_brand_phrases_library(
             files.append({
                 # "index": int(file.name.split("_")[-1].split(".")[0]),
                 "name": file.name,
-                "url": f"channels_data/{user_id}/{channel_id}/prerecord_brand_phrases/{file.name}"
+                "url": f"channels_data/{user_id}/{channel_id}/prerecord_brand_speech/{file.name}"
             })
             
     # files = sorted(files, key=lambda x: x["index"])
@@ -199,7 +199,56 @@ def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Dep
             h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
             filename = f"dj_{h}.wav"
-            dir_path = f"channels_data/{req.user_id}/{req.channel_id}/prerecord_brand_phrases"
+            dir_path = f"channels_data/{req.user_id}/{req.channel_id}/prerecord_brand_speech"
+            os.makedirs(dir_path, exist_ok=True)
+            write(f"{dir_path}/{filename}", sample_rate, audio)
+        except Exception as e:
+            print("ERROR!", e)
+          
+
+    if is_speech:
+        return {
+            "success": "ok",
+            "text": req.text,
+            "audio_filename": filename,
+            "duration": duration_seconds,
+            "format": "wav"
+        }
+
+    return {"success": "error"}
+
+
+@router.post("/generate_ad_phrase_speech")
+def generate_ad_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depends(get_current_user)):
+    
+    success = spend_subscription(req.user_id, "prerecord_ad_num", decrement = 1)
+    if not success:
+        return {"track": "error", "error": "prerecord_ad_num limit exceeded"}
+    
+    channel = get_channel_by_id(req.user_id, req.channel_id)
+    # channel = Channel(**channel)
+    
+    sample_rate = 48000
+    
+    retries = 3
+    is_speech = False
+    audio = None
+    while audio is None and retries > 0:
+        try:
+            retries -= 1
+            audio = generate_speech(channel, req.text, sample_rate)
+            is_speech = has_speech(audio, sample_rate, threshold=0.5)
+            duration_seconds = 30
+            # Количество сэмплов
+            num_samples = audio.shape[0]
+            # Длительность в секундах
+            duration_seconds = num_samples / sample_rate
+            print(f"Generated {duration_seconds:.2f} sec audio with {channel["voice"]["source"]}")
+            raw = f"{req.user_id}|{req.channel_id}|{req.text}"
+            h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+
+            filename = f"dj_{h}.wav"
+            dir_path = f"channels_data/{req.user_id}/{req.channel_id}/prerecord_brand_speech"
             os.makedirs(dir_path, exist_ok=True)
             write(f"{dir_path}/{filename}", sample_rate, audio)
         except Exception as e:

@@ -1,27 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import AppButton from "./AppButton";
-
-
-function Textarea({ label, value, onChange }) {
-return (
-    <div style={{ marginBottom: 12, width: "100%" }}>
-    <div style={{ marginBottom: 4 }}>{label}</div>
-    <textarea
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        rows={4}
-        style={{
-        width: "100%",
-        padding: 8,
-        borderRadius: 6,
-        border: "1px solid rgba(255,255,255,0.2)",
-        background: "rgba(0,0,0,0.6)",
-        color: "#fff",
-        }}
-    />
-    </div>
-);
-}
+import PhraseGenerator from "./PhraseGenerator"
+import Textarea from "./Textarea"; 
 
 
 export default function AIAudioLibrary({ token, userData, channel, onSave }) {
@@ -175,28 +155,13 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
               {loading ? "Saving..." : "Save"}
           </AppButton>
         </div>
-
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
-          <Textarea label="Brand phrase" value={brandPhrase || ""} 
-            onChange={v => setBrandPhrase(v)}/>
-          <AppButton onClick={generateText} disabled={loading}>
-              {loading ? "Generating phrase..." : "Generate brand phrase text"}
-          </AppButton>
-        </div>
-
-        <AppButton onClick={() => generate()} disabled={isGenerating}>
-            {isGenerating ? "Generating audio..." : "🎵 Generate brand phrase audio"}
-        </AppButton>
+        
+        <AppButton onClick={() => {}} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Brand Phrase</AppButton>
 
         <ul style={{ listStyle: "none", padding: 0 }}>
             {files.map((file, idx) => (
             <li key={idx} style={{ marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <AppButton onClick={() => playAudio(file.url)}>
-                    ▶ Play
-                </AppButton>
-                <span>{file.name}</span>
-                </div>
+              <PhraseGenerator text={brandPhrase}/>
             </li>
             ))}
         </ul>

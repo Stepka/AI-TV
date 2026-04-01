@@ -440,7 +440,7 @@ export default function App({ token, userData, channel }) {
     if (!djHelloDataRef.current || !userData || !channel) return;
 
     const res = await fetch(
-      `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djHelloDataRef.current.audio_filename}`,
+      `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djHelloDataRef.current.audio_filename}&type=${djHelloDataRef.current.type}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -558,7 +558,7 @@ export default function App({ token, userData, channel }) {
     // if (!djDataRef.current) return;
 
     const res = await fetch(
-      `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}`,
+      `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${djDataRef.current.audio_filename}&type=${djDataRef.current.type}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }

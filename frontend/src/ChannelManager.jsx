@@ -1,29 +1,8 @@
 import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton";
 import ListEditor from "./ListEditor";
-import Input from "./Input";         // твой компонент Input
-
-
-function Textarea({ label, value, onChange }) {
-return (
-    <div style={{ marginBottom: 12 }}>
-    <div style={{ marginBottom: 4 }}>{label}</div>
-    <textarea
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        rows={4}
-        style={{
-        width: "100%",
-        padding: 8,
-        borderRadius: 6,
-        border: "1px solid rgba(255,255,255,0.2)",
-        background: "rgba(0,0,0,0.6)",
-        color: "#fff",
-        }}
-    />
-    </div>
-);
-}
+import Input from "./Input"; 
+import Textarea from "./Textarea"; 
 
 export default function ChannelManager({ token, channel,  userData, onSave, onDelete }) {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -206,7 +185,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
                 onChange={v => handleChange("sources", v)}
             />
 
-            <br />
+            {/* <br />
             <br />
             <br />
             <h3>Edit Actions</h3>
@@ -230,7 +209,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
                 label="Menu"
                 value={editedChannel.menu || "[]"}
                 onChange={v => handleChange("menu", v)}
-            />
+            /> */}
 
             <div style={{ marginTop: 20 }}>
             <AppButton onClick={saveChannel} disabled={loading}>

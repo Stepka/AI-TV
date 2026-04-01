@@ -1,5 +1,7 @@
 import hashlib
 import os
+from pathlib import Path
+import random
 from scipy.io.wavfile import write
 
 from elevenlabs import ElevenLabs
@@ -110,7 +112,9 @@ def generate_dj_speech(req: DJRequest):
     if is_speech:
         return {
             "text": text,
+            "type": "speech",
             "audio_filename": filename,
+            "url": f"channels_data/{req.user_id}/{req.channel_id}/speech/{filename}",
             "duration": duration_seconds,
             "format": "wav"
         }
@@ -120,6 +124,57 @@ def generate_dj_speech(req: DJRequest):
     return {
         "text": text,
         "audio_filename": "",
+        "url": "",
         "duration": 0,
+        "format": "wav"
+    }
+
+def get_prerecord_brand_speech(req: DJRequest):
+    base_path = Path("channels_data") / req.user_id / req.channel_id / "prerecord_brand_speech"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for file in base_path.glob("*"):
+        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+            files.append({
+                # "index": int(file.name.split("_")[-1].split(".")[0]),
+                "name": file.name,
+                "url": f"channels_data/{req.user_id}/{req.channel_id}/prerecord_brand_speech/{file.name}"
+            })
+            
+    # files = sorted(files, key=lambda x: x["index"])
+    file = random.choice(files)
+
+    return {
+        "audio_filename": file["name"],
+        "url": file["url"],
+        "type": "prerecord_brand_speech",
+        "duration": -1,
+        "format": "wav"
+    }
+
+
+
+def get_prerecord_ad_speech(req: DJRequest):
+    base_path = Path("channels_data") / req.user_id / req.channel_id / "prerecord_ad_phrases"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for file in base_path.glob("*"):
+        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+            files.append({
+                # "index": int(file.name.split("_")[-1].split(".")[0]),
+                "name": file.name,
+                "url": f"channels_data/{req.user_id}/{req.channel_id}/prerecord_ad_phrases/{file.name}"
+            })
+            
+    # files = sorted(files, key=lambda x: x["index"])
+    file = random.choice(files)
+
+    return {
+        "audio_filename": file["name"],
+        "url": file["url"],
+        "type": "prerecord_ad_speech",
+        "duration": -1,
         "format": "wav"
     }
