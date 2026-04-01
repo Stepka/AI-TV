@@ -4,6 +4,8 @@ import ChannelDescription from "./ChannelDescription";
 import ChannelManager from "./ChannelManager";
 import Stage from "./Stage";
 import AIAudioLibrary from "./AIAudioLibrary";
+import BrandPhrasesLibrary from "./BrandPhrasesLibrary";
+import AdPhrasesLibrary from "./AdPhrasesLibrary";
 
 export default function ChannelTabs({ token, userData, channel, onEditChannel, onDeleteChannel }) {
   const [activeTab, setActiveTab] = useState("stage");
@@ -83,6 +85,34 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
           >
             AI Audio Library
           </button>
+          <button
+            onClick={() => setActiveTab("brandPhrases")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: activeTab === "brandPhrases" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Brand Phrases
+          </button>
+          <button
+            onClick={() => setActiveTab("adPhrases")}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: activeTab === "adPhrases" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Ad Phrases
+          </button>
         </div>
       )}
 
@@ -91,6 +121,8 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
         {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
         {activeTab === "aiAudioLibrary" && <AIAudioLibrary token={token} userData={userData} channel={channel} />}
+        {activeTab === "brandPhrases" && <BrandPhrasesLibrary token={token} userData={userData} channel={channel} />}
+        {activeTab === "adPhrases" && <AdPhrasesLibrary token={token} userData={userData} channel={channel} />}
       </div>
     </div>
   );

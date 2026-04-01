@@ -415,7 +415,7 @@ export default function App({ token, userData, channel }) {
     const to = playlist[(current + 1) % playlist.length];
 
     const token = localStorage.getItem("token");
-    const res = await fetch(`${API_URL}/dj_transition`, {
+    const res = await fetch(`${API_URL}/dj/transition`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -492,7 +492,7 @@ export default function App({ token, userData, channel }) {
 
   const prepareDjHello = async (playlistArray) => {
     const to = playlistArray[current]; // берем из параметра
-    const res = await fetch(`${API_URL}/dj_hello`, {
+    const res = await fetch(`${API_URL}/dj/hello`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

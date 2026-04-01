@@ -55,7 +55,7 @@ export default function UserPanel({ token, onLogout, onGetUserData, onAddUser })
         {loading && <span style={{ opacity: 0.6 }}>Loading...</span>}
         {error && <span style={{ color: "tomato" }}>{error}</span>}
         {!loading && !error && <span>{userData?.username}</span>}
-        {!loading && !error && <span>Tokens: {userData?.tokens}</span>}
+        {/* {!loading && !error && <span>Tokens: {userData?.tokens}</span>} */}
         {!loading && !error && <span>Subscription: {userData?.subscription.name}</span>}
 
         <AppButton onClick={onLogout}>
@@ -67,7 +67,7 @@ export default function UserPanel({ token, onLogout, onGetUserData, onAddUser })
         </AppButton>
         )}
 
-        <YoutubeLoginButton/>
+        {/* <YoutubeLoginButton/> */}
       </div>
     </header>
   );

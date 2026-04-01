@@ -21,6 +21,50 @@ silero_model.packages[0].ext_alph = {}
 accentor = load_accentor(lang='ru')
 
 
+def generate_speech(meta, text, sample_rate):
+    audio = None
+    print(f"Generating with {meta["voice"]["source"]} and {meta["voice"]["name"]}")
+    match meta["voice"]["source"]:
+    
+        case "elevenlabs":
+            # Get raw response with headers
+            if meta["voice"]["sex"] == "male":
+                voice_id = "YOq2y2Up4RgXP2HyXjE5" if meta["voice"]["name"] == "random_male" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+            else:
+                voice_id = "2zRM7PkgwBPiau2jvVXc" if meta["voice"]["name"] == "random_female" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
+            
+            audio = elevenlabs_client.text_to_speech.convert(
+                text=text,
+                # model_id="eleven_multilingual_v2",
+                model_id="eleven_v3",
+                voice_id=voice_id,
+                output_format="wav_48000",
+            )
+            # from elevenlabs.play import play
+            # play(audio)
+            audio_data = b"".join(audio)    
+            # Преобразуем байты в NumPy массив int16
+            audio = np.frombuffer(audio_data, dtype=np.int16)
+            print("Generated audio with elevenlabs")
+        
+        case _:
+            # ssml_text = f"<speak>{text}</speak>"
+            # stress_text = accentor(text)
+            audio = silero_model.apply_tts(
+                # ssml_text=ssml_text,
+                text=text,
+                speaker=meta["voice"]["name"],
+                put_accent=True,
+                put_yo=True,
+                put_stress_homo=True,
+                put_yo_homo=True,
+                sample_rate=sample_rate
+            )
+            audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
+            audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
+
+    return audio
+
 def generate_dj_speech(req: DJRequest):
     sample_rate = 48000
 
@@ -37,50 +81,6 @@ def generate_dj_speech(req: DJRequest):
     print("Generated text:", text)
     
     meta = get_channel_by_id(req.user_id, req.channel_id)
-
-    def generate_speech():
-        audio = None
-        print(f"Generating with {meta["voice"]["source"]} and {meta["voice"]["name"]}")
-        match meta["voice"]["source"]:
-        
-            case "elevenlabs":
-                # Get raw response with headers
-                if meta["voice"]["sex"] == "male":
-                    voice_id = "YOq2y2Up4RgXP2HyXjE5" if meta["voice"]["name"] == "random_male" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
-                else:
-                    voice_id = "2zRM7PkgwBPiau2jvVXc" if meta["voice"]["name"] == "random_female" else meta["voice"]["name"]  # пример, нужно подобрать под нужные голоса
-                
-                audio = elevenlabs_client.text_to_speech.convert(
-                    text=text,
-                    # model_id="eleven_multilingual_v2",
-                    model_id="eleven_v3",
-                    voice_id=voice_id,
-                    output_format="wav_48000",
-                )
-                # from elevenlabs.play import play
-                # play(audio)
-                audio_data = b"".join(audio)    
-                # Преобразуем байты в NumPy массив int16
-                audio = np.frombuffer(audio_data, dtype=np.int16)
-                print("Generated audio with elevenlabs")
-            
-            case _:
-                # ssml_text = f"<speak>{text}</speak>"
-                # stress_text = accentor(text)
-                audio = silero_model.apply_tts(
-                    # ssml_text=ssml_text,
-                    text=text,
-                    speaker=meta["voice"]["name"],
-                    put_accent=True,
-                    put_yo=True,
-                    put_stress_homo=True,
-                    put_yo_homo=True,
-                    sample_rate=sample_rate
-                )
-                audio_numpy = audio.cpu().numpy()  # конвертируем в numpy
-                audio = (audio_numpy * 32767).astype(np.int16)  # приводим к int16
-
-        return audio
     
     retries = 3
     is_speech = False
@@ -88,7 +88,7 @@ def generate_dj_speech(req: DJRequest):
     while audio is None and retries > 0:
         try:
             retries -= 1
-            audio = generate_speech()
+            audio = generate_speech(meta, text, sample_rate)
             is_speech = has_speech(audio, sample_rate, threshold=0.5)
             duration_seconds = 30
             # Количество сэмплов

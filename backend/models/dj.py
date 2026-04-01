@@ -18,3 +18,8 @@ class DJRequest(BaseModel):
     from_title: str
     to_artist: str
     to_title: str
+    
+
+class BrandPhraseRequest(BaseModel):
+    user_id: str
+    channel_id: str

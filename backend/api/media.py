@@ -1,16 +1,20 @@
+import hashlib
 import os
 from pathlib import Path
 import random
 import time
+from scipy.io.wavfile import write
 
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import FileResponse
 import requests
+from services.silero import has_speech
+from services.dj import generate_speech
 from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
 from services.sona import generate_music, get_music_result
-from models.media import GenerateAITrackRequest
+from models.media import GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest
 from services.auth import get_current_user
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -85,6 +89,49 @@ def list_ai_audio(
     return {"files": files}
 
 
+@router.get("/prerecord_brand_phrases_library")
+def list_prerecord_brand_phrases_library(
+    user_id: str = Query(...),
+    channel_id: str = Query(...)
+):
+    base_path = Path("channels_data") / user_id / channel_id / "prerecord_brand_phrases"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for file in base_path.glob("*"):
+        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+            files.append({
+                # "index": int(file.name.split("_")[-1].split(".")[0]),
+                "name": file.name,
+                "url": f"channels_data/{user_id}/{channel_id}/prerecord_brand_phrases/{file.name}"
+            })
+            
+    # files = sorted(files, key=lambda x: x["index"])
+    print(files)
+    return {"files": files}
+
+
+@router.get("/prerecord_ad_phrases_library")
+def list_prerecord_ad_phrases_library(
+    user_id: str = Query(...),
+    channel_id: str = Query(...)
+):
+    base_path = Path("channels_data") / user_id / channel_id / "prerecord_ad_phrases"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for file in base_path.glob("*"):
+        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+            files.append({
+                # "index": int(file.name.split("_")[-1].split(".")[0]),
+                "name": file.name,
+                "url": f"channels_data/{user_id}/{channel_id}/prerecord_ad_phrases/{file.name}"
+            })
+            
+    # files = sorted(files, key=lambda x: x["index"])
+    return {"files": files}
+
+
 @router.post("/generate_ai_track")
 def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user)):
     
@@ -120,3 +167,52 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
     print(result)
 
     return {"track": "ok"}
+
+
+@router.post("/generate_brand_phrase_speech")
+def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depends(get_current_user)):
+    
+    success = spend_subscription(req.user_id, "prerecord_welcome_num", decrement = 1)
+    if not success:
+        return {"track": "error", "error": "prerecord_welcome_num limit exceeded"}
+    
+    channel = get_channel_by_id(req.user_id, req.channel_id)
+    # channel = Channel(**channel)
+    
+    sample_rate = 48000
+    
+    retries = 3
+    is_speech = False
+    audio = None
+    while audio is None and retries > 0:
+        try:
+            retries -= 1
+            audio = generate_speech(channel, req.text, sample_rate)
+            is_speech = has_speech(audio, sample_rate, threshold=0.5)
+            duration_seconds = 30
+            # Количество сэмплов
+            num_samples = audio.shape[0]
+            # Длительность в секундах
+            duration_seconds = num_samples / sample_rate
+            print(f"Generated {duration_seconds:.2f} sec audio with {channel["voice"]["source"]}")
+            raw = f"{req.user_id}|{req.channel_id}|{req.text}"
+            h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+
+            filename = f"dj_{h}.wav"
+            dir_path = f"channels_data/{req.user_id}/{req.channel_id}/prerecord_brand_phrases"
+            os.makedirs(dir_path, exist_ok=True)
+            write(f"{dir_path}/{filename}", sample_rate, audio)
+        except Exception as e:
+            print("ERROR!", e)
+          
+
+    if is_speech:
+        return {
+            "success": "ok",
+            "text": req.text,
+            "audio_filename": filename,
+            "duration": duration_seconds,
+            "format": "wav"
+        }
+
+    return {"success": "error"}
