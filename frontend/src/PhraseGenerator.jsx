@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AppButton from "./AppButton"; 
-import Textarea from "./Textarea"; 
+import TextArea from "./TextArea"; 
 
 export default function PhraseGenerator({ ad, playAudio, generateText, generateAudio, save }) {
   
@@ -16,14 +16,14 @@ export default function PhraseGenerator({ ad, playAudio, generateText, generateA
     <div style={{ marginBottom: 10, padding: 20, border: "1px solid #333", "borderRadius": "10px" }}>
         <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
             <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
-                <Textarea label="Original text" value={editingAd.ad_text || ""} 
+                <TextArea label="Original text" value={editingAd.ad_text || ""} 
                       onChange={v =>
                         setEditingAd(prev => ({
                         ...prev,
                         ad_text: v
                         }))
                     }/>
-                <Textarea label="Speech" value={editingAd.speech || ""} 
+                <TextArea label="Speech" value={editingAd.speech || ""} 
                     onChange={v =>
                         setEditingAd(prev => ({
                         ...prev,

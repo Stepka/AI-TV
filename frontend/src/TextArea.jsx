@@ -1,6 +1,6 @@
 
 
-export default function Textarea({ label, value, onChange }) {
+export default function TextArea({ label, value, onChange }) {
     return (
         <div style={{ marginBottom: 12, width: "100%" }}>
         <div style={{ marginBottom: 4 }}>{label}</div>

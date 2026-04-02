@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import AppButton from "./AppButton";
 import PhraseGenerator from "./PhraseGenerator"
-import Textarea from "./Textarea"; 
+import TextArea from "./TextArea"; 
 
 
 export default function BrandPhrasesLibrary({ token, userData, channel, onSave }) {

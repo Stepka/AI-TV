@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton";
 import ListEditor from "./ListEditor";
 import Input from "./Input"; 
-import Textarea from "./Textarea"; 
+import TextArea from "./TextArea"; 
 
 export default function ChannelManager({ token, channel,  userData, onSave, onDelete }) {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -147,13 +147,13 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
               </AppButton>
             </div>
 
-            <Textarea label="Style" value={editedChannel.style || ""}
+            <TextArea label="Style" value={editedChannel.style || ""}
             onChange={v => handleChange("style", v)} />
 
             <Input label="Location" value={editedChannel.location || ""}
             onChange={v => handleChange("location", v)} />
 
-            <Textarea label="Description" value={editedChannel.description || ""}
+            <TextArea label="Description" value={editedChannel.description || ""}
             onChange={v => handleChange("description", v)} />
 
             <br />
