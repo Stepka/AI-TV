@@ -106,13 +106,15 @@ export default function VideoStage({
         />
       )}
 
-      <TitlesOverlay
-        topTitle={titles.topTitle}
-        topSub={titles.topSub}
-        nowPlaying={titles.nowPlaying}
-        nextTrack={titles.nextTrack}
-        zIndex={60}
-      />
+      {!isFullscreen && (
+        <TitlesOverlay
+          topTitle={titles.topTitle}
+          topSub={titles.topSub}
+          nowPlaying={titles.nowPlaying}
+          nextTrack={titles.nextTrack}
+          zIndex={60}
+        />
+      )}
     </div>
   );
 }

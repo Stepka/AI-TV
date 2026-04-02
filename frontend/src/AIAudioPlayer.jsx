@@ -40,7 +40,7 @@ export default class AIAudioPlayer {
     this.container.style.position = "relative";
 
     this.container.appendChild(this.video);
-    this.container.appendChild(this.audio);
+    // this.container.appendChild(this.audio);
 
     this.audio.load();
     this.video.load();
@@ -107,9 +107,9 @@ export default class AIAudioPlayer {
       this.audio.src = "";
       this.audio.onended = null;
 
-      if (this.audio.parentNode === this.container) {
-        this.container.removeChild(this.audio);
-      }
+      // if (this.audio.parentNode === this.container) {
+      //   this.container.removeChild(this.audio);
+      // }
     }
 
     if (this.video) {
