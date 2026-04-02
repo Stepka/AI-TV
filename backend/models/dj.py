@@ -20,6 +20,7 @@ class DJRequest(BaseModel):
     to_title: str
     
 
-class BrandPhraseRequest(BaseModel):
+class AdPhraseRequest(BaseModel):
+    ad_id: str
     user_id: str
     channel_id: str

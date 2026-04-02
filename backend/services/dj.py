@@ -10,6 +10,7 @@ import numpy as np
 from silero import silero_tts
 from silero_stress import load_accentor
 
+from db.media import fetch_ad_library
 from db.channels import get_channel_by_id
 from services.silero import has_speech
 from services.llm import generate_dj_text
@@ -129,52 +130,35 @@ def generate_dj_speech(req: DJRequest):
         "format": "wav"
     }
 
+
 def get_prerecord_brand_speech(req: DJRequest):
-    base_path = Path("channels_data") / req.user_id / req.channel_id / "prerecord_brand_speech"
-    base_path.mkdir(parents=True, exist_ok=True)
+    
+    ads = fetch_ad_library(req.user_id, req.channel_id, "prerecord_brand_speech")
 
-    files = []
-    for file in base_path.glob("*"):
-        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
-            files.append({
-                # "index": int(file.name.split("_")[-1].split(".")[0]),
-                "name": file.name,
-                "url": f"channels_data/{req.user_id}/{req.channel_id}/prerecord_brand_speech/{file.name}"
-            })
-            
-    # files = sorted(files, key=lambda x: x["index"])
-    file = random.choice(files)
-
+    if len(ads) == 0:
+        return False
+    
+    ad = random.choice(ads)
     return {
-        "audio_filename": file["name"],
-        "url": file["url"],
-        "type": "prerecord_brand_speech",
+        "audio_filename": ad.filename,
+        "type": ad.type,
         "duration": -1,
         "format": "wav"
     }
 
 
-
 def get_prerecord_ad_speech(req: DJRequest):
-    base_path = Path("channels_data") / req.user_id / req.channel_id / "prerecord_ad_phrases"
-    base_path.mkdir(parents=True, exist_ok=True)
+    
+    ads = fetch_ad_library(req.user_id, req.channel_id, "prerecord_ad_speech")
 
-    files = []
-    for file in base_path.glob("*"):
-        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
-            files.append({
-                # "index": int(file.name.split("_")[-1].split(".")[0]),
-                "name": file.name,
-                "url": f"channels_data/{req.user_id}/{req.channel_id}/prerecord_ad_phrases/{file.name}"
-            })
-            
-    # files = sorted(files, key=lambda x: x["index"])
-    file = random.choice(files)
+    if len(ads) == 0:
+        return False
+
+    ad = random.choice(ads)
 
     return {
-        "audio_filename": file["name"],
-        "url": file["url"],
-        "type": "prerecord_ad_speech",
+        "audio_filename": ad.filename,
+        "type": ad.type,
         "duration": -1,
         "format": "wav"
     }

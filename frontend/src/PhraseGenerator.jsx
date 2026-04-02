@@ -2,36 +2,54 @@ import React, { useState, useEffect } from "react";
 import AppButton from "./AppButton"; 
 import Textarea from "./Textarea"; 
 
-export default function PhraseGenerator({ text, playAudio, generateText, generateAudio }) {
+export default function PhraseGenerator({ ad, playAudio, generateText, generateAudio, save }) {
   
-  const [phraseObject, setPhrase] = useState("");
+  const [editingAd, setEditingAd] = useState("");
   
   const [isGenerating, setIsGenerating] = useState(false);
   
   useEffect(() => {
-    setPhrase(text);
-  }, [text]);
+    setEditingAd(ad);
+  }, [ad]);
 
   return (
-    <div style={{ marginBottom: 10, padding: 20, border: "1px solid #333", "border-radius": "10px" }}>
+    <div style={{ marginBottom: 10, padding: 20, border: "1px solid #333", "borderRadius": "10px" }}>
         <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
-        <Textarea label="Phrase" value={phraseObject || ""} 
-            onChange={v => setPhrase(v)}/>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
+                <Textarea label="Original text" value={editingAd.ad_text || ""} 
+                      onChange={v =>
+                        setEditingAd(prev => ({
+                        ...prev,
+                        ad_text: v
+                        }))
+                    }/>
+                <Textarea label="Speech" value={editingAd.speech || ""} 
+                    onChange={v =>
+                        setEditingAd(prev => ({
+                        ...prev,
+                        speech: v
+                        }))
+                    }/>
+            </div>
             
-        <AppButton onClick={generateText} disabled={isGenerating}>
-            {isGenerating ? "Generating phrase..." : "✍️ Generate text"}
-        </AppButton>
+            <AppButton onClick={() => generateText(editingAd)} disabled={isGenerating}>
+                {isGenerating ? "Generating phrase..." : "✍️ Generate text"}
+            </AppButton>
 
-        <AppButton onClick={generateAudio} disabled={isGenerating}>
-            {isGenerating ? "Generating audio..." : "🎵 Generate audio"}
-        </AppButton>
+            <AppButton onClick={() => generateAudio(editingAd)} disabled={isGenerating}>
+                {isGenerating ? "Generating audio..." : "🎵 Generate audio"}
+            </AppButton>
+
+            <AppButton onClick={() => save(editingAd)} disabled={isGenerating}>
+                {isGenerating ? "Saving..." : "Save"}
+            </AppButton>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <AppButton onClick={() => playAudio(phraseObject.url)}>
+        <AppButton onClick={() => playAudio(editingAd)}>
             ▶ Play
         </AppButton>
-        <span>{phraseObject.filename}</span>
+        <span>{editingAd.filename}</span>
         </div>
     </div>
   );

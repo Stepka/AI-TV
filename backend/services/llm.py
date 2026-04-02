@@ -254,7 +254,7 @@ def generate_dj_text(user_uid: str, channel_uid: str, from_artist: str, from_tit
                     match random.random():
                         case x if x <= 0.4:
                             print("Adding promo")
-                            text = add_promo(text, user_uid, channel_uid)
+                            text = add_promo(text, random.choice(meta["actions"]) if meta["actions"] else "Нет акций", user_uid, channel_uid)
                         case x if x <= 0.8:
                             print("Adding menu")
                             text = add_menu(text, user_uid, channel_uid)
@@ -513,7 +513,7 @@ def add_menu(text, user_uid: str, channel_uid: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def add_promo(text, user_uid: str, channel_uid: str) -> str:
+def add_promo(text, promo: str, user_uid: str, channel_uid: str) -> str:
     
     meta = get_channel_by_id(user_uid, channel_uid)
 
@@ -526,7 +526,7 @@ def add_promo(text, user_uid: str, channel_uid: str) -> str:
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
 Добавь в этот текст информацию об одной из акций заведения {meta["name"]}, которое играет на канале {channel}.
 Вот текст, который нужно дополнить: {text}
-Вот акция: {random.choice(meta["actions"]) if meta["actions"] else "Нет акций"}
+Вот акция: {promo}
 В конце информации об акции добавь призыв к дейстивю, например: подробности спрашивайте у наших сотрудников.
 
 Верни дополненный текст, который диджей может сказать в эфире, чтобы прорекламировать заведение и его предложения, 

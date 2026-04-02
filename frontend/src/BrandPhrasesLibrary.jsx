@@ -4,7 +4,7 @@ import PhraseGenerator from "./PhraseGenerator"
 import Textarea from "./Textarea"; 
 
 
-export default function AIAudioLibrary({ token, userData, channel, onSave }) {
+export default function BrandPhrasesLibrary({ token, userData, channel, onSave }) {
   const API_URL = import.meta.env.VITE_API_URL;
   
   const [loading, setLoading] = useState(false);
@@ -12,7 +12,7 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
   
   const [brandPhrase, setBrandPhrase] = useState("");
 
-  const [files, setFiles] = useState([]);
+  const [ads, setAds] = useState([]);
   const audioRef = useRef(null);
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -37,18 +37,31 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
       }
     })
       .then(res => res.json())
-      .then(data => setFiles(data.files));
+      .then(data => setAds(data.ads));
   };
 
-  const playAudio = (url) => {
-    if (audioRef.current) {
-      url = `${API_URL}/${url}`
+  const playAudio = async (ad) => {
+    if (audioRef.current) {    
+      const res = await fetch(
+        `${API_URL}/media/speech?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${ad.filename}&type=${ad.type}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) throw new Error("Audio fetch failed");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       audioRef.current.src = url;
       audioRef.current.play();
     }
   };
 
-  const generate = async () => {
+  const generateAudio = async (ad) => {
+
+    updateAd(ad);
+
     setIsGenerating(true);
     const res = await fetch(`${API_URL}/media/generate_brand_phrase_speech`, {
       method: "POST",
@@ -57,9 +70,10 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
+        ad_id: ad.id,
         user_id: userData.user_uid, 
         channel_id: channel.channel_uid, 
-        text: brandPhrase
+        text: ad.speech
       })
     })
     setIsGenerating(false);
@@ -69,7 +83,10 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
     loadSpeechLibrary();
   };
 
-  const generateText = async () => {
+  const generateText = async (ad) => {
+
+    updateAd(ad);
+
     setIsGenerating(true);
     const res = await fetch(`${API_URL}/dj/brand_phrase_text`, {
       method: "POST",
@@ -78,15 +95,29 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
+        ad_id: ad.id,
         user_id: userData.user_uid, 
         channel_id: channel.channel_uid
       })
     })
+
+    const data = await res.json(); 
+
     setIsGenerating(false);
 
     if (!res.ok) throw new Error("Generate ai track failed");
 
-    setBrandPhrase(res["text"])
+    setAds(prev =>
+      prev.map(item =>
+        item.id === ad.id
+          ? { ...item, speech: data.text }
+          : item
+      )
+    );
+
+    ad.speech = data.text; 
+
+    updateAd(ad)
   };
   
   const handleChange = (field, value) => {
@@ -135,6 +166,55 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
     // loadChannels();
   };
 
+  
+  const addAd = async () => {
+    setLoading(true);
+
+    const payload = {
+        user_id: userData.user_uid,
+        channel_id: editedChannel.channel_uid
+    };
+    await fetch(`${API_URL}/media/add_prerecord_brand_phrase`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    loadSpeechLibrary();
+
+    setLoading(false);
+  };
+
+  
+  const updateAd = async (ad) => {
+    setLoading(true);
+
+    console.log("Updating ad:", ad);
+
+    const payload = {
+        id: ad.id,
+        user_id: userData.user_uid,
+        channel_id: editedChannel.channel_uid,
+        ad_text: ad.ad_text,
+        speech: ad.speech
+    };
+    await fetch(`${API_URL}/media/update_prerecord_brand_phrase`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    loadSpeechLibrary();
+
+    setLoading(false);
+  };
+
 
   return (
     <div style={{ 
@@ -147,21 +227,13 @@ export default function AIAudioLibrary({ token, userData, channel, onSave }) {
       <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
         <h2>🎧 Brand Phrases Library</h2>
         <span>Available generations: {userData?.prerecord_welcome_num}</span>
-
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", width: "100%" }}>
-          <Textarea label="Brand description" value={editedChannel.description || ""}
-            onChange={v => handleChange("description", v)} />
-          <AppButton onClick={saveChannel} disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-          </AppButton>
-        </div>
         
-        <AppButton onClick={() => {}} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Brand Phrase</AppButton>
+        <AppButton onClick={addAd} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Brand Phrase</AppButton>
 
         <ul style={{ listStyle: "none", padding: 0 }}>
-            {files.map((file, idx) => (
+            {ads.map((ad, idx) => (
             <li key={idx} style={{ marginBottom: 10 }}>
-              <PhraseGenerator text={brandPhrase}/>
+              <PhraseGenerator ad={ad} generateText={generateText} generateAudio={generateAudio} playAudio={playAudio}/>
             </li>
             ))}
         </ul>
