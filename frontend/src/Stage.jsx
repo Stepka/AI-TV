@@ -580,7 +580,8 @@ export default function App({ token, userData, channel }) {
     };
     audio.play();
 
-    const dj_duration = 15;
+    // const dj_duration = 15;
+    const dj_duration = 5;
     const durationMs = (dj_duration) * 1000;
     const period = 50; // частота обновления
     let elapsed = 0;
