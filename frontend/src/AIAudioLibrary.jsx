@@ -57,7 +57,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   };
 
   return (
-    <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px"}}>
     <h2>🎧 Audio Library</h2>
     <span>Available generations: {userData?.ai_tracks_num}</span>
 
