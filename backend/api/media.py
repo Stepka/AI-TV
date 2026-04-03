@@ -119,10 +119,12 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
     channel = get_channel_by_id(req.user_id, req.channel_id)
     channel = Channel(**channel)
 
-    if random.random() < 0.2:
+    if random.random() < 0.4:
         instrumental = False
     else:
         instrumental = True
+    
+    print(f"Generating AI track for channel {channel.name} with style {channel.style} (instrumental={instrumental})")
 
     task = generate_music(style=channel.style, title=channel.name, prompt=f"{channel.name}, {channel.name}, {channel.name}", instrumental=instrumental)
     task_id = task["data"]["task_id"]
