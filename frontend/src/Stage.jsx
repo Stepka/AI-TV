@@ -541,7 +541,9 @@ export default function App({ token, userData, channel }) {
       // console.log("Current time:", player.getCurrentTime());
 
 
-      const dj_duration = 15;
+      // const dj_duration = 15;
+      const dj_duration = 5;
+      // console.log("Checking DJ transition:", djDataRef.current);
       if (djDataRef.current && remaining < dj_duration) {
         console.log("Starting DJ transition, remaining:", remaining);
         clearInterval(interval);
