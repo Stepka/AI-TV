@@ -24,6 +24,7 @@ class AdPhrase(BaseModel):
     voice_speaker: str
     voice_sex: str
     type: str
+    duration: int = -1
 
 class AddAdPhraseRequest(BaseModel):
     user_id: str

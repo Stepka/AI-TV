@@ -188,6 +188,7 @@ def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Dep
     if is_speech:
         ad = fetch_ad(req.ad_id, req.user_id, req.channel_id)
         ad.filename = filename
+        ad.duration = duration_seconds
         ad.voice_model = channel["voice"]["source"]
         ad.voice_speaker = channel["voice"]["name"]
         ad.voice_sex = channel["voice"]["sex"]
@@ -244,6 +245,7 @@ def generate_ad_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depend
     if is_speech:
         ad = fetch_ad(req.ad_id, req.user_id, req.channel_id)
         ad.filename = filename
+        ad.duration = duration_seconds
         ad.voice_model = channel["voice"]["source"]
         ad.voice_speaker = channel["voice"]["name"]
         ad.voice_sex = channel["voice"]["sex"]

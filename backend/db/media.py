@@ -65,7 +65,8 @@ def update_ad(payload: AdPhrase):
             voice_model = ?,
             voice_speaker = ?,
             voice_sex = ?,
-            type = ?
+            type = ?,
+            duration = ?
         WHERE channel_id = ? AND user_id = ? AND id = ?
     """, (
             payload.ad_text,
@@ -75,6 +76,7 @@ def update_ad(payload: AdPhrase):
             payload.voice_speaker,
             payload.voice_sex,
             payload.type,
+            payload.duration,
             payload.channel_id,
             payload.user_id,
             payload.id
