@@ -63,7 +63,7 @@ export default function App({ token, userData, channel }) {
 
       const helloData = await prepareDjHello(playlist);
 
-      console.log("Hello data:", helloData);
+      // console.log("Hello data:", helloData);
 
       playDjHelloOverVideo();
 
@@ -90,7 +90,7 @@ export default function App({ token, userData, channel }) {
 
   // Загружаем IFrame API один раз
   useEffect(() => {
-    console.log("externalPlayerAPILoaded")
+    // console.log("externalPlayerAPILoaded")
     if (externalPlayerAPILoaded.current) return;
 
     const tag = document.createElement("script");
@@ -107,7 +107,7 @@ export default function App({ token, userData, channel }) {
 
   // Создание плеера
   const createYoutubePlayer = (videoId) => {
-    console.log("createYoutubePlayer")
+    // console.log("createYoutubePlayer")
     if (playerRef.current) playerRef.current.destroy();
 
     setPlayerReady(false);
@@ -116,11 +116,11 @@ export default function App({ token, userData, channel }) {
 
     const interval = setInterval(() => {
       const iframe = document.querySelector("#YTPlayer");
-      console.log("Looking for YouTube player iframe...", iframe);
+      // console.log("Looking for YouTube player iframe...", iframe);
 
       if (iframe) {
         clearInterval(interval);
-        console.log("youtube player найден");
+        // console.log("youtube player найден");
     
         playerRef.current = new window.YT.Player("YTPlayer", {
           height: "405",
@@ -130,7 +130,7 @@ export default function App({ token, userData, channel }) {
           videoId: videoId,
           events: {
             onReady: (event) => {
-              console.log("onReady")
+              // console.log("onReady")
               setPlayerReady(true);
 
               // Ставим громкость на 0
@@ -155,13 +155,13 @@ export default function App({ token, userData, channel }) {
                 const volume = Math.pow(progress, 2) * 0.75 * 90;
 
                 event.target.setVolume(volume);
-                console.log("crYtPl Volume:", playerRef.current.getVolume())
+                // console.log("crYtPl Volume:", playerRef.current.getVolume())
 
               }, period);
 
             },
             onStateChange: (event) => {
-              console.log(event.data)
+              // console.log(event.data)
             },
           },
           playerVars: {
@@ -182,7 +182,7 @@ export default function App({ token, userData, channel }) {
 
   // Создание плеера
   const createVkPlayer = (videoId) => {
-    console.log("createVkPlayer: ", videoId);
+    // console.log("createVkPlayer: ", videoId);
     if (playerRef.current) playerRef.current.destroy();
 
     setPlayerReady(false);
@@ -193,22 +193,22 @@ export default function App({ token, userData, channel }) {
 
     const interval = setInterval(() => {
       const iframe = document.querySelector("#vkplayer");
-      console.log("Looking for YouTube player iframe...", iframe);
+      // console.log("Looking for YouTube player iframe...", iframe);
 
       if (iframe) {
         clearInterval(interval);
-        console.log("vk iframe найден");
+        // console.log("vk iframe найден");
 
         // iframe.onload = () => {
 
-          console.log("vk iframe loaded, creating player...");
+          // console.log("vk iframe loaded, creating player...");
       
           playerRef.current = new window.VK.VideoPlayer(iframe);
 
           playerRef.current.on("inited", () => {
-            console.log("VK player ready");
-            console.log("Volume:", playerRef.current.getVolume())
-            console.log("Muted:", playerRef.current.isMuted())
+            // console.log("VK player ready");
+            // console.log("Volume:", playerRef.current.getVolume())
+            // console.log("Muted:", playerRef.current.isMuted())
             setPlayerReady(true);
             
             // Ставим громкость на 0
@@ -235,7 +235,7 @@ export default function App({ token, userData, channel }) {
 
               playerRef.current.setVolume(volume);
 
-              console.log("crVkPl Volume:", playerRef.current.getVolume())
+              // console.log("crVkPl Volume:", playerRef.current.getVolume())
               // console.log("Muted:", playerRef.current.isMuted())
 
             }, period);
@@ -278,7 +278,7 @@ export default function App({ token, userData, channel }) {
           });
 
           playerRef.current.on("ended", () => {
-            console.log("video finished");
+            // console.log("video finished");
             playerRef.current.pause();
           });
 
@@ -295,7 +295,7 @@ export default function App({ token, userData, channel }) {
 
   // Создание плеера
   const createAIAudioPlayer = (videoId) => {
-    console.log("createAIAudioPlayer: ", videoId);
+    // console.log("createAIAudioPlayer: ", videoId);
     if (playerRef.current) playerRef.current.destroy();
 
     setPlayerReady(false);
@@ -306,7 +306,7 @@ export default function App({ token, userData, channel }) {
 
     const interval = setInterval(() => {
       const iframe = document.querySelector("#ai_audio_player");
-      console.log("Looking for AI Audio player iframe...", iframe);
+      // console.log("Looking for AI Audio player iframe...", iframe);
 
       if (iframe) {
         clearInterval(interval);
@@ -338,7 +338,7 @@ export default function App({ token, userData, channel }) {
           const volume = Math.pow(progress, 2) * 0.75;
 
           playerRef.current.setVolume(volume);
-          console.log("crAIPl Volume:", playerRef.current.getVolume())
+          // console.log("crAIPl Volume:", playerRef.current.getVolume())
 
         }, period);
 
@@ -360,8 +360,8 @@ export default function App({ token, userData, channel }) {
   useEffect(() => {
     if (!playlist.length || !helloFinished || !channel || !isStreaming) return;
 
-    console.log(channel);
-    console.log("Creating player for videoId:", playlist[current].videoId, "source:", playlist[current].source);
+    // console.log(channel);
+    // console.log("Creating player for videoId:", playlist[current].videoId, "source:", playlist[current].source);
     if (playlist[current].source == "youtube") {
       createYoutubePlayer(playlist[current].videoId);
     } else if (playlist[current].source == "vk") {
@@ -391,8 +391,8 @@ export default function App({ token, userData, channel }) {
   useEffect(() => {
     if (!playlist.length ) return;
 
-    console.log("Updating titles for current and next video");
-    console.log(playlist);
+    // console.log("Updating titles for current and next video");
+    // console.log(playlist);
     playlistRef.current = playlist;
 
     const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
@@ -464,12 +464,12 @@ export default function App({ token, userData, channel }) {
     // }, 500);
 
     audio.load();
-    console.log("Current time:", audio.currentTime.toFixed(2));
-    console.log("Current volume:", audio.volume.toFixed(2));
+    // console.log("Current time:", audio.currentTime.toFixed(2));
+    // console.log("Current volume:", audio.volume.toFixed(2));
     
-    await wait(3000);
+    // await wait(3000);
 
-    audio.pause();
+    // audio.pause();
 
     // await wait(3000);
 
@@ -477,8 +477,8 @@ export default function App({ token, userData, channel }) {
     audio.volume = 1;
 
     await audio.play();
-    console.log("Current time:", audio.currentTime.toFixed(2));
-    console.log("Current volume:", audio.volume.toFixed(2));
+    // console.log("Current time:", audio.currentTime.toFixed(2));
+    // console.log("Current volume:", audio.volume.toFixed(2));
 
     audio.onended = () => {
       // тут можно cleanup
@@ -517,10 +517,13 @@ export default function App({ token, userData, channel }) {
   };
   
   const startTransition = async (dj_duration) => {  
+    // console.log("startTransition")
     clearInterval(trackTimeoutInterval);
     playOverlayVideo(`${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
     clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
+    // console.log("start transition:", dj_duration, djDataRef.current.duration)
+    // timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
+    smoothNext((djDataRef.current.duration - dj_duration) * 1000)
     playDjOverVideo();
   };
 
@@ -542,10 +545,11 @@ export default function App({ token, userData, channel }) {
 
 
       // const dj_duration = 15;
-      const dj_duration = 5;
+      let dj_duration = djDataRef.current.duration / 2;
+      if (dj_duration > 15) dj_duration = 15;
       // console.log("Checking DJ transition:", djDataRef.current);
       if (djDataRef.current && remaining < dj_duration) {
-        console.log("Starting DJ transition, remaining:", remaining);
+        // console.log("Starting DJ transition, remaining:", remaining);
         clearInterval(interval);
 
         startTransition(dj_duration);
@@ -575,13 +579,14 @@ export default function App({ token, userData, channel }) {
 
     audio.volume = 1;
     audio.onended = () => {
-      console.log("dj ended")
+      // console.log("dj ended")
       // handleNext();
     };
     audio.play();
 
     // const dj_duration = 15;
-    const dj_duration = 5;
+    let dj_duration = djDataRef.current.duration / 2;
+    if (dj_duration > 15) dj_duration = 15;
     const durationMs = (dj_duration) * 1000;
     const period = 50; // частота обновления
     let elapsed = 0;
@@ -601,7 +606,7 @@ export default function App({ token, userData, channel }) {
       const volume = videoSource === "youtube" ? Math.pow(1 - progress, 2) * 0.75 * 90 : Math.pow(1 - progress, 2) * 0.75;
       if (playerRef.current) {
         playerRef.current.setVolume(volume);
-        console.log("plDjOvVi Volume:", playerRef.current.getVolume())
+        // console.log("plDjOvVi Volume:", playerRef.current.getVolume())
       }
 
     }, period);
@@ -611,12 +616,13 @@ export default function App({ token, userData, channel }) {
 
   // Плавный переход клипа через затемнение
   const smoothNext = (timeout = 2000) => {
+    // console.log("smoothNext")
     setIsTransitioning(true);
 
+    handleNext(timeout);
     setTimeout(() => {
-      handleNext(timeout - 2000);
       setIsTransitioning(false);
-    }, 2000);
+    }, timeout);
   };
 
   // Следующий клип
@@ -627,10 +633,10 @@ export default function App({ token, userData, channel }) {
       loadPlaylist();
     }
 
-    console.log("handleNext called with timeout:", timeout);
-    console.log("current playlist", list);
-    console.log("old playlist", playlist);
-    console.log(current);
+    // console.log("handleNext called with timeout:", timeout);
+    // console.log("current playlist", list);
+    // console.log("old playlist", playlist);
+    // console.log(current);
     setTimeout(() => {
       if (current == 0 && list.length == 1) {
         
@@ -640,9 +646,10 @@ export default function App({ token, userData, channel }) {
           createVkPlayer(playlist[current].videoId);
         }
       } else {
+        // console.log("handleNext")
         setCurrent(prev => (prev + 1) % list.length);
       }
-    }, timeout - 10000);
+    }, timeout);
   };
 
   // const prevVideo = () => {
@@ -728,7 +735,7 @@ export default function App({ token, userData, channel }) {
 
       videoEl.addEventListener("timeupdate", onTimeUpdate);
       videoEl.addEventListener("loadedmetadata", () => {
-        console.log(videoEl.duration);
+      // console.log(videoEl.duration);
       });
       videoEl.addEventListener("ended", () => {
         total_played += videoEl.currentTime; // считаем реальное проигранное время, чтобы учесть паузы и перемотки
@@ -760,7 +767,7 @@ export default function App({ token, userData, channel }) {
       setPlaylist(prev => [...prev, ...data.playlist]);
 
       setPlaylistReady(true);
-      console.log("Playlist loaded:", data.playlist);
+      // console.log("Playlist loaded:", data.playlist);
     } catch (err) {
       console.error("Failed to load playlist:", err);
     } finally {
