@@ -22,10 +22,15 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
 
     match subscription:
         case "basic":
-            return get_prerecord_brand_speech(req)
+            return get_prerecord_brand_speech(req) if random.random() > 0.8 else get_prerecord_transition_speech(req)
         case "plus":
-            # return get_prerecord_brand_speech(req) if random.random() > 0.3 else get_prerecord_ad_speech(req)
-            return get_prerecord_transition_speech(req)
+            rand = random.random()
+            if rand > 0.8:
+                return get_prerecord_brand_speech(req)
+            elif rand > 0.4:
+                return get_prerecord_ad_speech(req)
+            else:
+                return get_prerecord_transition_speech(req)
         case _:
             return generate_dj_speech(req)
 
@@ -39,7 +44,7 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
         case "basic":
             return get_prerecord_brand_speech(req)
         case "plus":
-            return get_prerecord_brand_speech(req) if random.random() > 0.3 else get_prerecord_ad_speech(req)
+            return get_prerecord_brand_speech(req)
         case _:
             req.from_artist = None
             req.from_title = None
