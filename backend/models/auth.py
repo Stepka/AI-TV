@@ -34,3 +34,5 @@ class UserResponse(BaseModel):
     prerecord_welcome_num: int
     prerecord_ad_num: int
     voice_num: int
+    prerecord_transition_num: int
+    channels_num: int

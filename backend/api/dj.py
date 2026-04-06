@@ -92,3 +92,26 @@ def ad_phrase_text(req: AdPhraseRequest, user=Depends(get_current_user)):
         text = add_emotions_llm(text, req.user_id, req.channel_id)
 
     return {"status": "ok", "text": text}
+
+
+@router.post("/brand_transition_text")
+def brand_transition_text(req: AdPhraseRequest, user=Depends(get_current_user)):
+    
+    channel = get_channel_by_id(req.user_id, req.channel_id)
+
+    # text = generate_short_text(req.user_id, req.channel_id)
+    
+    # if len(text) > 500:
+    #     text = shortener(text, req.user_id, req.channel_idd, max_symbols=500)
+    
+    # if channel["voice"]["source"] == "silero":
+    #     text = convert_to_russian(text, "", "")
+    #     text = convert_digits(text)   
+    #     text = replace_words(text)
+    
+    # if channel["voice"]["source"] == "elevenlabs":
+    #     print("Adding emotions")
+    #     text = add_emotions_llm(text, req.user_id, req.channel_id)
+
+    text = "Переходим к следующей песне"
+    return {"status": "ok", "text": text}

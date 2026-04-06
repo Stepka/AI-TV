@@ -11,10 +11,10 @@ class GenerateBrandPhraseSpeechRequest(BaseModel):
     ad_id: str
     user_id: str
     channel_id: str
-    text: str
+    ad_text: str
 
 class AdPhrase(BaseModel):
-    id: str
+    ad_id: str
     user_id: str
     channel_id: str
     ad_text: str
@@ -31,7 +31,7 @@ class AddAdPhraseRequest(BaseModel):
     channel_id: str
 
 class UpdateAdPhraseRequest(BaseModel):
-    id: str
+    ad_id: str
     user_id: str
     channel_id: str
     ad_text: str = ""

@@ -9,6 +9,8 @@ from scipy.io.wavfile import write
 from fastapi import APIRouter, Query, Depends
 from fastapi.responses import FileResponse
 import requests
+from api.dj import brand_transition_text
+from models.dj import AdPhraseRequest
 from db.media import add_ad, fetch_ad, fetch_ad_library, update_ad
 from services.silero import has_speech
 from services.dj import generate_speech
@@ -166,7 +168,7 @@ def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Dep
     while audio is None and retries > 0:
         try:
             retries -= 1
-            audio = generate_speech(channel, req.text, sample_rate)
+            audio = generate_speech(channel, req.ad_text, sample_rate)
             is_speech = has_speech(audio, sample_rate, threshold=0.5)
             duration_seconds = 30
             # Количество сэмплов
@@ -174,7 +176,7 @@ def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Dep
             # Длительность в секундах
             duration_seconds = num_samples / sample_rate
             print(f"Generated {duration_seconds:.2f} sec audio with {channel["voice"]["source"]}")
-            raw = f"{req.user_id}|{req.channel_id}|{req.text}"
+            raw = f"{req.user_id}|{req.channel_id}|{req.ad_text}"
             h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
             filename = f"dj_{h}.wav"
@@ -196,7 +198,7 @@ def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Dep
 
         return {
             "success": "ok",
-            "text": req.text,
+            "text": req.ad_text,
             "audio_filename": filename,
             "duration": duration_seconds,
             "format": "wav"
@@ -223,7 +225,7 @@ def generate_ad_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depend
     while audio is None and retries > 0:
         try:
             retries -= 1
-            audio = generate_speech(channel, req.text, sample_rate)
+            audio = generate_speech(channel, req.ad_text, sample_rate)
             is_speech = has_speech(audio, sample_rate, threshold=0.5)
             duration_seconds = 30
             # Количество сэмплов
@@ -231,7 +233,7 @@ def generate_ad_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depend
             # Длительность в секундах
             duration_seconds = num_samples / sample_rate
             print(f"Generated {duration_seconds:.2f} sec audio with {channel["voice"]["source"]}")
-            raw = f"{req.user_id}|{req.channel_id}|{req.text}"
+            raw = f"{req.user_id}|{req.channel_id}|{req.ad_text}"
             h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
 
             filename = f"dj_{h}.wav"
@@ -253,7 +255,64 @@ def generate_ad_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depend
 
         return {
             "success": "ok",
-            "text": req.text,
+            "text": req.ad_text,
+            "audio_filename": filename,
+            "duration": duration_seconds,
+            "format": "wav"
+        }
+
+    return {"success": "error"}
+
+
+@router.post("/generate_transition_phrase_speech")
+def generate_transition_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depends(get_current_user)):
+    
+    success = spend_subscription(req.user_id, "prerecord_transition_num", decrement = 1)
+    if not success:
+        return {"track": "error", "error": "prerecord_transition_num limit exceeded"}
+    
+    channel = get_channel_by_id(req.user_id, req.channel_id)
+    # channel = Channel(**channel)
+    
+    sample_rate = 48000
+    
+    retries = 3
+    is_speech = False
+    audio = None
+    while audio is None and retries > 0:
+        try:
+            retries -= 1
+            audio = generate_speech(channel, req.ad_text, sample_rate)
+            is_speech = has_speech(audio, sample_rate, threshold=0.5)
+            duration_seconds = 30
+            # Количество сэмплов
+            num_samples = audio.shape[0]
+            # Длительность в секундах
+            duration_seconds = num_samples / sample_rate
+            print(f"Generated {duration_seconds:.2f} sec audio with {channel["voice"]["source"]}")
+            raw = f"{req.user_id}|{req.channel_id}|{req.ad_text}"
+            h = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]  # короткий хэш
+
+            filename = f"dj_{h}.wav"
+            dir_path = f"channels_data/{req.user_id}/{req.channel_id}/prerecord_transition_speech"
+            os.makedirs(dir_path, exist_ok=True)
+            write(f"{dir_path}/{filename}", sample_rate, audio)
+        except Exception as e:
+            print("ERROR!", e)
+          
+
+    if is_speech:
+        ad = fetch_ad(req.ad_id, req.user_id, req.channel_id)
+        ad.filename = filename
+        ad.duration = duration_seconds
+        ad.voice_model = channel["voice"]["source"]
+        ad.voice_speaker = channel["voice"]["name"]
+        ad.voice_sex = channel["voice"]["sex"]
+        update_ad(ad)
+
+        return {
+            "success": "ok",
+            "text": req.ad_text,
             "audio_filename": filename,
             "duration": duration_seconds,
             "format": "wav"
@@ -263,14 +322,27 @@ def generate_ad_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depend
 
 
 @router.post("/add_prerecord_brand_phrase")
-def add_prerecord_brand_phrase(req: AddAdPhraseRequest, user=Depends(get_current_user)):
+def add_prerecord_brand_phrase(req: AddAdPhraseRequest, user=Depends(get_current_user)):    
 
     channel = get_channel_by_id(req.user_id, req.channel_id)
 
     voice = channel["voice"]
+    
+    transitions = fetch_ad_library(req.user_id, req.channel_id, "prerecord_transition_speech")
+    print(transitions)
+    if len(transitions) <= 0:
+        transition = AddAdPhraseRequest(user_id=req.user_id, channel_id=req.channel_id)
+        print(transition)
+        transition = add_prerecord_transition_phrase(transition, user)["ad"]
+        transition.ad_text = brand_transition_text(AdPhraseRequest(**transition.model_dump()), user)["text"]
+        print(transition)        
+        transition = UpdateAdPhraseRequest(**transition.model_dump())
+        print(transition)
+        update_prerecord_transition_phrase(transition, user)
+        generate_transition_phrase_speech(GenerateBrandPhraseSpeechRequest(**transition.model_dump()), user)
 
     payload = AdPhrase(
-        id=str(uuid.uuid4()), 
+        ad_id=str(uuid.uuid4()), 
         user_id=req.user_id, 
         channel_id=req.channel_id, 
         ad_text=channel["description"], 
@@ -293,7 +365,7 @@ def add_prerecord_ad_phrase(req: AddAdPhraseRequest, user=Depends(get_current_us
     voice = channel["voice"]
 
     payload = AdPhrase(
-        id=str(uuid.uuid4()), 
+        ad_id=str(uuid.uuid4()), 
         user_id=req.user_id, 
         channel_id=req.channel_id, 
         ad_text="", 
@@ -308,10 +380,33 @@ def add_prerecord_ad_phrase(req: AddAdPhraseRequest, user=Depends(get_current_us
     return {"success": "ok"}
 
 
+@router.post("/add_prerecord_transition_phrase")
+def add_prerecord_transition_phrase(req: AddAdPhraseRequest, user=Depends(get_current_user)):
+
+    channel = get_channel_by_id(req.user_id, req.channel_id)
+
+    voice = channel["voice"]
+
+    payload = AdPhrase(
+        ad_id=str(uuid.uuid4()), 
+        user_id=req.user_id, 
+        channel_id=req.channel_id, 
+        ad_text="", 
+        speech="", 
+        filename="", 
+        voice_model=voice["source"], 
+        voice_speaker=voice["name"], 
+        voice_sex=voice["sex"], 
+        type="prerecord_transition_speech", 
+    )
+    add_ad(payload)
+    return {"success": "ok", "ad": payload}
+
+
 @router.post("/update_prerecord_brand_phrase")
 def update_prerecord_brand_phrase(req: UpdateAdPhraseRequest, user=Depends(get_current_user)):
 
-    ad = fetch_ad(req.id, req.user_id, req.channel_id)
+    ad = fetch_ad(req.ad_id, req.user_id, req.channel_id)
 
     ad.ad_text = req.ad_text
     ad.speech = req.speech
@@ -328,7 +423,24 @@ def update_prerecord_ad_phrase(req: UpdateAdPhraseRequest, user=Depends(get_curr
 
     print("Updating ad:", req)
 
-    ad = fetch_ad(req.id, req.user_id, req.channel_id)
+    ad = fetch_ad(req.ad_id, req.user_id, req.channel_id)
+
+    ad.ad_text = req.ad_text
+    ad.speech = req.speech
+    ad.voice_model = req.voice_model
+    ad.voice_speaker = req.voice_speaker
+    ad.voice_sex = req.voice_sex
+
+    update_ad(ad)
+    return {"success": "ok"}
+
+
+@router.post("/update_prerecord_transition_phrase")
+def update_prerecord_transition_phrase(req: UpdateAdPhraseRequest, user=Depends(get_current_user)):
+
+    print("Updating ad:", req)
+
+    ad = fetch_ad(req.ad_id, req.user_id, req.channel_id)
 
     ad.ad_text = req.ad_text
     ad.speech = req.speech

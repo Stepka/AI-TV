@@ -15,11 +15,11 @@ def fetch_ad_library(user_id: str, channel_id: str, type: str) -> AdPhrase:
     return [AdPhrase(**row) for row in rows]
 
 
-def fetch_ad(id: str, user_id: str, channel_id: str) -> AdPhrase:
+def fetch_ad(ad_id: str, user_id: str, channel_id: str) -> AdPhrase:
     conn = get_db()
     cur = conn.cursor()
 
-    row = cur.execute("SELECT * FROM ads WHERE user_id = ? and channel_id = ? and id = ?", (user_id, channel_id, id)).fetchone()
+    row = cur.execute("SELECT * FROM ads WHERE user_id = ? and channel_id = ? and ad_id = ?", (user_id, channel_id, ad_id)).fetchone()
 
     conn.close()
 
@@ -32,10 +32,10 @@ def add_ad(payload: AdPhrase):
 
     cursor.execute("""
         INSERT INTO ads (
-            id, channel_id, user_id, ad_text, speech, filename, voice_model, voice_speaker, voice_sex, type
+            ad_id, channel_id, user_id, ad_text, speech, filename, voice_model, voice_speaker, voice_sex, type
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        payload.id,
+        payload.ad_id,
         payload.channel_id,
         payload.user_id,
         payload.ad_text,
@@ -67,7 +67,7 @@ def update_ad(payload: AdPhrase):
             voice_sex = ?,
             type = ?,
             duration = ?
-        WHERE channel_id = ? AND user_id = ? AND id = ?
+        WHERE channel_id = ? AND user_id = ? AND ad_id = ?
     """, (
             payload.ad_text,
             payload.speech,
@@ -79,7 +79,7 @@ def update_ad(payload: AdPhrase):
             payload.duration,
             payload.channel_id,
             payload.user_id,
-            payload.id
+            payload.ad_id
     ))
 
     if cursor.rowcount == 0:
