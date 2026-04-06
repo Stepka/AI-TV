@@ -25,9 +25,9 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
             return get_prerecord_brand_speech(req) if random.random() > 0.8 else get_prerecord_transition_speech(req)
         case "plus":
             rand = random.random()
-            if rand > 0.9:
+            if rand > 0.8:
                 return get_prerecord_brand_speech(req)
-            elif rand > 0.5:
+            elif rand > 0.4:
                 return get_prerecord_ad_speech(req)
             else:
                 return get_prerecord_transition_speech(req)
