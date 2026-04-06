@@ -332,7 +332,7 @@ def add_prerecord_brand_phrase(req: AddAdPhraseRequest, user=Depends(get_current
     transitions = fetch_ad_library(req.user_id, req.channel_id, "prerecord_transition_speech")
     if len(transitions) <= 0:        
         current_user = fetch_user_by_id(req.user_id)
-        for _ in current_user.prerecord_transition_num:
+        for _ in range(current_user.prerecord_transition_num):
             transition = AddAdPhraseRequest(user_id=req.user_id, channel_id=req.channel_id)
             transition = add_prerecord_transition_phrase(transition, user)["ad"]
             transition.ad_text = brand_transition_text(AdPhraseRequest(**transition.model_dump()), user)["text"]
