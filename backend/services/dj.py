@@ -147,6 +147,22 @@ def get_prerecord_brand_speech(req: DJRequest):
     }
 
 
+def get_prerecord_transition_speech(req: DJRequest):
+    
+    ads = fetch_ad_library(req.user_id, req.channel_id, "prerecord_transition_speech")
+
+    if len(ads) == 0:
+        return False
+    
+    ad = random.choice(ads)
+    return {
+        "audio_filename": ad.filename,
+        "type": ad.type,
+        "duration": ad.duration,
+        "format": "wav"
+    }
+
+
 def get_prerecord_ad_speech(req: DJRequest):
     
     ads = fetch_ad_library(req.user_id, req.channel_id, "prerecord_ad_speech")

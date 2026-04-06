@@ -447,6 +447,49 @@ def generate_text_brand_space(user_uid: str, channel_uid: str,
     return response.choices[0].message.content.strip()
     
 
+def generate_ultra_short_text(user_uid: str, channel_uid: str) -> str:
+    
+    meta = get_channel_by_id(user_uid, channel_uid)
+
+    channel = meta['name']
+
+    prompt = f"""
+Ты — радио-диджей брендированного музыкального канала "{channel}". 
+
+Ты играешь музыку в заведении "{meta["name"]}", вот его описание: {meta["description"]}.
+
+Сделай очень короткий текст перехода к слудующей песне, вроде: 
+- "Мы прололжаем в {meta["name"]}" 
+- "Я рад/рада, что вы с нами в {meta["name"]}" 
+- "Я рад/рада, что вы выбрали {meta["name"]}" 
+- "Мы рады вас видеть в {meta["name"]}" 
+- "Вы в {meta["name"]}" 
+- "Вы по-прежнему в {meta["name"]}" 
+Или другие уместные фразы, связанные со спецификой заведения и для чего оно предназначено
+И в двух словах расскажи про заведение, в котором ты играешь. 
+
+Требования к тексту:
+— русский язык
+— нельзя использовать слова на английском или других языках, кроме русского
+— от {'мужского' if meta["voice"]["sex"] == "male" else 'женского'} пола 
+— разговорный стиль
+— 1 предложение, до 10 слов - это очень важно
+"""
+    
+    # print("Prompt for DJ text generation:", prompt)
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You write short DJ speech for radio."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()
+    
+
 def generate_short_text(user_uid: str, channel_uid: str) -> str:
     
     meta = get_channel_by_id(user_uid, channel_uid)

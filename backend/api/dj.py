@@ -7,8 +7,8 @@ from db.channels import get_channel_by_id
 from services.common import replace_words
 from db.subscription import fetch_subscription
 from db.auth import fetch_user_by_id
-from services.llm import add_emotions_llm, add_promo, convert_digits, convert_to_russian, generate_short_text, shortener
-from services.dj import generate_dj_speech, get_prerecord_ad_speech, get_prerecord_brand_speech
+from services.llm import add_emotions_llm, add_promo, convert_digits, convert_to_russian, generate_short_text, generate_ultra_short_text, shortener
+from services.dj import generate_dj_speech, get_prerecord_ad_speech, get_prerecord_brand_speech, get_prerecord_transition_speech
 from services.auth import get_current_user
 from models.dj import AdPhraseRequest, DJRequest
 
@@ -24,7 +24,8 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
         case "basic":
             return get_prerecord_brand_speech(req)
         case "plus":
-            return get_prerecord_brand_speech(req) if random.random() > 0.3 else get_prerecord_ad_speech(req)
+            # return get_prerecord_brand_speech(req) if random.random() > 0.3 else get_prerecord_ad_speech(req)
+            return get_prerecord_transition_speech(req)
         case _:
             return generate_dj_speech(req)
 
@@ -99,19 +100,19 @@ def brand_transition_text(req: AdPhraseRequest, user=Depends(get_current_user)):
     
     channel = get_channel_by_id(req.user_id, req.channel_id)
 
-    # text = generate_short_text(req.user_id, req.channel_id)
+    text = generate_ultra_short_text(req.user_id, req.channel_id)
     
-    # if len(text) > 500:
-    #     text = shortener(text, req.user_id, req.channel_idd, max_symbols=500)
+    if len(text) > 100:
+        text = shortener(text, req.user_id, req.channel_idd, max_symbols=100)
     
-    # if channel["voice"]["source"] == "silero":
-    #     text = convert_to_russian(text, "", "")
-    #     text = convert_digits(text)   
-    #     text = replace_words(text)
+    if channel["voice"]["source"] == "silero":
+        text = convert_to_russian(text, "", "")
+        text = convert_digits(text)   
+        text = replace_words(text)
     
-    # if channel["voice"]["source"] == "elevenlabs":
-    #     print("Adding emotions")
-    #     text = add_emotions_llm(text, req.user_id, req.channel_id)
+    if channel["voice"]["source"] == "elevenlabs":
+        print("Adding emotions")
+        text = add_emotions_llm(text, req.user_id, req.channel_id)
 
-    text = "Переходим к следующей песне"
+    # text = "Переходим к следующей песне"
     return {"status": "ok", "text": text}
