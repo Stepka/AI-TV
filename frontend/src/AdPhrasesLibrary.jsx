@@ -70,10 +70,10 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
-        ad_id: ad.id,
+        ad_id: ad.ad_id,
         user_id: userData.user_uid, 
         channel_id: channel.channel_uid, 
-        text: ad.speech
+        ad_text: ad.speech
       })
     })
     setIsGenerating(false);
@@ -95,7 +95,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
         "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
-        ad_id: ad.id,
+        ad_id: ad.ad_id,
         user_id: userData.user_uid, 
         channel_id: channel.channel_uid
       })
@@ -109,7 +109,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
 
     setAds(prev =>
       prev.map(item =>
-        item.id === ad.id
+        item.ad_id === ad.ad_id
           ? { ...item, speech: data.text }
           : item
       )
@@ -195,7 +195,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
     console.log("Updating ad:", ad);
 
     const payload = {
-        id: ad.id,
+        ad_id: ad.ad_id,
         user_id: userData.user_uid,
         channel_id: editedChannel.channel_uid,
         ad_text: ad.ad_text,
