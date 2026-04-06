@@ -103,7 +103,7 @@ def brand_transition_text(req: AdPhraseRequest, user=Depends(get_current_user)):
     text = generate_ultra_short_text(req.user_id, req.channel_id)
     
     if len(text) > 100:
-        text = shortener(text, req.user_id, req.channel_idd, max_symbols=100)
+        text = shortener(text, req.user_id, req.channel_id, max_symbols=100)
     
     if channel["voice"]["source"] == "silero":
         text = convert_to_russian(text, "", "")
@@ -115,4 +115,5 @@ def brand_transition_text(req: AdPhraseRequest, user=Depends(get_current_user)):
         text = add_emotions_llm(text, req.user_id, req.channel_id)
 
     # text = "Переходим к следующей песне"
+    print(text)
     return {"status": "ok", "text": text}
