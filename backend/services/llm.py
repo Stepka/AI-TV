@@ -465,7 +465,7 @@ def generate_ultra_short_text(user_uid: str, channel_uid: str) -> str:
 - "Мы рады вас видеть в {meta["name"]}" 
 - "Вы в {meta["name"]}" 
 - "Вы по-прежнему в {meta["name"]}" 
-Или другие уместные фразы, связанные со спецификой заведения и для чего оно предназначено
+Выбери рандомную фразу из предложенных или придумай другие уместные фразы, связанные со спецификой заведения и для чего оно предназначено
 И в двух словах расскажи про заведение, в котором ты играешь. 
 
 Требования к тексту:
@@ -484,7 +484,7 @@ def generate_ultra_short_text(user_uid: str, channel_uid: str) -> str:
             {"role": "system", "content": "You write short DJ speech for radio."},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.8,
+        temperature=1.0,
     )
 
     return response.choices[0].message.content.strip()
@@ -990,7 +990,7 @@ def add_emotions_llm(text: str, user_uid: str, channel_uid: str) -> dict:
     prompt = f"""
 Ты — редактор текста для озвучки в ElevenLabs (модель eleven_v3).
 
-Дополни текст который тебе передали так, чтобы он звучал максимально естественно и “по-человечески”.
+Дополни текст который тебе передали тегами так, чтобы он звучал максимально естественно и “по-человечески”.
 
 Правила:
 
@@ -1014,7 +1014,7 @@ def add_emotions_llm(text: str, user_uid: str, channel_uid: str) -> dict:
 Вот твой текст: {text}
 
 Верни дополненный текст, который звучит максимально естественно и по-человечески, с добавленными эмоциями и звуками, 
-который можно отправлять в озвучку в ElevenLabs.
+который можно отправлять в озвучку в ElevenLabs. Добавляй только эмоции и звуки, не меняя сам текст.
 """
 
     response = llm_client.chat.completions.create(
