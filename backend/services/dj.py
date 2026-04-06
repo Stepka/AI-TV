@@ -142,7 +142,7 @@ def get_prerecord_brand_speech(req: DJRequest):
     return {
         "audio_filename": ad.filename,
         "type": ad.type,
-        "duration": -1,
+        "duration": ad.duration,
         "format": "wav"
     }
 
@@ -159,6 +159,6 @@ def get_prerecord_ad_speech(req: DJRequest):
     return {
         "audio_filename": ad.filename,
         "type": ad.type,
-        "duration": -1,
+        "duration": ad.duration,
         "format": "wav"
     }
