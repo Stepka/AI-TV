@@ -93,12 +93,14 @@ def create_user(payload: CreateUserRequest) -> UserResponse:
     # 2) вставка
     cur.execute(
         """
-        INSERT INTO users (user_uid, username, password_hash, role, tokens, subscription_id, ai_tracks_num, prerecord_welcome_num, prerecord_ad_num, voice_num)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (user_uid, username, password_hash, role, tokens, subscription_id, 
+        ai_tracks_num, prerecord_welcome_num, prerecord_ad_num, voice_num, prerecord_transition_num, channels_num)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (user_uid, payload.username, payload.password_hash, "customer", 1000, 
          existing_subscription["id"], existing_subscription["ai_tracks_num"], existing_subscription["prerecord_welcome_num"], 
-         existing_subscription["prerecord_ad_num"], existing_subscription["voice_num"])
+         existing_subscription["prerecord_ad_num"], existing_subscription["voice_num"], 
+         existing_subscription["prerecord_transition_num"], existing_subscription["channels_num"])
     )
 
     conn.commit()
