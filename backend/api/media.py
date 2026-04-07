@@ -330,6 +330,7 @@ def add_prerecord_brand_phrase(req: AddAdPhraseRequest, user=Depends(get_current
     voice = channel["voice"]
     
     transitions = fetch_ad_library(req.user_id, req.channel_id, "prerecord_transition_speech")
+    print(f"Found {len(transitions)} prerecord transition phrases for channel {channel['name']}")
     if len(transitions) <= 0:        
         current_user = fetch_user_by_id(req.user_id)
         for _ in range(current_user.prerecord_transition_num):
