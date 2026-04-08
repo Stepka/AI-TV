@@ -65,11 +65,11 @@ export default function AIAudioLibrary({ token, userData, channel }) {
       if (xhr.status === 200) {
         loadVideoLibrary();
       }
+
+      setIsGenerating(false);
     };
 
     xhr.send(formData);
-
-    setIsGenerating(false);
 
     loadVideoLibrary();
   };

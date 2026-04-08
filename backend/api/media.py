@@ -6,8 +6,8 @@ import time
 import uuid
 from scipy.io.wavfile import write
 
-from fastapi import APIRouter, Query, Depends, UploadFile, File, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Query, Depends, Request, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
 import requests
 from api.dj import brand_transition_text
 from db.auth import fetch_user_by_id
@@ -33,18 +33,12 @@ def get_audio(filename: str, user_id: str, channel_id: str, type: str, user=Depe
 
 @router.get("/video")
 def get_video(
+    request: Request,
     user_id: str = Query(...),
     channel_id: str = Query(...),
     filename: str = Query(default=None)
 ):
-    print("Serving video file:", user_id, channel_id, filename)
-
-    base_path = os.path.join(
-        "channels_data",
-        user_id,
-        channel_id,
-        "videos"
-    )
+    base_path = Path("channels_data") / user_id / channel_id / "videos"
 
     if not filename:
         videos = list_video(user_id, channel_id)
@@ -53,31 +47,53 @@ def get_video(
         else:
             filename = "default_video.mp4"
 
-    file_path = os.path.join(base_path, filename)
+    file_path = base_path / filename
 
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(
-            file_path,
-            media_type="video/mp4",
-            filename=filename
-        )
+    # fallback
+    if not file_path.exists() or not file_path.is_file():
+        fallback_path = Path("channels_data") / "common" / "videos" / "default_video.mp4"
+        if fallback_path.exists():
+            file_path = fallback_path
+            filename = "fallback.mp4"
+        else:
+            raise HTTPException(status_code=404, detail="Video not found")
 
-    # 🔁 fallback
-    fallback_path = os.path.join(
-        "channels_data",
-        "common",
-        "videos",
-        "default_video.mp4"
-    )
+    file_size = file_path.stat().st_size
+    range_header = request.headers.get("range")
+    start = 0
+    end = file_size - 1
 
-    if os.path.exists(fallback_path):
-        return FileResponse(
-            fallback_path,
-            media_type="video/mp4",
-            filename="fallback.mp4"
-        )
+    if range_header:
+        # Пример: "bytes=1000-"
+        bytes_range = range_header.strip().split("=")[-1]
+        if "-" in bytes_range:
+            start_str, end_str = bytes_range.split("-")
+            start = int(start_str)
+            if end_str:
+                end = int(end_str)
+        if start >= file_size:
+            raise HTTPException(416, "Requested Range Not Satisfiable")
 
-    return {"error": "Video not found"}
+    def iterfile(start, end):
+        with open(file_path, "rb") as f:
+            f.seek(start)
+            remaining = end - start + 1
+            chunk_size = 1024 * 1024  # 1MB
+            while remaining > 0:
+                read_len = min(chunk_size, remaining)
+                data = f.read(read_len)
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+
+    headers = {
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(end - start + 1),
+    }
+
+    return StreamingResponse(iterfile(start, end), media_type="video/mp4", headers=headers, status_code=206)
 
 
 @router.get("/ai_audio_library")
