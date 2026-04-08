@@ -304,16 +304,18 @@ export default function App({ token, userData, channel }) {
 
     setVideoSource("ai_audio");    
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const iframe = document.querySelector("#ai_audio_player");
       // console.log("Looking for AI Audio player iframe...", iframe);
 
       if (iframe) {
         clearInterval(interval);
+
+        const videofile = await getRandomVideo();
     
         playerRef.current = new AIAudioPlayer("ai_audio_player", {         
           src: `${API_URL}/${videoId}`,
-          videoSrc: `${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`
+          videoSrc: `${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${videofile}`,
         });
 
         // Ставим громкость на 0
@@ -519,7 +521,10 @@ export default function App({ token, userData, channel }) {
   const startTransition = async (dj_duration) => {  
     // console.log("startTransition")
     clearInterval(trackTimeoutInterval);
-    playOverlayVideo(`${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`);
+    
+    const videofile = await getRandomVideo();
+    playOverlayVideo(`${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${videofile}`);
+
     clearTimeout(timeoutRef.current);
     // console.log("start transition:", dj_duration, djDataRef.current.duration)
     // timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);
@@ -612,6 +617,19 @@ export default function App({ token, userData, channel }) {
     }, period);
 
     
+  };
+
+  const getRandomVideo = async () => {
+
+    const res = await fetch(
+      `${API_URL}/media/random_video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    const data = await res.json(); // только один раз
+
+    return data["filename"];
   };
 
   // Плавный переход клипа через затемнение

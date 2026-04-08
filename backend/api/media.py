@@ -31,6 +31,20 @@ def get_audio(filename: str, user_id: str, channel_id: str, type: str, user=Depe
     return FileResponse(f"channels_data/{user_id}/{channel_id}/{type}/{filename}", media_type="audio/wav", filename=filename)
 
 
+@router.get("/random_video")
+def get_random_video(
+    user_id: str = Query(...),
+    channel_id: str = Query(...),
+):
+    videos = list_video(user_id, channel_id)
+    if videos["files"]:
+        filename = random.choice(videos["files"])["name"]
+    else:
+        filename = "default_video.mp4"
+
+    return {"filename": filename}
+
+
 @router.get("/video")
 def get_video(
     request: Request,
