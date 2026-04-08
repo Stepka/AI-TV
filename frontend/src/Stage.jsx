@@ -313,7 +313,7 @@ export default function App({ token, userData, channel }) {
     
         playerRef.current = new AIAudioPlayer("ai_audio_player", {         
           src: `${API_URL}/${videoId}`,
-          videoSrc: `${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`
+          videoSrc: `${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`
         });
 
         // Ставим громкость на 0
@@ -519,7 +519,7 @@ export default function App({ token, userData, channel }) {
   const startTransition = async (dj_duration) => {  
     // console.log("startTransition")
     clearInterval(trackTimeoutInterval);
-    playOverlayVideo(`${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=default_video.mp4`);
+    playOverlayVideo(`${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`);
     clearTimeout(timeoutRef.current);
     // console.log("start transition:", dj_duration, djDataRef.current.duration)
     // timeoutRef.current = setTimeout(() => smoothNext((djDataRef.current.duration - dj_duration) * 1000), (dj_duration) * 1000);

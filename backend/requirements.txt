@@ -16,3 +16,4 @@ epitran
 torchaudio
 packaging
 rapidfuzz
+python-multipart

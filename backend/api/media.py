@@ -6,7 +6,7 @@ import time
 import uuid
 from scipy.io.wavfile import write
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 import requests
 from api.dj import brand_transition_text
@@ -19,7 +19,7 @@ from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
 from services.sona import generate_music, get_music_result
-from models.media import AdPhrase, AddAdPhraseRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest
+from models.media import AdPhrase, AddAdPhraseRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
 from services.auth import get_current_user
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -35,7 +35,7 @@ def get_audio(filename: str, user_id: str, channel_id: str, type: str, user=Depe
 def get_video(
     user_id: str = Query(...),
     channel_id: str = Query(...),
-    filename: str = Query(...)
+    filename: str = Query(default=None)
 ):
     print("Serving video file:", user_id, channel_id, filename)
 
@@ -45,6 +45,13 @@ def get_video(
         channel_id,
         "videos"
     )
+
+    if not filename:
+        videos = list_video(user_id, channel_id)
+        if videos["files"]:
+            filename = random.choice(videos["files"])["name"]
+        else:
+            filename = "default_video.mp4"
 
     file_path = os.path.join(base_path, filename)
 
@@ -104,14 +111,12 @@ def list_video(
 
     files = []
     for file in base_path.glob("*"):
-        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+        if file.suffix.lower() in [".mp4", ".mov", ".quicktime", ".avi", ".mkv", ".webm", ".wmv", ".mpeg"]:
             files.append({
-                "index": int(file.name.split("_")[-1].split(".")[0]),
                 "name": file.name,
                 "url": f"channels_data/{user_id}/{channel_id}/videos/{file.name}"
             })
             
-    files = sorted(files, key=lambda x: x["index"])
     return {"files": files}
 
 
@@ -471,3 +476,51 @@ def update_prerecord_transition_phrase(req: UpdateAdPhraseRequest, user=Depends(
 
     update_ad(ad)
     return {"success": "ok"}
+
+
+@router.post("/upload_video")
+async def upload_video(
+    data: UploadVideoRequest = Depends(UploadVideoRequest.as_form),
+    file: UploadFile = File(...)
+    ):
+    ALLOWED_TYPES = {
+        "video/mp4",
+        "video/quicktime",   # для mov
+        "video/x-msvideo",   # avi
+        "video/x-matroska",  # mkv
+        "video/webm",
+        "video/x-ms-wmv",    # wmv
+        "video/mpeg",
+    }
+    MAX_SIZE_MB = 200
+
+    user_id = data.user_id
+    channel_id = data.channel_id
+
+    base_path = Path("channels_data") / user_id / channel_id / "videos"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    # 1. Проверка типа
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    # 2. Генерация имени
+    filename = file.filename
+    file_path = base_path / filename
+
+    # 3. Сохранение с ограничением размера
+    size = 0
+    with open(file_path, "wb") as buffer:
+        while chunk := await file.read(1024 * 1024):  # 1MB chunks
+            size += len(chunk)
+            if size > MAX_SIZE_MB * 1024 * 1024:
+                buffer.close()
+                file_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=400, detail="File too large")
+
+            buffer.write(chunk)
+
+    return {
+        "status": "ok",
+        "filename": filename
+    }

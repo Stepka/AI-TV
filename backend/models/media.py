@@ -1,5 +1,6 @@
 
 
+from fastapi import Form
 from pydantic import BaseModel
 
 
@@ -39,3 +40,15 @@ class UpdateAdPhraseRequest(BaseModel):
     voice_model: str = ""
     voice_speaker: str = ""
     voice_sex: str = ""
+
+class UploadVideoRequest(BaseModel):
+    user_id: str
+    channel_id: str
+
+    @classmethod
+    def as_form(
+        cls,
+        user_id: str = Form(...),
+        channel_id: str = Form(...)
+    ):
+        return cls(user_id=user_id, channel_id=channel_id)

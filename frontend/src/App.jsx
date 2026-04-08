@@ -219,7 +219,7 @@ export default function App() {
                 flexDirection: "column",
             }}
             >
-            <ChannelList token={authToken} onSelectChannel={handleSelectChannel} reloadChannelsTrigger={reloadChannelsTrigger} />
+            <ChannelList token={authToken} userData={userData} onSelectChannel={handleSelectChannel} reloadChannelsTrigger={reloadChannelsTrigger} />
             </div>
         )}
 

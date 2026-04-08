@@ -5,16 +5,26 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [files, setFiles] = useState([]);
-  const audioRef = useRef(null);
+  const [currentVideo, setCurrentVideo] = useState(null);
   
   const [isGenerating, setIsGenerating] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    upload_video(file);
+  };
 
   useEffect(() => {
     if (!channel || !token || !userData) return;
-    loadAILibrary();
+    loadVideoLibrary();
   }, [userData, channel, token]);
   
-  const loadAILibrary = () => {
+  const loadVideoLibrary = () => {
     if (!channel || !token || !userData) return;
 
     fetch(`${API_URL}/media/video_library?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`, {
@@ -28,57 +38,82 @@ export default function AIAudioLibrary({ token, userData, channel }) {
       .then(data => setFiles(data.files));
   };
 
-  const playAudio = (url) => {
-    if (audioRef.current) {
-      url = `${API_URL}/${url}`
-      audioRef.current.src = url;
-      audioRef.current.play();
-    }
+  const playVideo = (filename) => {
+    setCurrentVideo(`${API_URL}/${filename}`);
   };
 
-  const upload_video = async () => {
+  const upload_video = async (file) => {
     setIsGenerating(true);
-    const res = await fetch(`${API_URL}/media/upload_video`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        user_id: userData.user_uid, 
-        channel_id: channel.channel_uid
-      })
-    })
+
+    const formData = new FormData();
+    formData.append("user_id", userData.user_uid);
+    formData.append("channel_id", channel.channel_uid);
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}/media/upload_video`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = (e.loaded / e.total) * 100;
+        console.log("Progress:", percent.toFixed(1));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        loadVideoLibrary();
+      }
+    };
+
+    xhr.send(formData);
+
     setIsGenerating(false);
 
-    if (!res.ok) throw new Error("Generate ai track failed");
-
-    loadAILibrary();
+    loadVideoLibrary();
   };
 
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px"}}>
-    <h2>🎧 Audio Library</h2>
-    <span>Available generations: {userData?.ai_tracks_num}</span>
+      <h2>🎬 Video Library</h2>
+      {/* <span>Available generations: {userData?.ai_tracks_num}</span> */}
 
-    <AppButton onClick={() => upload_video()} disabled={isGenerating}>
-        {isGenerating ? "Uploading..." : "🎬 Upload Video"}
-    </AppButton>
+      <AppButton onClick={handleClick} disabled={isGenerating}>
+          {isGenerating ? "Uploading..." : "🎬 Upload Video"}
+      </AppButton>
 
-    <ul style={{ listStyle: "none", padding: 0 }}>
-        {files.map((file, idx) => (
-        <li key={idx} style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <AppButton onClick={() => playAudio(file.url)}>
-                ▶ Play
-            </AppButton>
-            <span>{file.name}</span>
-            </div>
-        </li>
-        ))}
-    </ul>
+      <ul style={{ listStyle: "none", padding: 0 }}>
+          {files.map((file, idx) => (
+          <li key={idx} style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <AppButton onClick={() => playVideo(file.url)}>
+                  ▶ Play
+              </AppButton>
+              <span>{file.name}</span>
+              </div>
+          </li>
+          ))}
+      </ul>
 
-    <audio ref={audioRef} controls style={{ width: "100%" }} />
+      {/* <audio ref={audioRef} controls style={{ width: "100%" }} /> */}
+      <input
+        type="file"
+        accept="video/*"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+      
+      {/* Видео-плеер */}
+      {currentVideo && (
+        <video
+          src={currentVideo}
+          controls
+          autoPlay
+          style={{ width: "100%", maxHeight: "300px", borderRadius: 8 }}
+        />
+      )}
     </div>
   );
 }

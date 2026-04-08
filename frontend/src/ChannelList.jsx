@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton"; // твоя кнопка
 
-export default function ChannelList({ token, onSelectChannel, reloadChannelsTrigger }) {
+export default function ChannelList({ token, userData, onSelectChannel, reloadChannelsTrigger }) {
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [channels, setChannels] = useState([]);
@@ -106,6 +106,7 @@ export default function ChannelList({ token, onSelectChannel, reloadChannelsTrig
         ))}
       </div>
       <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Channel</AppButton>
+      <span>Available channels: {userData?.channels_num}</span>
     </div>
   );
 }
