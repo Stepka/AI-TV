@@ -94,6 +94,27 @@ def list_ai_audio(
     return {"files": files}
 
 
+@router.get("/video_library")
+def list_video(
+    user_id: str = Query(...),
+    channel_id: str = Query(...)
+):
+    base_path = Path("channels_data") / user_id / channel_id / "videos"
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for file in base_path.glob("*"):
+        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
+            files.append({
+                "index": int(file.name.split("_")[-1].split(".")[0]),
+                "name": file.name,
+                "url": f"channels_data/{user_id}/{channel_id}/videos/{file.name}"
+            })
+            
+    files = sorted(files, key=lambda x: x["index"])
+    return {"files": files}
+
+
 @router.get("/prerecord_brand_phrases_library")
 def list_prerecord_brand_phrases_library(
     user_id: str = Query(...),
