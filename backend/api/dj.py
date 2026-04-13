@@ -56,8 +56,8 @@ def brand_phrase_text(req: AdPhraseRequest, user=Depends(get_current_user)):
 
     text = generate_short_text(req.user_id, req.channel_id)
     
-    if len(text) > 500:
-        text = shortener(text, req.user_id, req.channel_idd, max_symbols=500)
+    if len(text) > 100:
+        text = shortener(text, req.user_id, req.channel_id, max_symbols=100)
     
     if channel["voice"]["source"] == "silero":
         text = convert_to_russian(text, "", "")
