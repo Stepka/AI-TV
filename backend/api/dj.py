@@ -54,7 +54,7 @@ def brand_phrase_text(req: AdPhraseRequest, user=Depends(get_current_user)):
     
     channel = get_channel_by_id(req.user_id, req.channel_id)
 
-    text = generate_short_text(req.user_id, req.channel_id)
+    text = generate_ultra_short_text(req.user_id, req.channel_id)
     
     if len(text) > 100:
         text = shortener(text, req.user_id, req.channel_id, max_symbols=100)
