@@ -385,17 +385,17 @@ def add_prerecord_brand_phrase(req: AddAdPhraseRequest, user=Depends(get_current
 
     voice = channel["voice"]
     
-    transitions = fetch_ad_library(req.user_id, req.channel_id, "prerecord_transition_speech")
-    print(f"Found {len(transitions)} prerecord transition phrases for channel {channel['name']}")
-    if len(transitions) <= 0:        
-        current_user = fetch_user_by_id(req.user_id)
-        for _ in range(current_user.prerecord_transition_num):
-            transition = AddAdPhraseRequest(user_id=req.user_id, channel_id=req.channel_id)
-            transition = add_prerecord_transition_phrase(transition, user)["ad"]
-            transition.ad_text = brand_transition_text(AdPhraseRequest(**transition.model_dump()), user)["text"]
-            transition = UpdateAdPhraseRequest(**transition.model_dump())
-            update_prerecord_transition_phrase(transition, user)
-            generate_transition_phrase_speech(GenerateBrandPhraseSpeechRequest(**transition.model_dump()), user)
+    # transitions = fetch_ad_library(req.user_id, req.channel_id, "prerecord_transition_speech")
+    # print(f"Found {len(transitions)} prerecord transition phrases for channel {channel['name']}")
+    # if len(transitions) <= 0:        
+    #     current_user = fetch_user_by_id(req.user_id)
+    #     for _ in range(current_user.prerecord_transition_num):
+    #         transition = AddAdPhraseRequest(user_id=req.user_id, channel_id=req.channel_id)
+    #         transition = add_prerecord_transition_phrase(transition, user)["ad"]
+    #         transition.ad_text = brand_transition_text(AdPhraseRequest(**transition.model_dump()), user)["text"]
+    #         transition = UpdateAdPhraseRequest(**transition.model_dump())
+    #         update_prerecord_transition_phrase(transition, user)
+    #         generate_transition_phrase_speech(GenerateBrandPhraseSpeechRequest(**transition.model_dump()), user)
 
     payload = AdPhrase(
         ad_id=str(uuid.uuid4()), 
