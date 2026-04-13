@@ -215,6 +215,37 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
     setLoading(false);
   };
 
+  const handleDeleteAd = async (ad) => {
+    if (!window.confirm("Are you sure you want to delete this ad phrase?")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/media/delete_prerecord_ad_phrase`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userData.user_uid,
+          channel_id: channel.channel_uid,
+          ad_id: ad.ad_id
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.detail);
+        return;
+      }
+        
+      loadSpeechLibrary();
+
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete video");
+    }
+  };
+
 
   return (
     <div style={{ 
@@ -233,7 +264,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
         <ul style={{ listStyle: "none", padding: 0 }}>
             {ads.map((ad, idx) => (
             <li key={idx} style={{ marginBottom: 10 }}>
-              <PhraseGenerator ad={ad} generateText={generateText} generateAudio={generateAudio} playAudio={playAudio}/>
+              <PhraseGenerator ad={ad} generateText={generateText} generateAudio={generateAudio} playAudio={playAudio} onDelete={handleDeleteAd} />
             </li>
             ))}
         </ul>

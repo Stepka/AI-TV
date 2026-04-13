@@ -139,3 +139,18 @@ def get_weather(city: str) -> dict:
 def rms(audio_int16):
     x = audio_int16.astype(np.float32)
     return float(np.sqrt(np.mean(x * x)))
+
+
+def get_last_index(files):
+    max_index = 0
+
+    for file in files:
+        name = file["name"]
+
+        # берём число перед расширением
+        match = re.search(r"_(\d+)\.", name)
+        if match:
+            index = int(match.group(1))
+            max_index = max(max_index, index)
+
+    return max_index

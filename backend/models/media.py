@@ -52,3 +52,23 @@ class UploadVideoRequest(BaseModel):
         channel_id: str = Form(...)
     ):
         return cls(user_id=user_id, channel_id=channel_id)
+    
+class DeleteVideoRequest(BaseModel):
+    user_id: str
+    channel_id: str
+    filename: str
+    
+class DeleteAudioRequest(BaseModel):
+    user_id: str
+    channel_id: str
+    filename: str
+    
+class DeletePrerecordAdPhraseRequest(BaseModel):
+    user_id: str
+    channel_id: str
+    ad_id: str
+    
+class DeletePrerecordBrandPhraseRequest(BaseModel):
+    user_id: str
+    channel_id: str
+    ad_id: str

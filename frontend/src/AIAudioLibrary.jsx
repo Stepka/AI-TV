@@ -56,6 +56,37 @@ export default function AIAudioLibrary({ token, userData, channel }) {
     loadAILibrary();
   };
 
+  const handleDeleteAudio = async (filename) => {
+    if (!window.confirm("Are you sure you want to delete this track?")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/media/delete_audio`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userData.user_uid,
+          channel_id: channel.channel_uid,
+          filename: filename
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.detail);
+        return;
+      }
+        
+      loadAILibrary();
+
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete audio");
+    }
+  };
+
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px"}}>
     <h2>🎧 Audio Library</h2>
@@ -73,6 +104,12 @@ export default function AIAudioLibrary({ token, userData, channel }) {
                 ▶ Play
             </AppButton>
             <span>{file.name}</span>
+            
+            {/* Кнопка удаления */}
+            <AppButton
+                onClick={() => handleDeleteAudio(file.name)}>
+                Delete
+            </AppButton>
             </div>
         </li>
         ))}

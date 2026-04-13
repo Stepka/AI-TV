@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import AppButton from "./AppButton"; 
 import TextArea from "./TextArea"; 
 
-export default function PhraseGenerator({ ad, playAudio, generateText, generateAudio, save }) {
+export default function PhraseGenerator({ ad, playAudio, generateText, generateAudio, save, onDelete }) {
   
   const [editingAd, setEditingAd] = useState("");
   
@@ -40,8 +40,8 @@ export default function PhraseGenerator({ ad, playAudio, generateText, generateA
                 {isGenerating ? "Generating audio..." : "🎵 Generate audio"}
             </AppButton>
 
-            <AppButton onClick={() => save(editingAd)} disabled={isGenerating}>
-                {isGenerating ? "Saving..." : "Save"}
+            <AppButton onClick={() => onDelete(editingAd)} disabled={isGenerating}>
+                {isGenerating ? "Deleting..." : "Delete"}
             </AppButton>
         </div>
 

@@ -10,16 +10,17 @@ from fastapi import APIRouter, Query, Depends, Request, UploadFile, File, HTTPEx
 from fastapi.responses import FileResponse, StreamingResponse
 import requests
 from api.dj import brand_transition_text
+from services.common import get_last_index
 from db.auth import fetch_user_by_id
 from models.dj import AdPhraseRequest
-from db.media import add_ad, fetch_ad, fetch_ad_library, update_ad
+from db.media import add_ad, delete_ad, fetch_ad, fetch_ad_library, update_ad
 from services.silero import has_speech
 from services.dj import generate_speech
 from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
 from services.sona import generate_music, get_music_result
-from models.media import AdPhrase, AddAdPhraseRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
+from models.media import AdPhrase, AddAdPhraseRequest, DeleteAudioRequest, DeletePrerecordAdPhraseRequest, DeletePrerecordBrandPhraseRequest, DeleteVideoRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
 from services.auth import get_current_user
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -190,7 +191,7 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
 
 
     tracks = list_ai_audio(req.user_id, req.channel_id)
-    start_index = len(tracks["files"])
+    start_index = get_last_index(tracks["files"])
     print(f"start_index: {start_index}")
     # потом polling
     attempts = 3
@@ -553,4 +554,120 @@ async def upload_video(
     return {
         "status": "ok",
         "filename": filename
+    }
+
+
+@router.delete("/delete_video")
+async def delete_video(data: DeleteVideoRequest):
+    user_id = data.user_id
+    channel_id = data.channel_id
+    filename = data.filename
+
+    file_path = Path("channels_data") / user_id / channel_id / "videos" / filename
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        file_path.unlink()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+    return {
+        "status": "ok",
+        "deleted": filename
+    }
+
+
+@router.delete("/delete_audio")
+async def delete_audio(data: DeleteAudioRequest):
+    user_id = data.user_id
+    channel_id = data.channel_id
+    filename = data.filename
+
+    file_path = Path("channels_data") / user_id / channel_id / "ai_audio_library" / filename
+
+    print(f"Attempting to delete audio file: {file_path}")
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        file_path.unlink()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+    return {
+        "status": "ok",
+        "deleted": filename
+    }
+
+
+@router.delete("/delete_prerecord_ad_phrase")
+async def delete_prerecord_ad_phrase(data: DeletePrerecordAdPhraseRequest):
+    user_id = data.user_id
+    channel_id = data.channel_id
+    ad_id = data.ad_id
+    
+    ad = fetch_ad(ad_id, user_id, channel_id)
+
+    try:
+
+        file_path = Path("channels_data") / user_id / channel_id / "prerecord_ad_speech" / ad.filename
+
+        print(f"Attempting to delete ad speech file: {file_path}")
+
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        try:
+            file_path.unlink()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    
+    except Exception as e:
+        print(f"Ad speech file not found or already deleted: {e}")
+    
+    success = delete_ad(ad_id, user_id, channel_id)
+
+    if not success:
+        raise HTTPException(404, "Ad not found")
+
+    return {
+        "status": "ok"
+    }
+
+
+@router.delete("/delete_prerecord_brand_phrase")
+async def delete_prerecord_brand_phrase(data: DeletePrerecordBrandPhraseRequest):
+    user_id = data.user_id
+    channel_id = data.channel_id
+    ad_id = data.ad_id
+    
+    ad = fetch_ad(ad_id, user_id, channel_id)
+
+    try:
+
+        file_path = Path("channels_data") / user_id / channel_id / "prerecord_brand_speech" / ad.filename
+
+        print(f"Attempting to delete brand speech file: {file_path}")
+
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        try:
+            file_path.unlink()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    
+    except Exception as e:
+        print(f"Ad speech file not found or already deleted: {e}")
+    
+    success = delete_ad(ad_id, user_id, channel_id)
+
+    if not success:
+        raise HTTPException(404, "Ad not found")
+
+    return {
+        "status": "ok"
     }

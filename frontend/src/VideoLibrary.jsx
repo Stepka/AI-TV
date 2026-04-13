@@ -74,6 +74,37 @@ export default function AIAudioLibrary({ token, userData, channel }) {
     loadVideoLibrary();
   };
 
+  const handleDeleteVideo = async (filename) => {
+    if (!window.confirm("Are you sure you want to delete this video?")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/media/delete_video`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userData.user_uid,
+          channel_id: channel.channel_uid,
+          filename: filename
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Error: " + err.detail);
+        return;
+      }
+        
+      loadVideoLibrary();
+
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete video");
+    }
+  };
+
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px"}}>
       <h2>🎬 Video Library</h2>
@@ -91,6 +122,12 @@ export default function AIAudioLibrary({ token, userData, channel }) {
                   ▶ Play
               </AppButton>
               <span>{file.name}</span>
+                          
+              {/* Кнопка удаления */}
+              <AppButton
+                  onClick={() => handleDeleteVideo(file.name)}>
+                  Delete
+              </AppButton>
               </div>
           </li>
           ))}

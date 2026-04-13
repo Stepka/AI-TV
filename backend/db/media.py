@@ -89,3 +89,19 @@ def update_ad(payload: AdPhrase):
         conn.commit()
 
     conn.close()
+
+def delete_ad(ad_id: str, user_id: str, channel_id: str) -> bool:
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "DELETE FROM ads WHERE user_id = ? AND channel_id = ? AND ad_id = ?",
+        (user_id, channel_id, ad_id)
+    )
+
+    conn.commit()
+    deleted = cur.rowcount  # сколько строк удалено
+
+    conn.close()
+
+    return deleted > 0
