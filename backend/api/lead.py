@@ -1,9 +1,10 @@
-from fastapi import APIRouter, requests
+from fastapi import APIRouter
 from pydantic import BaseModel
 import smtplib
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
 import os
+import requests
 
 load_dotenv()
 
