@@ -15,6 +15,7 @@ TELEGRAM_CHAT_ID = os.getenv("TG_CHAT_ID")
 class Lead(BaseModel):
     name: str
     phone: str
+    tg: str
     email: str = ""
     message: str = ""
 
@@ -26,6 +27,7 @@ def send_lead(data: Lead):
 Имя: {data.name}
 Телефон: {data.phone}
 Email: {data.email}
+Telegram: {data.tg}
 Сообщение: {data.message}
 """
 
@@ -38,6 +40,8 @@ Email: {data.email}
     server.login(os.getenv("GMAIL_APP_MAIL"), os.getenv("GMAIL_APP_PASS"))
     server.send_message(msg)
     server.quit()
+
+    send_to_telegram(text)
 
     return {"status": "ok"}
 
