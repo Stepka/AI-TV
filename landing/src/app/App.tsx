@@ -334,7 +334,7 @@ export default function App() {
           <FadeInSection>
             <section id="demo-form" className="mb-20 scroll-mt-8">
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12" style={{ fontFamily: 'Syne, sans-serif' }}>
-                Получите демо музыки
+                Оставьте заявку на подключение или бесплатную консультацию
               </h2>
 
               <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-5">
