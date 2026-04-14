@@ -30,6 +30,7 @@ from api import channels
 from api import media
 from api import playlist
 from api import dj
+from backend.api import lead
 
 load_dotenv()
 
@@ -55,6 +56,7 @@ app.include_router(channels.router)
 app.include_router(media.router)
 app.include_router(playlist.router)
 app.include_router(dj.router)
+app.include_router(lead.router)
 
 app.mount("/channels_data", StaticFiles(directory="channels_data"), name="channels_data")
 
