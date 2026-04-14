@@ -30,7 +30,7 @@ from api import channels
 from api import media
 from api import playlist
 from api import dj
-from backend.api import lead
+from api import lead
 
 load_dotenv()
 
