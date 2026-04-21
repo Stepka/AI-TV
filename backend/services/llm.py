@@ -565,8 +565,8 @@ def add_promo(text, promo: str, user_uid: str, channel_uid: str) -> str:
 
     channel = meta['name']
     
-    if len(meta["actions"]) <= 0:
-        return text
+    # if len(meta["actions"]) <= 0:
+    #     return text
 
     prompt = f"""
 Перед тобой текст для радио-диджея, который играет на канале {channel} и делает переход между треками.
