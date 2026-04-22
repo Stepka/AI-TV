@@ -40,9 +40,11 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
 
     match subscription:
         case "basic":
-            return get_prerecord_brand_speech(req)
+            # return get_prerecord_brand_speech(req)
+            return get_prerecord_ad_speech(req)
         case "plus":
-            return get_prerecord_brand_speech(req)
+            # return get_prerecord_brand_speech(req)
+            return get_prerecord_ad_speech(req)
         case _:
             req.from_artist = None
             req.from_title = None
