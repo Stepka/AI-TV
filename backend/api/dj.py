@@ -46,9 +46,10 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
             # return get_prerecord_brand_speech(req)
             return get_prerecord_ad_speech(req)
         case _:
-            req.from_artist = None
-            req.from_title = None
-            return generate_dj_speech(req)
+            # req.from_artist = None
+            # req.from_title = None
+            # return generate_dj_speech(req)
+            return get_prerecord_ad_speech(req)
 
 
 @router.post("/brand_phrase_text")
