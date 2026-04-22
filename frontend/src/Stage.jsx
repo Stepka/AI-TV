@@ -81,7 +81,7 @@ export default function App({ token, userData, channel }) {
       }, helloData.duration * 1000 - 10000); // плавный fade-in
 
       setHelloReady(true)
-    }, 100); // плавный fade-out
+    }, 3000); // плавный fade-out
 
     return () => {
       clearTimeout(fadeOutTimeout);
