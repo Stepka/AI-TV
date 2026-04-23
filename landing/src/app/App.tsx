@@ -99,6 +99,70 @@ function LegalExplanationPage() {
   );
 }
 
+function PersonalDataConsentPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black text-white">
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+        <a
+          href="#/"
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-zinc-700/60 bg-zinc-900/80 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-red-500/50 hover:text-white"
+          style={{ fontFamily: 'Manrope, sans-serif' }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Назад на главную
+        </a>
+
+        <div className="rounded-[2rem] border border-zinc-700/50 bg-gradient-to-br from-zinc-900/90 to-zinc-800/50 p-8 shadow-2xl shadow-black/30 sm:p-10">
+          <h1 className="mb-6 text-3xl font-black leading-tight sm:text-4xl" style={{ fontFamily: 'Syne, sans-serif' }}>
+            Согласие на обработку персональных данных
+          </h1>
+
+          <div className="space-y-4 text-base leading-8 text-zinc-300 sm:text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            <p>
+              Настоящим, проставляя отметку в форме на сайте, я свободно, своей волей и в своем интересе выражаю согласие на обработку
+              моих персональных данных в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О персональных данных».
+            </p>
+            <p>
+              Оператор персональных данных: AI-TV (далее — Оператор). Контакт для обращений по вопросам обработки персональных данных:
+              micromillioner@gmail.com.
+            </p>
+            <p>
+              Перечень персональных данных, на обработку которых дается согласие: имя, номер телефона, адрес электронной почты,
+              Telegram-аккаунт, текст комментария, а также иные данные, которые я добровольно укажу в заявке.
+            </p>
+            <p>
+              Цели обработки персональных данных: обработка и сопровождение заявок, обратная связь со мной, консультирование по услугам,
+              подготовка и направление предложений, заключение и исполнение договоров.
+            </p>
+            <p>
+              Перечень действий с персональными данными: сбор, запись, систематизация, накопление, хранение, уточнение (обновление,
+              изменение), извлечение, использование, передача (предоставление, доступ) в случаях, предусмотренных законодательством РФ,
+              обезличивание, блокирование, удаление, уничтожение.
+            </p>
+            <p>
+              Обработка персональных данных может осуществляться как с использованием средств автоматизации, так и без их использования.
+            </p>
+            <p>
+              Согласие действует с момента его предоставления и до достижения целей обработки либо до момента его отзыва субъектом
+              персональных данных.
+            </p>
+            <p>
+              Согласие может быть отозвано мной в любой момент путем направления письменного обращения на электронный адрес Оператора:
+              micromillioner@gmail.com. Отзыв согласия не влияет на законность обработки, осуществленной до его получения Оператором.
+            </p>
+            <p>
+              Подтверждаю, что ознакомлен(а) с условиями обработки персональных данных и принимаю их.
+            </p>
+            <p className="text-sm text-zinc-400 sm:text-base">
+              Дата публикации: 23 апреля 2026 года.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LandingPage() {
   const caseVideos = [
     {
@@ -533,6 +597,24 @@ function LandingPage() {
                 className="w-full px-6 py-4 rounded-2xl bg-zinc-900/80 border border-zinc-700/50 focus:border-red-600/50 outline-none transition-colors text-white placeholder-zinc-500 resize-none"
                 style={{ fontFamily: 'Manrope, sans-serif' }}
               />
+              <label
+                className="flex items-start gap-3 rounded-2xl border border-zinc-700/50 bg-zinc-900/60 px-4 py-3 text-zinc-300"
+                style={{ fontFamily: 'Manrope, sans-serif' }}
+              >
+                <input
+                  type="checkbox"
+                  name="personalDataConsent"
+                  required
+                  className="mt-1 h-4 w-4 accent-red-500"
+                />
+                <span className="text-sm sm:text-base leading-relaxed">
+                  Я даю{' '}
+                  <a href="#/consent" className="text-red-400 underline decoration-red-400/60 underline-offset-2 hover:text-red-300">
+                    согласие на обработку персональных данных
+                  </a>
+                  .
+                </span>
+              </label>
               <motion.button
                 type="submit"
                 whileHover={{ scale: 1.02, y: -2 }}
@@ -597,6 +679,7 @@ export default function App() {
   }, []);
 
   const isLegalPage = route === '#/legal';
+  const isConsentPage = route === '#/consent';
 
   return (
     <HelmetProvider>
@@ -605,6 +688,8 @@ export default function App() {
         <title>
           {isLegalPage
             ? 'Почему AI-музыка от AI-TV легальна без выплат РАО и ВОИС'
+            : isConsentPage
+            ? 'Согласие на обработку персональных данных | AI-TV'
             : 'Музыка для бизнеса без РАО и ВОИС | AI-TV'}
         </title>
         <meta
@@ -612,6 +697,8 @@ export default function App() {
           content={
             isLegalPage
               ? 'Объяснение правовой модели AI-TV: почему AI-музыка, сгенерированная сервисом, может использоваться без выплат РАО и ВОИС.'
+              : isConsentPage
+              ? 'Текст согласия на обработку персональных данных для пользователей сайта AI-TV.'
               : 'Легальная музыка для бизнеса без РАО и ВОИС. AI генерация треков, реклама и аудио атмосфера для кафе, ресторанов и магазинов.'
           }
         />
@@ -620,16 +707,23 @@ export default function App() {
           content={
             isLegalPage
               ? 'AI музыка, РАО, ВОИС, юридическое обоснование, музыка для бизнеса'
+              : isConsentPage
+              ? 'согласие на обработку персональных данных, 152-ФЗ, AI-TV'
               : 'музыка для бизнеса, без РАО, без ВОИС, музыка для кафе, фоновая музыка, AI музыка'
           }
         />
         <meta name="robots" content="index, follow" />
-        <meta property="og:title" content={isLegalPage ? 'Юридическое объяснение AI-TV' : 'AI музыка для бизнеса'} />
+        <meta
+          property="og:title"
+          content={isLegalPage ? 'Юридическое объяснение AI-TV' : isConsentPage ? 'Согласие на обработку ПДн | AI-TV' : 'AI музыка для бизнеса'}
+        />
         <meta
           property="og:description"
           content={
             isLegalPage
               ? 'Почему AI-музыка, сгенерированная сервисом, может использоваться без выплат РАО и ВОИС.'
+              : isConsentPage
+              ? 'Официальный текст согласия на обработку персональных данных.'
               : 'Музыка без авторских прав + AI реклама'
           }
         />
@@ -650,7 +744,7 @@ export default function App() {
         </script>
       </Helmet>
 
-      {isLegalPage ? <LegalExplanationPage /> : <LandingPage />}
+      {isLegalPage ? <LegalExplanationPage /> : isConsentPage ? <PersonalDataConsentPage /> : <LandingPage />}
     </HelmetProvider>
   );
 }
