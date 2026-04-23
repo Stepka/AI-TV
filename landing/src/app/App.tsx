@@ -15,6 +15,10 @@ import {
   ArrowLeft,
   ArrowRight,
 } from 'lucide-react';
+import barbershopVideo from '../media/Barbershop_low.mp4';
+import coffeeVideo from '../media/Coffee_low.mp4';
+import fitnessVideo from '../media/Fitness_low.mp4';
+import pizzeriaVideo from '../media/Pizzeria_low.mp4';
 
 function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef(null);
@@ -96,6 +100,33 @@ function LegalExplanationPage() {
 }
 
 function LandingPage() {
+  const caseVideos = [
+    {
+      title: 'Фитнес-клуб',
+      description: 'Энергичный плейлист для тренировочных зон и групповых занятий.',
+      videoSrc: fitnessVideo,
+      delay: 0.0,
+    },
+    {
+      title: 'Пиццерия',
+      description: 'Теплая семейная атмосфера с акцентом на лояльность к бренду.',
+      videoSrc: pizzeriaVideo,
+      delay: 0.1,
+    },
+    {
+      title: 'Барбершоп',
+      description: 'Стильный фон и фирменные голосовые вставки для мужского салона.',
+      videoSrc: barbershopVideo,
+      delay: 0.2,
+    },
+    {
+      title: 'Кофейня',
+      description: 'Спокойная атмосфера для утреннего и дневного потока гостей.',
+      videoSrc: coffeeVideo,
+      delay: 0.3,
+    },
+  ];
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -240,6 +271,43 @@ function LandingPage() {
                     </p>
                   </div>
                 </motion.div>
+              </FadeInSection>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-20 sm:mb-32">
+          <FadeInSection>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-center mb-12 sm:mb-16" style={{ fontFamily: 'Syne, sans-serif' }}>
+              Примеры кейсов
+            </h2>
+          </FadeInSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {caseVideos.map((item) => (
+              <FadeInSection key={item.title} delay={item.delay}>
+                <motion.article
+                  whileHover={{ y: -8, scale: 1.01 }}
+                  className="rounded-3xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900/90 to-zinc-800/50 p-4 sm:p-5 backdrop-blur-sm overflow-hidden"
+                >
+                  <video
+                    className="w-full aspect-video rounded-2xl bg-zinc-950 border border-zinc-700/40"
+                    controls
+                    preload="metadata"
+                    playsInline
+                  >
+                    <source src={item.videoSrc} type="video/mp4" />
+                    Ваш браузер не поддерживает видео.
+                  </video>
+                  <div className="pt-4 space-y-2">
+                    <h3 className="text-2xl font-black text-white" style={{ fontFamily: 'Syne, sans-serif' }}>
+                      {item.title}
+                    </h3>
+                    <p className="text-zinc-300 leading-relaxed" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                      {item.description}
+                    </p>
+                  </div>
+                </motion.article>
               </FadeInSection>
             ))}
           </div>
