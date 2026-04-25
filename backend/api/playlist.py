@@ -3,6 +3,7 @@ import random
 from fastapi import APIRouter
 
 from api.media import list_ai_audio
+from db.auth import fetch_user, fetch_user_by_id
 from services.vkvideo import search_vk_video
 from db.playlist import find_tracks, get_last_played, get_video_sources, save_last_played
 from db.youtube import YouTubeCache
@@ -24,7 +25,11 @@ def get_playlist(req: PlaylistRequest):
 
     while len(videos) < req.max_results and retries > 0:
         print("Search for videos... ")
-        found = _get_playlist(req, match_level)
+        user = fetch_user_by_id(req.user_id)
+        if user.subscription.name == "free":
+            found = _get_free_playlist(req, match_level)
+        else:
+            found = _get_playlist(req, match_level)
         videos.extend(found)
         print(f"Collected videos num: {len(videos)}")
         match_level -= 10
@@ -228,4 +233,26 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
                 })
 
 
+    return videos
+
+
+
+def _get_free_playlist(req: PlaylistRequest, match_level = 80):
+
+    videos = []   
+
+    user = fetch_user("admin")
+
+    tracks = list_ai_audio(user.user_uid, req.channel_id)
+    for i in range(req.max_results):
+        if len(tracks) > 0:
+            track = random.choice(tracks["files"])
+            videos.append({
+                "artist": "AI",
+                "title": track["name"],
+                "videoId": track["url"],
+                "duration": -1,
+                "match": 100,
+                "source": "ai_audio"
+            })
     return videos

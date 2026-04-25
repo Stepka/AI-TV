@@ -13,7 +13,13 @@ router = APIRouter(prefix="/channels", tags=["channels"])
 
 @router.get("")
 def get_channels(username: str = Depends(get_current_user)):
-    channels = db.fetch_channels(username)
+    user = fetch_user(username)
+
+    if user.subscription.name == "free":
+        channels = db.fetch_channels("admin")
+    else:
+        channels = db.fetch_channels(username)
+
     return {"ok": True, "channels": channels}
 
 

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from services.auth import get_current_user, authenticate_user, create_access_token, get_password_hash
 from db.auth import create_user, fetch_user
-from models.auth import AddUserRequest, CreateUserRequest, LoginRequest
+from models.auth import AddUserRequest, CreateUserRequest, LoginRequest, RegisterRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -14,6 +14,21 @@ def login(req: LoginRequest):
 
     token = create_access_token({"sub": user["username"]})
     return {"ok": True, "access_token": token, "token_type": "bearer"}
+
+
+@router.post("/register")
+def register(req: RegisterRequest):
+    try:
+        create_req = CreateUserRequest(
+            username=req.username,
+            password=req.password,
+            subscription=req.subscription,
+            password_hash=get_password_hash(req.password),
+        )
+        created_user = create_user(create_req)
+        return {"ok": True, "created_user": created_user}
+    except HTTPException as exc:
+        return {"ok": False, "error": exc.detail}
 
 
 @router.get("/me")

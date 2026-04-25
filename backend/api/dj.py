@@ -8,7 +8,7 @@ from services.common import replace_words
 from db.subscription import fetch_subscription
 from db.auth import fetch_user_by_id
 from services.llm import add_emotions_llm, add_promo, convert_digits, convert_to_russian, generate_short_text, generate_ultra_short_text, shortener
-from services.dj import generate_dj_speech, get_prerecord_ad_speech, get_prerecord_brand_speech, get_prerecord_transition_speech
+from services.dj import generate_dj_speech, get_free_prerecord_brand_speech, get_prerecord_ad_speech, get_prerecord_brand_speech, get_prerecord_transition_speech
 from services.auth import get_current_user
 from models.dj import AdPhraseRequest, DJRequest
 
@@ -21,6 +21,8 @@ def dj_transition(req: DJRequest, user=Depends(get_current_user)):
     subscription = current_user.subscription.name
 
     match subscription:
+        case "free":
+            return get_free_prerecord_brand_speech(req)
         case "basic":
             return get_prerecord_brand_speech(req)
         case "plus":
@@ -39,6 +41,8 @@ def dj_hello(req: DJRequest, user=Depends(get_current_user)):
     subscription = current_user.subscription.name
 
     match subscription:
+        case "free":
+            return get_free_prerecord_brand_speech(req)
         case "basic":
             # return get_prerecord_brand_speech(req)
             return get_prerecord_ad_speech(req)

@@ -15,7 +15,13 @@ export default function App() {
   const [subscription, setSubscription] = useState("");
   const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const [authError, setAuthError] = useState("");
+  const [authInfo, setAuthInfo] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registerUsername, setRegisterUsername] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerError, setRegisterError] = useState("");
+  const [registerLoading, setRegisterLoading] = useState(false);
   
   const [addUserOpen, setAddUserOpen] = useState(false);
 
@@ -29,6 +35,7 @@ export default function App() {
   async function doLogin() {
     setAuthLoading(true);
     setAuthError("");
+    setAuthInfo("");
 
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
@@ -58,6 +65,40 @@ export default function App() {
     localStorage.removeItem("token");
     setAuthToken("");
     setLoginOpen(true);
+  }
+
+  async function doRegister() {
+    setRegisterLoading(true);
+    setRegisterError("");
+    setAuthInfo("");
+
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: registerUsername,
+          password: registerPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        setRegisterError(data.error || "Registration failed");
+        return;
+      }
+
+      setUsername(registerUsername);
+      setPassword("");
+      setRegisterPassword("");
+      setRegisterOpen(false);
+      setAuthInfo("Registration successful. Please login.");
+    } catch {
+      setRegisterError("Network error");
+    } finally {
+      setRegisterLoading(false);
+    }
   }
   
   useEffect(() => {
@@ -134,6 +175,46 @@ export default function App() {
   };
 
   if (loginOpen) {
+    if (registerOpen) {
+      return (
+        <div className="center-screen">
+          <div className="login-card">
+            <h2>AI-TV Registration</h2>
+
+            <input
+              value={registerUsername}
+              onChange={(e) => setRegisterUsername(e.target.value)}
+              placeholder="Username"
+            />
+
+            <input
+              type="password"
+              value={registerPassword}
+              onChange={(e) => setRegisterPassword(e.target.value)}
+              placeholder="Password"
+            />
+
+            {registerError && <div className="error">{registerError}</div>}
+
+            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+              <AppButton onClick={doRegister} disabled={registerLoading}>
+                {registerLoading ? "Registering..." : "Register"}
+              </AppButton>
+
+              <AppButton
+                onClick={() => {
+                  setRegisterOpen(false);
+                  setRegisterError("");
+                }}
+              >
+                Back to login
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="center-screen">
         <div className="login-card">
@@ -153,10 +234,23 @@ export default function App() {
           />
 
           {authError && <div className="error">{authError}</div>}
+          {authInfo && <div style={{ color: "lightgreen" }}>{authInfo}</div>}
 
-          <AppButton onClick={doLogin} disabled={authLoading}>
-            {authLoading ? "Logging in..." : "Login"}
-          </AppButton>
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            <AppButton onClick={doLogin} disabled={authLoading}>
+              {authLoading ? "Logging in..." : "Login"}
+            </AppButton>
+
+            <AppButton
+              onClick={() => {
+                setRegisterOpen(true);
+                setRegisterError("");
+                setAuthInfo("");
+              }}
+            >
+              Register
+            </AppButton>
+          </div>
         </div>
       </div>
     );

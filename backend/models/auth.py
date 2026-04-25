@@ -6,6 +6,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    subscription: str = "free"
+
+
 class AddUserRequest(BaseModel):
     username: str
     password: str

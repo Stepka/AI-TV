@@ -6,7 +6,7 @@ export default function Playlist({ token, userData, channel, onLoadPlaylist, pla
   return (
     <div style={{ width: "100%", marginTop: 20 }}>
       {/* Кнопка Load Playlist — только если плейлист пустой */}
-      {playlist.length === 0 && (
+      {/* {playlist.length === 0 && (
         <div
           style={{
             display: "flex",
@@ -22,7 +22,7 @@ export default function Playlist({ token, userData, channel, onLoadPlaylist, pla
             {loading ? "Loading..." : "Load Playlist"}
           </AppButton>
         </div>
-      )}
+      )} */}
 
       {/* Горизонтальный список плиток */}
       <div

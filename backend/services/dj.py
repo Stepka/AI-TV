@@ -10,6 +10,7 @@ import numpy as np
 from silero import silero_tts
 from silero_stress import load_accentor
 
+from db.auth import fetch_user
 from db.media import fetch_ad_library
 from db.channels import get_channel_by_id
 from services.silero import has_speech
@@ -134,6 +135,24 @@ def generate_dj_speech(req: DJRequest):
 def get_prerecord_brand_speech(req: DJRequest):
     
     ads = fetch_ad_library(req.user_id, req.channel_id, "prerecord_brand_speech")
+
+    if len(ads) == 0:
+        return False
+    
+    ad = random.choice(ads)
+    return {
+        "audio_filename": ad.filename,
+        "type": ad.type,
+        "duration": ad.duration,
+        "format": "wav"
+    }
+
+
+def get_free_prerecord_brand_speech(req: DJRequest):    
+
+    user = fetch_user("admin")
+    
+    ads = fetch_ad_library(user.user_uid, req.channel_id, "prerecord_brand_speech")
 
     if len(ads) == 0:
         return False

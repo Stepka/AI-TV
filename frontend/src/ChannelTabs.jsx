@@ -10,38 +10,46 @@ import AdPhrasesLibrary from "./AdPhrasesLibrary";
 
 export default function ChannelTabs({ token, userData, channel, onEditChannel, onDeleteChannel }) {
   const [activeTab, setActiveTab] = useState("stage");
-    
+  const isFreeSubscription = userData?.subscription?.name === "free";
+
   const [isFullscreen, setIsFullscreen] = useState(false);
-    
+
   useEffect(() => {
     const onFsChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(!!document.fullscreenElement);
     };
 
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
-  
-  
+
   useEffect(() => {
-    setActiveTab("stage")
+    setActiveTab("stage");
   }, [channel]);
+
+  useEffect(() => {
+    if (!isFreeSubscription) return;
+
+    const freeHiddenTabs = ["channelManager", "brandPhrases", "adPhrases", "aiAudioLibrary", "videoLibrary"];
+    if (freeHiddenTabs.includes(activeTab)) {
+      setActiveTab("stage");
+    }
+  }, [isFreeSubscription, activeTab]);
 
   return (
     <div
       style={{
-        width: "100%",          // растягиваем на всю ширину родителя
+        width: "100%",
         flexGrow: 1,
         background: "rgba(0,0,0,0.3)",
         borderRadius: 12,
         padding: isFullscreen ? 0 : 20,
         display: "flex",
         flexDirection: "column",
-        height: "100%", // или 100vh или фиксированная высота
+        height: "100%",
         gap: 12,
       }}
     >
-      {/* Заголовок с вкладками */}
       {!isFullscreen && (
         <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
           <button
@@ -58,87 +66,91 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
           >
             DJ Stream
           </button>
-          <button
-            onClick={() => setActiveTab("channelManager")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === "channelManager" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Edit Channel
-          </button>
-          <button
-            onClick={() => setActiveTab("brandPhrases")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === "brandPhrases" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Brand Phrases
-          </button>
-          <button
-            onClick={() => setActiveTab("adPhrases")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === "adPhrases" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Ad Phrases
-          </button>
-          <button
-            onClick={() => setActiveTab("aiAudioLibrary")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === "aiAudioLibrary" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            AI Audio Library
-          </button>
-          <button
-            onClick={() => setActiveTab("videoLibrary")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: activeTab === "videoLibrary" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Video Library
-          </button>
+
+          {!isFreeSubscription && (
+            <>
+              <button
+                onClick={() => setActiveTab("channelManager")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: activeTab === "channelManager" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Edit Channel
+              </button>
+              <button
+                onClick={() => setActiveTab("brandPhrases")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: activeTab === "brandPhrases" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Brand Phrases
+              </button>
+              <button
+                onClick={() => setActiveTab("adPhrases")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: activeTab === "adPhrases" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Ad Phrases
+              </button>
+              <button
+                onClick={() => setActiveTab("aiAudioLibrary")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: activeTab === "aiAudioLibrary" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                AI Audio Library
+              </button>
+              <button
+                onClick={() => setActiveTab("videoLibrary")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: activeTab === "videoLibrary" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Video Library
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {/* Контент вкладки */}
       <div style={{ flexGrow: 1, overflowY: "auto", minHeight: 0 }}>
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
-        {activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
-        {activeTab === "brandPhrases" && <BrandPhrasesLibrary token={token} userData={userData} channel={channel} />}
-        {activeTab === "adPhrases" && <AdPhrasesLibrary token={token} userData={userData} channel={channel} />}
-        {activeTab === "aiAudioLibrary" && <AIAudioLibrary token={token} userData={userData} channel={channel} />}
-        {activeTab === "videoLibrary" && <VideoLibrary token={token} userData={userData} channel={channel} />}
+        {!isFreeSubscription && activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
+        {!isFreeSubscription && activeTab === "brandPhrases" && <BrandPhrasesLibrary token={token} userData={userData} channel={channel} />}
+        {!isFreeSubscription && activeTab === "adPhrases" && <AdPhrasesLibrary token={token} userData={userData} channel={channel} />}
+        {!isFreeSubscription && activeTab === "aiAudioLibrary" && <AIAudioLibrary token={token} userData={userData} channel={channel} />}
+        {!isFreeSubscription && activeTab === "videoLibrary" && <VideoLibrary token={token} userData={userData} channel={channel} />}
       </div>
     </div>
   );

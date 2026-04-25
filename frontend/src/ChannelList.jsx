@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import AppButton from "./AppButton"; // твоя кнопка
+import AppButton from "./AppButton";
 
 export default function ChannelList({ token, userData, onSelectChannel, reloadChannelsTrigger }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const isFreeSubscription = userData?.subscription?.name === "free";
 
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(
@@ -10,7 +11,6 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
 
   useEffect(() => {
     if (!token) return;
@@ -34,14 +34,12 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
         const list = data.channels || [];
         setChannels(list);
 
-        // если ранее выбранного нет — выбираем первый
         if (!selectedChannel && list.length > 0) {
           handleSelect(list[0]);
         } else if (selectedChannel) {
-          // если выбранный канал больше не доступен — сбрасываем выбор
-          const exists = list.some(ch => ch.channel_uid === selectedChannel);
+          const exists = list.some((ch) => ch.channel_uid === selectedChannel);
           if (exists) {
-            handleSelect(list.find(ch => ch.channel_uid === selectedChannel));
+            handleSelect(list.find((ch) => ch.channel_uid === selectedChannel));
           } else {
             setSelectedChannel(null);
             localStorage.removeItem("current_channel");
@@ -65,21 +63,20 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
 
   const handleAddChannel = () => {
     const newChannel = {
-      channel_uid: crypto.randomUUID(), // или другой способ генерации уникального id
+      channel_uid: crypto.randomUUID(),
       name: "New Channel",
       type: "brand_space",
       style: "",
       description: "",
       location: "",
-      voice: {"source":"silero","name":"xenia","sex":"female"},
+      voice: { source: "silero", name: "xenia", sex: "female" },
       actions: [],
       menu: [],
     };
 
-    setChannels(prev => [...prev, newChannel]);        // добавляем в массив
-    handleSelect(newChannel)
+    setChannels((prev) => [...prev, newChannel]);
+    handleSelect(newChannel);
   };
-
 
   if (loading) return <div>Loading channels...</div>;
   if (error) return <div style={{ color: "tomato" }}>{error}</div>;
@@ -87,7 +84,11 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
     return (
       <div className="channel-list-wrapper">
         <div>No channels available</div>
-        <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Channel</AppButton>
+        {!isFreeSubscription && (
+          <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>
+            Add Channel
+          </AppButton>
+        )}
       </div>
     );
   }
@@ -95,7 +96,7 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
   return (
     <div className="channel-list-wrapper">
       <div className="channel-list">
-        {channels.map(channel => (
+        {channels.map((channel) => (
           <div
             key={channel.channel_uid}
             className={`channel-item ${selectedChannel === channel.channel_uid ? "active" : ""}`}
@@ -105,8 +106,14 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
           </div>
         ))}
       </div>
-      <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Channel</AppButton>
-      <span>Available channels: {userData?.channels_num}</span>
+
+      {!isFreeSubscription && (
+        <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>
+          Add Channel
+        </AppButton>
+      )}
+
+      {!isFreeSubscription && <span>Available channels: {userData?.channels_num}</span>}
     </div>
   );
 }

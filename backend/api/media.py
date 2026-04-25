@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 import requests
 from api.dj import brand_transition_text
 from services.common import get_last_index
-from db.auth import fetch_user_by_id
+from db.auth import fetch_user, fetch_user_by_id
 from models.dj import AdPhraseRequest
 from db.media import add_ad, delete_ad, fetch_ad, fetch_ad_library, update_ad
 from services.silero import has_speech
@@ -29,6 +29,12 @@ router = APIRouter(prefix="/media", tags=["media"])
 @router.get("/speech")
 def get_audio(filename: str, user_id: str, channel_id: str, type: str, user=Depends(get_current_user)):
     print("Serving audio file:", user_id, channel_id, filename)
+    
+    user = fetch_user_by_id(user_id)
+    if user.subscription.name == "free":
+        admin = fetch_user("admin")
+        user_id = admin.user_uid
+
     return FileResponse(f"channels_data/{user_id}/{channel_id}/{type}/{filename}", media_type="audio/wav", filename=filename)
 
 
