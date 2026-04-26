@@ -12,18 +12,24 @@ export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
-  const [subscription, setSubscription] = useState("");
   const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const [authError, setAuthError] = useState("");
   const [authInfo, setAuthInfo] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [registerUsername, setRegisterUsername] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
+  const [registerInviteCode, setRegisterInviteCode] = useState("");
   const [registerError, setRegisterError] = useState("");
   const [registerLoading, setRegisterLoading] = useState(false);
   
   const [addUserOpen, setAddUserOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSubscription, setInviteSubscription] = useState("free");
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -72,13 +78,34 @@ export default function App() {
     setRegisterError("");
     setAuthInfo("");
 
+    const normalizedEmail = registerEmail.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setRegisterError("Email is required");
+      setRegisterLoading(false);
+      return;
+    }
+
+    if (!normalizedEmail.includes("@")) {
+      setRegisterError("Enter a valid email");
+      setRegisterLoading(false);
+      return;
+    }
+
+    if (!registerInviteCode.trim()) {
+      setRegisterError("Open the registration form from your invite link");
+      setRegisterLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: registerUsername,
+          email: normalizedEmail,
           password: registerPassword,
+          invite_code: registerInviteCode.trim(),
         }),
       });
 
@@ -89,11 +116,13 @@ export default function App() {
         return;
       }
 
-      setUsername(registerUsername);
+      setUsername(normalizedEmail);
       setPassword("");
+      setRegisterEmail("");
       setRegisterPassword("");
       setRegisterOpen(false);
       setAuthInfo("Registration successful. Please login.");
+      window.history.replaceState({}, "", window.location.pathname);
     } catch {
       setRegisterError("Network error");
     } finally {
@@ -106,6 +135,26 @@ export default function App() {
       setLoginOpen(true);
     }
   }, [authToken]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteCodeFromLink = params.get("invite_code");
+    const inviteEmailFromLink = params.get("email");
+
+    if (!inviteCodeFromLink) {
+      return;
+    }
+
+    setRegisterInviteCode(inviteCodeFromLink);
+    setRegisterOpen(true);
+    setLoginOpen(true);
+    setAuthInfo("");
+    setRegisterError("");
+
+    if (inviteEmailFromLink) {
+      setRegisterEmail(inviteEmailFromLink.toLowerCase());
+    }
+  }, []);
   
   useEffect(() => {
     const onFsChange = () => {
@@ -144,33 +193,63 @@ export default function App() {
   async function onAddUser() {
     if (authToken) {
       setAddUserOpen(true);
+      setInviteError("");
+      setInviteLink("");
     }
   };
   
   async function doAddUser() {
+    setInviteLoading(true);
+    setInviteError("");
+    setInviteCode("");
+    setInviteLink("");
+
+    const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
+
+    if (!normalizedInviteEmail) {
+      setInviteError("Email is required");
+      setInviteLoading(false);
+      return;
+    }
+
+    if (!normalizedInviteEmail.includes("@")) {
+      setInviteError("Enter a valid email");
+      setInviteLoading(false);
+      return;
+    }
+
+    if (!inviteSubscription.trim()) {
+      setInviteError("Subscription is required");
+      setInviteLoading(false);
+      return;
+    }
 
     try {
-      const res = await fetch(`${API_URL}/auth/add_user`, {
+      const res = await fetch(`${API_URL}/auth/create_invite`, {
         method: "POST",
         headers: { 
           Authorization: `Bearer ${authToken}`, 
           "Content-Type": "application/json" 
         },
-        body: JSON.stringify({ username, password, subscription }),
+        body: JSON.stringify({ email: normalizedInviteEmail, subscription: inviteSubscription.trim() }),
       });
 
       const data = await res.json();
-      console.log(data)
       if (!data.ok) {
-        setAuthError("Failed to add user");
+        setInviteError(data.error || "Failed to create invite");
         return;
       }
-      setAddUserOpen(false);
+      setInviteCode(data.invite.code);
+      const inviteParams = new URLSearchParams({
+        invite_code: data.invite.code,
+        email: data.invite.email,
+      });
+      setInviteLink(`${window.location.origin}${window.location.pathname}?${inviteParams.toString()}`);
 
     } catch {
-      setAuthError("Network error");
+      setInviteError("Network error");
     } finally {
-      // setAddUserOpen(false);
+      setInviteLoading(false);
     }
   };
 
@@ -182,9 +261,10 @@ export default function App() {
             <h2>AI-TV Registration</h2>
 
             <input
-              value={registerUsername}
-              onChange={(e) => setRegisterUsername(e.target.value)}
-              placeholder="Username"
+              type="email"
+              value={registerEmail}
+              onChange={(e) => setRegisterEmail(e.target.value)}
+              placeholder="Email"
             />
 
             <input
@@ -195,6 +275,7 @@ export default function App() {
             />
 
             {registerError && <div className="error">{registerError}</div>}
+            {!!registerInviteCode && <div style={{ opacity: 0.7 }}>Invite applied for {registerEmail || "this registration"}</div>}
 
             <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
               <AppButton onClick={doRegister} disabled={registerLoading}>
@@ -223,7 +304,7 @@ export default function App() {
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
+            placeholder="Email or username"
           />
 
           <input
@@ -258,34 +339,43 @@ export default function App() {
 
   if (addUserOpen) {
     return (
-      <div className="center-screen">
-        <div className="login-card">
-          <h2>Add User</h2>
+        <div className="center-screen">
+          <div className="login-card">
+          <h2>Create Invite</h2>
 
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="Email"
           />
 
           <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-          />
-
-          <input
-            value={subscription}
-            onChange={(e) => setSubscription(e.target.value)}
+            value={inviteSubscription}
+            onChange={(e) => setInviteSubscription(e.target.value)}
             placeholder="Subscription"
           />
 
-          {authError && <div className="error">{authError}</div>}
+          {inviteError && <div className="error">{inviteError}</div>}
+          {inviteCode && <div style={{ color: "lightgreen", wordBreak: "break-all" }}>Invite code: {inviteCode}</div>}
+          {inviteLink && <div style={{ color: "lightgreen", wordBreak: "break-all" }}>Invite link: {inviteLink}</div>}
 
-          <AppButton onClick={doAddUser} disabled={authLoading}>
-            {authLoading ? "Adding user..." : "Add user"}
-          </AppButton>
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            <AppButton onClick={doAddUser} disabled={inviteLoading}>
+              {inviteLoading ? "Creating..." : "Create invite"}
+            </AppButton>
+
+            <AppButton
+              onClick={() => {
+                setAddUserOpen(false);
+                setInviteCode("");
+                setInviteLink("");
+                setInviteError("");
+              }}
+            >
+              Close
+            </AppButton>
+          </div>
         </div>
       </div>
     );

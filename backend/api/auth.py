@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from services.auth import get_current_user, authenticate_user, create_access_token, get_password_hash
-from db.auth import create_user, fetch_user
-from models.auth import AddUserRequest, CreateUserRequest, LoginRequest, RegisterRequest
+from db.auth import create_invite, create_user, fetch_user
+from models.auth import AddUserRequest, CreateInviteRequest, CreateUserRequest, LoginRequest, RegisterRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -19,11 +19,19 @@ def login(req: LoginRequest):
 @router.post("/register")
 def register(req: RegisterRequest):
     try:
+        email = req.email.strip().lower()
+        if "@" not in email:
+            return {"ok": False, "error": "invalid email"}
+
+        invite_code = req.invite_code.strip().upper()
+        if not invite_code:
+            return {"ok": False, "error": "invite code is required"}
+
         create_req = CreateUserRequest(
-            username=req.username,
+            username=email,
             password=req.password,
-            subscription=req.subscription,
             password_hash=get_password_hash(req.password),
+            invite_code=invite_code,
         )
         created_user = create_user(create_req)
         return {"ok": True, "created_user": created_user}
@@ -51,4 +59,17 @@ def me(req: AddUserRequest, username: str = Depends(get_current_user)):
         return {"ok": True, "created_user": created_user}
     
     return {"ok": False}
+
+
+@router.post("/create_invite")
+def create_invite_code(req: CreateInviteRequest, username: str = Depends(get_current_user)):
+    user_data = fetch_user(username)
+    if user_data.role != "admin":
+        return {"ok": False, "error": "forbidden"}
+
+    try:
+        invite = create_invite(req.email, req.subscription, user_data.user_uid)
+        return {"ok": True, "invite": invite}
+    except HTTPException as exc:
+        return {"ok": False, "error": exc.detail}
 

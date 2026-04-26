@@ -31,6 +31,7 @@ from api import media
 from api import playlist
 from api import dj
 from api import lead
+from db.auth import ensure_invites_table
 
 load_dotenv()
 
@@ -59,6 +60,11 @@ app.include_router(dj.router)
 app.include_router(lead.router)
 
 app.mount("/channels_data", StaticFiles(directory="channels_data"), name="channels_data")
+
+
+@app.on_event("startup")
+def startup():
+    ensure_invites_table()
 
 
 @app.get("/")

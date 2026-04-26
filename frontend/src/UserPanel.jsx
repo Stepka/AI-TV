@@ -63,7 +63,7 @@ export default function UserPanel({ token, onLogout, onGetUserData, onAddUser })
         </AppButton>
 
         {userData?.role =="admin" && (<AppButton onClick={onAddUser}>
-          Add User
+          Create Invite
         </AppButton>
         )}
 
