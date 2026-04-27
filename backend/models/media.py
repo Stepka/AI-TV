@@ -1,5 +1,7 @@
 
 
+from typing import Optional
+
 from fastapi import Form
 from pydantic import BaseModel
 
@@ -7,6 +9,20 @@ from pydantic import BaseModel
 class GenerateAITrackRequest(BaseModel):
     user_id: str
     channel_id: str
+    branded_track: bool = False
+
+
+class AITrack(BaseModel):
+    track_id: str
+    user_id: str
+    channel_id: str
+    file_path: str
+    image_path: Optional[str] = None
+    artist: str
+    title: str
+    duration: float
+    style: str
+    branded_track: bool = False
 
 class GenerateBrandPhraseSpeechRequest(BaseModel):
     ad_id: str

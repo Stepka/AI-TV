@@ -4,6 +4,7 @@ from pathlib import Path
 import random
 import time
 import uuid
+from mutagen import File as MutagenFile
 from scipy.io.wavfile import write
 
 from fastapi import APIRouter, Query, Depends, Request, UploadFile, File, HTTPException
@@ -13,17 +14,25 @@ from api.dj import brand_transition_text
 from services.common import get_last_index
 from db.auth import fetch_user, fetch_user_by_id
 from models.dj import AdPhraseRequest
-from db.media import add_ad, delete_ad, fetch_ad, fetch_ad_library, update_ad
+from db.media import add_ad, add_ai_track, delete_ad, delete_ai_track_by_filename, ensure_ai_tracks_table, fetch_ad, fetch_ad_library, fetch_ai_tracks, update_ad
 from services.silero import has_speech
 from services.dj import generate_speech
 from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
 from services.sona import generate_music, get_music_result
+from services.llm import generate_ai_track_identity
 from models.media import AdPhrase, AddAdPhraseRequest, DeleteAudioRequest, DeletePrerecordAdPhraseRequest, DeletePrerecordBrandPhraseRequest, DeleteVideoRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
 from services.auth import get_current_user
 
 router = APIRouter(prefix="/media", tags=["media"])
+
+
+def get_audio_duration_seconds(file_path: str) -> float:
+    audio_file = MutagenFile(file_path)
+    if not audio_file or not getattr(audio_file, "info", None):
+        return 0.0
+    return float(getattr(audio_file.info, "length", 0.0) or 0.0)
 
 
 @router.get("/speech")
@@ -122,19 +131,24 @@ def list_ai_audio(
     user_id: str = Query(...),
     channel_id: str = Query(...)
 ):
-    base_path = Path("channels_data") / user_id / channel_id / "ai_audio_library"
-    base_path.mkdir(parents=True, exist_ok=True)
+    tracks = fetch_ai_tracks(user_id, channel_id)
 
     files = []
-    for file in base_path.glob("*"):
-        if file.suffix.lower() in [".mp3", ".wav", ".ogg"]:
-            files.append({
-                "index": int(file.name.split("_")[-1].split(".")[0]),
-                "name": file.name,
-                "url": f"channels_data/{user_id}/{channel_id}/ai_audio_library/{file.name}"
-            })
-            
-    files = sorted(files, key=lambda x: x["index"])
+    for track in tracks:
+        file_path = Path(track.file_path)
+        files.append({
+            "track_id": track.track_id,
+            "filename": file_path.name,
+            "name": f"{track.artist} - {track.title}",
+            "artist": track.artist,
+            "title": track.title,
+            "duration": track.duration,
+            "style": track.style,
+            "branded_track": track.branded_track,
+            "image_url": track.image_path.replace("\\", "/") if track.image_path else None,
+            "url": track.file_path.replace("\\", "/"),
+        })
+
     return {"files": files}
 
 
@@ -177,6 +191,7 @@ def list_prerecord_ad_phrases_library(
 
 @router.post("/generate_ai_track")
 def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user)):
+    ensure_ai_tracks_table()
     
     success = spend_subscription(req.user_id, "ai_tracks_num", decrement = 2)
     if not success:
@@ -185,14 +200,20 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
     channel = get_channel_by_id(req.user_id, req.channel_id)
     channel = Channel(**channel)
 
-    if random.random() < 0.4:
-        instrumental = False
-    else:
-        instrumental = True
-    
-    print(f"Generating AI track for channel {channel.name} with style {channel.style} (instrumental={instrumental})")
+    instrumental = not req.branded_track
+    prompt = f"{channel.name}, {channel.name}, {channel.name}" if req.branded_track else "No Lyric"
 
-    task = generate_music(style=channel.style, title=channel.name, prompt=f"{channel.name}, {channel.name}, {channel.name}", instrumental=instrumental)
+    print(
+        f"Generating AI track for channel {channel.name} with style {channel.style} "
+        f"(instrumental={instrumental}, branded_track={req.branded_track})"
+    )
+
+    task = generate_music(
+        style=channel.style,
+        title=channel.name,
+        prompt=prompt,
+        instrumental=instrumental,
+    )
     task_id = task["data"]["task_id"]
 
 
@@ -210,6 +231,25 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
             print(e)
 
     print(result)
+
+    for item in result:
+        identity = generate_ai_track_identity(channel.name, channel.style, req.branded_track)
+        absolute_file_path = item["file_path"]
+        relative_file_path = Path(absolute_file_path).as_posix()
+        relative_image_path = Path(item["image_path"]).as_posix() if item.get("image_path") else None
+        duration = get_audio_duration_seconds(absolute_file_path)
+
+        add_ai_track(
+            user_id=req.user_id,
+            channel_id=req.channel_id,
+            file_path=relative_file_path,
+            image_path=relative_image_path,
+            artist=channel.name,
+            title=identity["title"],
+            duration=duration,
+            style=channel.style or "",
+            branded_track=req.branded_track,
+        )
 
     return {"track": "ok"}
 
@@ -602,6 +642,15 @@ async def delete_audio(data: DeleteAudioRequest):
         file_path.unlink()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+    track = delete_ai_track_by_filename(user_id, channel_id, filename)
+    if track and track.image_path:
+        image_path = Path(track.image_path)
+        if image_path.exists() and image_path.is_file():
+            try:
+                image_path.unlink()
+            except Exception:
+                pass
 
     return {
         "status": "ok",

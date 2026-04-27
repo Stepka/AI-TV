@@ -19,6 +19,47 @@ from db.channels import get_channel_by_id
 llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
+def generate_ai_track_identity(channel_name: str, style: str, branded_track: bool) -> dict:
+    branded_hint = "branded" if branded_track else "non-branded"
+    prompt = f"""
+Generate metadata for one newly created AI music track.
+
+Channel name: {channel_name}
+Style: {style}
+Track type: {branded_hint}
+
+Return ONLY valid JSON:
+{{
+  "artist": "Artist name",
+  "title": "Track title"
+}}
+
+Rules:
+- artist and title must be concise
+- keep them plausible for the given style
+- if the track is branded, allow a subtle reference to the channel name
+- do not include quotes around the whole response
+"""
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You generate short structured music metadata."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=1.0,
+        response_format={"type": "json_object"}
+    )
+
+    content = response.choices[0].message.content.strip()
+    data = json.loads(content)
+
+    return {
+        "artist": str(data.get("artist", "AI Artist")).strip() or "AI Artist",
+        "title": str(data.get("title", "Generated Track")).strip() or "Generated Track",
+    }
+
+
 def generate_playlist_llm(user_uid: str, channel_uid: str, count: int = 10, last_played: List[dict] = None):
     meta = get_channel_by_id(user_uid, channel_uid)
 

@@ -32,6 +32,7 @@ from api import playlist
 from api import dj
 from api import lead
 from db.auth import ensure_invites_table
+from db.media import ensure_ai_tracks_table
 
 load_dotenv()
 
@@ -65,6 +66,7 @@ app.mount("/channels_data", StaticFiles(directory="channels_data"), name="channe
 @app.on_event("startup")
 def startup():
     ensure_invites_table()
+    ensure_ai_tracks_table()
 
 
 @app.get("/")

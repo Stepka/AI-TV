@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppButton from "./AppButton";
 
 export default function AIAudioLibrary({ token, userData, channel }) {
@@ -6,14 +6,15 @@ export default function AIAudioLibrary({ token, userData, channel }) {
 
   const [files, setFiles] = useState([]);
   const audioRef = useRef(null);
-  
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showGeneratePopup, setShowGeneratePopup] = useState(false);
+  const [brandedTrack, setBrandedTrack] = useState(false);
 
   useEffect(() => {
     if (!channel || !token || !userData) return;
     loadAILibrary();
   }, [userData, channel, token]);
-  
+
   const loadAILibrary = () => {
     if (!channel || !token || !userData) return;
 
@@ -24,36 +25,48 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         "Authorization": `Bearer ${token}`,
       }
     })
-      .then(res => res.json())
-      .then(data => setFiles(data.files));
+      .then((res) => res.json())
+      .then((data) => setFiles(data.files));
+  };
+
+  const formatDuration = (value) => {
+    const totalSeconds = Math.max(0, Math.round(value || 0));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   };
 
   const playAudio = (url) => {
     if (audioRef.current) {
-      url = `${API_URL}/${url}`
-      audioRef.current.src = url;
+      audioRef.current.src = `${API_URL}/${url}`;
       audioRef.current.play();
     }
   };
 
   const generate = async () => {
     setIsGenerating(true);
-    const res = await fetch(`${API_URL}/media/generate_ai_track`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        user_id: userData.user_uid, 
-        channel_id: channel.channel_uid
-      })
-    })
-    setIsGenerating(false);
 
-    if (!res.ok) throw new Error("Generate ai track failed");
+    try {
+      const res = await fetch(`${API_URL}/media/generate_ai_track`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userData.user_uid,
+          channel_id: channel.channel_uid,
+          branded_track: brandedTrack,
+        })
+      });
 
-    loadAILibrary();
+      if (!res.ok) throw new Error("Generate ai track failed");
+
+      setShowGeneratePopup(false);
+      loadAILibrary();
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDeleteAudio = async (filename) => {
@@ -69,7 +82,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         body: JSON.stringify({
           user_id: userData.user_uid,
           channel_id: channel.channel_uid,
-          filename: filename
+          filename,
         })
       });
 
@@ -78,9 +91,8 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         alert("Error: " + err.detail);
         return;
       }
-        
-      loadAILibrary();
 
+      loadAILibrary();
     } catch (e) {
       console.error(e);
       alert("Failed to delete audio");
@@ -88,34 +100,120 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   };
 
   return (
-    <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px"}}>
-    <h2>🎧 Audio Library</h2>
-    <span>Available generations: {userData?.ai_tracks_num}</span>
+    <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px" }}>
+      <h2>Audio Library</h2>
+      <span>Available generations: {userData?.ai_tracks_num}</span>
 
-    <AppButton onClick={() => generate()} disabled={isGenerating}>
-        {isGenerating ? "Generating..." : "🎵 Generate track"}
-    </AppButton>
+      <AppButton onClick={() => setShowGeneratePopup(true)} disabled={isGenerating}>
+        {isGenerating ? "Generating..." : "Generate track"}
+      </AppButton>
 
-    <ul style={{ listStyle: "none", padding: 0 }}>
-        {files.map((file, idx) => (
-        <li key={idx} style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <AppButton onClick={() => playAudio(file.url)}>
-                ▶ Play
-            </AppButton>
-            <span>{file.name}</span>
-            
-            {/* Кнопка удаления */}
-            <AppButton
-                onClick={() => handleDeleteAudio(file.name)}>
-                Delete
-            </AppButton>
+      {showGeneratePopup && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 460,
+              background: "#1f1f1f",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 12,
+              padding: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <h3 style={{ margin: 0, color: "#fff" }}>Generate Track</h3>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Music style</label>
+              <input
+                value={channel?.style || ""}
+                readOnly
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "#fff",
+                }}
+              />
             </div>
-        </li>
-        ))}
-    </ul>
 
-    <audio ref={audioRef} controls style={{ width: "100%" }} />
+            <label style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={brandedTrack}
+                onChange={(e) => setBrandedTrack(e.target.checked)}
+              />
+              <span>Branded track</span>
+            </label>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <AppButton
+                onClick={() => {
+                  if (isGenerating) return;
+                  setShowGeneratePopup(false);
+                }}
+                disabled={isGenerating}
+              >
+                Cancel
+              </AppButton>
+              <AppButton onClick={generate} disabled={isGenerating}>
+                {isGenerating ? "Generating..." : "Generate"}
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {files.map((file) => (
+          <li key={file.track_id} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              {file.image_url && (
+                <img
+                  src={`${API_URL}/${file.image_url}`}
+                  alt={file.name}
+                  style={{
+                    width: 64,
+                    height: 64,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    flex: "0 0 64px",
+                  }}
+                />
+              )}
+              <AppButton onClick={() => playAudio(file.url)}>
+                Play
+              </AppButton>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                <span>{file.name}</span>
+                <span style={{ fontSize: 12, opacity: 0.4 }}>
+                  Style: {file.style || "Unknown"} | Duration: {formatDuration(file.duration)} | {file.branded_track ? "Branded" : "Not Branded"}
+                </span>
+              </div>
+              <AppButton onClick={() => handleDeleteAudio(file.filename)}>
+                Delete
+              </AppButton>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <audio ref={audioRef} controls style={{ width: "100%" }} />
     </div>
   );
 }

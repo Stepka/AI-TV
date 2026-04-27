@@ -1,10 +1,28 @@
 import os
 from pathlib import Path
 import time
+from urllib.parse import urlparse
 
 import requests
 
 API_KEY = os.getenv("AIMUSIC_API_KEY")
+
+
+def download_track_image(image_url: str, file_stem: str, save_dir: Path) -> str | None:
+    if not image_url:
+        return None
+
+    parsed = urlparse(image_url)
+    suffix = Path(parsed.path).suffix or ".jpg"
+    image_path = save_dir / f"{file_stem}{suffix}"
+
+    image_response = requests.get(image_url)
+    image_response.raise_for_status()
+
+    with open(image_path, "wb") as f:
+        f.write(image_response.content)
+
+    return str(image_path)
 
 def generate_music(
     style: str = None,
@@ -77,6 +95,12 @@ def get_music_result(
                 for i, item in enumerate(items):
                     audio_url = item["audio_url"]
                     title = item.get("title", "track")
+                    image_url = (
+                        item.get("image_url")
+                        or item.get("image_large_url")
+                        or item.get("cover_image_url")
+                        or item.get("thumbnail_url")
+                    )
                     track_id = start_index + i + 1
 
                     filename = f"{title}_{track_id}.mp3".replace(" ", "_")
@@ -90,7 +114,13 @@ def get_music_result(
                     with open(file_path, "wb") as f:
                         f.write(audio_response.content)
 
-                    downloaded_files.append(str(file_path))
+                    image_path = download_track_image(image_url, file_path.stem, save_path) if image_url else None
+
+                    downloaded_files.append({
+                        "file_path": str(file_path),
+                        "image_path": image_path,
+                        "title": title,
+                    })
 
                 return downloaded_files
             

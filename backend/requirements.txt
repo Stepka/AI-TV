@@ -17,3 +17,4 @@ torchaudio
 packaging
 rapidfuzz
 python-multipart
+mutagen
