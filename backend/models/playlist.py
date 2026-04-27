@@ -5,3 +5,4 @@ class PlaylistRequest(BaseModel):
     user_id: str
     channel_id: str
     max_results: int = 10
+    branded_tracks_enabled: bool = False

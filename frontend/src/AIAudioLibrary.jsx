@@ -182,7 +182,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
       <ul style={{ listStyle: "none", padding: 0 }}>
         {files.map((file) => (
           <li key={file.track_id} style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {file.image_url && (
                 <img
                   src={`${API_URL}/${file.image_url}`}
@@ -196,18 +196,22 @@ export default function AIAudioLibrary({ token, userData, channel }) {
                   }}
                 />
               )}
-              <AppButton onClick={() => playAudio(file.url)}>
-                Play
-              </AppButton>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+              <div style={{ flex: "0 0 auto" }}>
+                <AppButton onClick={() => playAudio(file.url)}>
+                  Play
+                </AppButton>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, flex: 1 }}>
                 <span>{file.name}</span>
                 <span style={{ fontSize: 12, opacity: 0.4 }}>
                   Style: {file.style || "Unknown"} | Duration: {formatDuration(file.duration)} | {file.branded_track ? "Branded" : "Not Branded"}
                 </span>
               </div>
-              <AppButton onClick={() => handleDeleteAudio(file.filename)}>
-                Delete
-              </AppButton>
+              <div style={{ flex: "0 0 auto" }}>
+                <AppButton onClick={() => handleDeleteAudio(file.filename)}>
+                  Delete
+                </AppButton>
+              </div>
             </div>
           </li>
         ))}

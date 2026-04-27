@@ -1,11 +1,32 @@
 import os
 from pathlib import Path
+import re
 import time
+import uuid
 from urllib.parse import urlparse
 
 import requests
 
 API_KEY = os.getenv("AIMUSIC_API_KEY")
+
+
+def safe_file_stem(value: str) -> str:
+    stem = re.sub(r"[^\w.-]+", "_", value.strip(), flags=re.UNICODE)
+    stem = stem.strip("._")
+    return stem or "track"
+
+
+def unique_path(directory: Path, stem: str, suffix: str) -> Path:
+    path = directory / f"{stem}{suffix}"
+    if not path.exists():
+        return path
+
+    for index in range(2, 1000):
+        candidate = directory / f"{stem}_{index}{suffix}"
+        if not candidate.exists():
+            return candidate
+
+    return directory / f"{stem}_{uuid.uuid4().hex[:8]}{suffix}"
 
 
 def download_track_image(image_url: str, file_stem: str, save_dir: Path) -> str | None:
@@ -14,7 +35,7 @@ def download_track_image(image_url: str, file_stem: str, save_dir: Path) -> str 
 
     parsed = urlparse(image_url)
     suffix = Path(parsed.path).suffix or ".jpg"
-    image_path = save_dir / f"{file_stem}{suffix}"
+    image_path = unique_path(save_dir, file_stem, suffix)
 
     image_response = requests.get(image_url)
     image_response.raise_for_status()
@@ -103,8 +124,8 @@ def get_music_result(
                     )
                     track_id = start_index + i + 1
 
-                    filename = f"{title}_{track_id}.mp3".replace(" ", "_")
-                    file_path = save_path / filename
+                    file_stem = safe_file_stem(f"{title}_{track_id}")
+                    file_path = unique_path(save_path, file_stem, ".mp3")
 
                     # 3. скачиваем файл
                     print(f"download {audio_url}...")

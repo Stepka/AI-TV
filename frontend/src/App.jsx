@@ -411,11 +411,12 @@ export default function App() {
         <div
           style={{
             flex: 1,                 // занимает оставшиеся 75%
+            minHeight: 0,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             // padding: "20px",
-            overflowY: "auto",       // если плейлист длинный, появляется скролл
+            overflow: "hidden",
           }}
         >
           {selectedChannel && (

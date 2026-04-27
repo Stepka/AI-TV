@@ -10,6 +10,7 @@ import './global.css';
 
 export default function App({ token, userData, channel }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const canUseAdVoice = true;
   
   const [isStreaming, setIsStreaming] = useState(false);
 
@@ -18,6 +19,9 @@ export default function App({ token, userData, channel }) {
   const [current, setCurrent] = useState(0);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [playlistReady, setPlaylistReady] = useState(false);  
+  const [brandedTracksEnabled, setBrandedTracksEnabled] = useState(false);
+  const [aiDjEnabled, setAiDjEnabled] = useState(true);
+  const [adVoiceEnabled, setAdVoiceEnabled] = useState(true);
   
   const [playerReady, setPlayerReady] = useState(false);
 
@@ -55,6 +59,22 @@ export default function App({ token, userData, channel }) {
     nowPlaying: "",
     nextTrack: "",
   });
+
+  useEffect(() => {
+    if (!aiDjEnabled) {
+      setAdVoiceEnabled(false);
+      setDjTransitionReady(false);
+      djDataRef.current = null;
+      return;
+    }
+
+    if (!canUseAdVoice) {
+      setAdVoiceEnabled(false);
+      return;
+    }
+
+    setAdVoiceEnabled(true);
+  }, [aiDjEnabled, canUseAdVoice]);
 
   useEffect(() => {
     if (!channel || !userData || !isStreaming || playlist.length === 0) return; // только если пользователь залогинен и канал выбран
@@ -385,9 +405,18 @@ export default function App({ token, userData, channel }) {
     });
 
     // заранее готовим DJ
-    prepareDjTransition();
-
   }, [current, helloFinished, isStreaming]);
+
+  useEffect(() => {
+    if (!aiDjEnabled) {
+      setDjTransitionReady(false);
+      return;
+    }
+
+    if (!playlist.length || !helloFinished || !channel || !isStreaming) return;
+
+    prepareDjTransition();
+  }, [current, helloFinished, isStreaming, aiDjEnabled]);
 
 
   useEffect(() => {
@@ -410,6 +439,7 @@ export default function App({ token, userData, channel }) {
   }, [playlist]);
 
   const prepareDjTransition = async () => {
+    if (!aiDjEnabled) return;
 
     setDjTransitionReady(false);
 
@@ -519,6 +549,11 @@ export default function App({ token, userData, channel }) {
   };
   
   const startTransition = async (dj_duration) => {  
+    if (!aiDjEnabled) {
+      smoothNext(2000);
+      return;
+    }
+
     // console.log("startTransition")
     clearInterval(trackTimeoutInterval);
     
@@ -533,7 +568,8 @@ export default function App({ token, userData, channel }) {
   };
 
   useEffect(() => {
-    if (!playerReady || !playerRef.current || !djTransitionReady) return;
+    if (!playerReady || !playerRef.current) return;
+    if (aiDjEnabled && !djTransitionReady) return;
 
     const interval = setInterval(() => {
       const player = playerRef.current;
@@ -549,6 +585,14 @@ export default function App({ token, userData, channel }) {
       // console.log("Current time:", player.getCurrentTime());
 
 
+      if (!aiDjEnabled) {
+        if (remaining < 2) {
+          clearInterval(interval);
+          smoothNext(2000);
+        }
+        return;
+      }
+
       // const dj_duration = 15;
       let dj_duration = djDataRef.current.duration / 2;
       if (dj_duration > 15) dj_duration = 15;
@@ -562,9 +606,10 @@ export default function App({ token, userData, channel }) {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [current, playerReady, djTransitionReady]);
+  }, [current, playerReady, djTransitionReady, aiDjEnabled]);
 
   const playDjOverVideo = async () => {
+    if (!aiDjEnabled) return;
     if (!djDataRef.current || !playerRef.current) return;
     // if (!djDataRef.current) return;
 
@@ -778,6 +823,7 @@ export default function App({ token, userData, channel }) {
           user_id: userData.user_uid,
           channel_id: channel.channel_uid,
           max_results: maxResults,
+          branded_tracks_enabled: brandedTracksEnabled,
         }),
       });
 
@@ -812,27 +858,80 @@ export default function App({ token, userData, channel }) {
     <div
       style={{
         display: "flex",
-        justifyContent: "center",  // центрируем по горизонтали
+        justifyContent: "flex-start",
         // marginBottom: isFullscreen ? 0 : 20,
         width: "100%",
+        height: "100%",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column", // вот это делает вертикальный стэк
         alignItems: "center",    // центрируем все элементы по горизонтали
         cursor: isFullscreen ? "none" : "default",
+        overflowY: isFullscreen ? "hidden" : "auto",
+        overflowX: "hidden",
+        boxSizing: "border-box",
+        paddingRight: isFullscreen ? 0 : 6,
         // gap: isFullscreen ? 0 : 20,             // опционально, чтобы добавить расстояние между элементами
       }}
     >
-      {!isStreaming && (
-        <AppButton
-          onClick={startStreaming}
-          // disabled={loading} // неактивна во время загрузки
+      {!isFullscreen && (
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 16,
+            alignItems: "center",
+            padding: 16,
+            margin: "16px 0",
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxSizing: "border-box",
+          }}
         >
-          {/* {loading ? "Loading..." : "Start DJ Streaming"} */}
-          Start DJ Streaming
-        </AppButton>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={aiDjEnabled}
+              onChange={(e) => setAiDjEnabled(e.target.checked)}
+            />
+            <span>Enable AI-DJ</span>
+          </label>
+
+          {canUseAdVoice && (
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: aiDjEnabled ? "pointer" : "not-allowed", opacity: aiDjEnabled ? 1 : 0.55 }}>
+              <input
+                type="checkbox"
+                checked={adVoiceEnabled}
+                onChange={(e) => setAdVoiceEnabled(e.target.checked)}
+                disabled={!aiDjEnabled}
+              />
+              <span>Enable Ads</span>
+            </label>
+          )}
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={brandedTracksEnabled}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setBrandedTracksEnabled(enabled);
+                if (!enabled) {
+                  setPlaylist((prev) => {
+                    const filtered = prev.filter((item) => !item?.branded_track);
+                    setCurrent((currentIndex) => Math.min(currentIndex, Math.max(filtered.length - 1, 0)));
+                    return filtered;
+                  });
+                }
+              }}
+            />
+            <span>Branded tracks</span>
+          </label>
+        </div>
       )}
 
-      
       <div
         style={{
           width: "100%",
@@ -854,6 +953,16 @@ export default function App({ token, userData, channel }) {
           textAlign: "center",
         }}
       >
+        {!isStreaming && (
+          <AppButton
+            onClick={startStreaming}
+            // disabled={loading} // неактивна во время загрузки
+          >
+            {/* {loading ? "Loading..." : "Start DJ Streaming"} */}
+            Start DJ Streaming
+          </AppButton>
+        )}
+
         {isStreaming && (playlist.length == 0 || !helloReady || !helloFinished) && (
             <div 
               style={{
@@ -929,7 +1038,12 @@ export default function App({ token, userData, channel }) {
       </div>
       
       {!isFullscreen && (
-        <Playlist channel={channel} token={token} userData={userData} playlist={playlist} loading={playlistLoading} onLoadPlaylist={loadPlaylist} />
+        <Playlist
+          channel={channel}
+          playlist={playlist}
+          loading={playlistLoading}
+          brandedTracksEnabled={brandedTracksEnabled}
+        />
       )}
     </div>
   );

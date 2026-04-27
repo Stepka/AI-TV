@@ -1,12 +1,32 @@
 import React from "react";
 
 export default function TitlesOverlay({
-  topTitle = "Другое Место",
-  topSub = "Артиллерийская • Калининград • −2°C • сильный ветер",
-  nowPlaying = "Rodriguez Jr — Mistral",
-  nextTrack = "Далее: Tale Of Us — Nova",
+  topTitle = "Channel",
+  nowPlaying = "Now playing",
+  nextTrack = "Next track",
   zIndex = 999,
 }) {
+  const singleLineText = (fontSize, fontWeight, lineHeight, opacity = 1) => ({
+    color: "#fff",
+    fontFamily: "Inter, Arial, sans-serif",
+    fontSize,
+    fontWeight,
+    lineHeight,
+    opacity,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    textAlign: "left",
+    width: "100%",
+  });
+
+  const textLayer = {
+    position: "absolute",
+    left: "5.7%",
+    right: "5.7%",
+    pointerEvents: "none",
+  };
+
   return (
     <div
       style={{
@@ -15,7 +35,6 @@ export default function TitlesOverlay({
         width: "100%",
         height: "100%",
         pointerEvents: "none",
-        // opacity: 0.5,
         zIndex,
       }}
     >
@@ -24,131 +43,47 @@ export default function TitlesOverlay({
         viewBox="0 0 1920 1080"
         width="100%"
         height="100%"
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="none"
       >
-        {/* ================= TOP ================= */}
-        <g>
-          {/* Заливка сверху линии */}
-          <path
-            fill="#000"
-            fillOpacity="1"
-            d="
-                M 0 0
-                L 1920 0
-                L 1920 220
-                C 1440 180, 960 250, 0 250
-                Z
-            "
-          />
+        <path
+          fill="#000"
+          fillOpacity="1"
+          d="
+            M 0 0
+            L 1920 0
+            L 1920 220
+            C 1440 180, 960 250, 0 250
+            Z
+          "
+        />
 
-          {/* Пунктирная линия точно по той же кривой */}
-          {/* <path
-            fill="none"
-            stroke="#fff"
-            strokeOpacity="0.25"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray="22 16"
-            d="
-                M 0 120
-                C 1440 60, 960 140, 0 80
-            "
-            >
-            <animate
-                attributeName="stroke-dashoffset"
-                values="0;160"
-                dur="6s"
-                repeatCount="indefinite"
-            />
-          </path> */}
-
-          {/* Текст */}
-          <text
-            x="110"
-            y="150"
-            fontFamily="Inter, Arial, sans-serif"
-            fontSize="44"
-            fontWeight="800"
-            fill="#fff"
-          >
-            {topTitle}
-          </text>
-
-          {/* <text
-            x="110"
-            y="215"
-            fontFamily="Inter, Arial, sans-serif"
-            fontSize="30"
-            fontWeight="600"
-            fill="#fff"
-            opacity="0.9"
-          >
-            {topSub}
-          </text> */}
-        </g>
-
-        {/* ================= BOTTOM ================= */}
-        <g>
-          {/* Форма с заливкой */}
-          <path
-            fill="#000"
-            fillOpacity="1"
-            d="
-                M 0 1080
-                L 1920 1080
-                L 1920 850
-                C 1600 980, 960 800, 0 850
-                Z
-            "
-          />
-
-          {/* Пунктир */}
-          {/* <path
-            fill="none"
-            stroke="#fff"
-            strokeOpacity="0.25"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray="24 14"
-            d="
-              M 0 960
-              C 260 880, 620 1070, 980 980
-              C 1300 900, 1540 1070, 1920 945
-            "
-          >
-            <animate
-              attributeName="stroke-dashoffset"
-              values="0;180"
-              dur="5.4s"
-              repeatCount="indefinite"
-            />
-          </path> */}
-
-          {/* Текст */}
-          <text
-            x="110"
-            y="1005"
-            fontFamily="Inter, Arial, sans-serif"
-            fontSize="64"
-            fontWeight="900"
-            fill="#fff"
-          >
-            {nowPlaying}
-          </text>
-
-          <text
-            x="110"
-            y="1060"
-            fontFamily="Inter, Arial, sans-serif"
-            fontSize="36"
-            fontWeight="700"
-            fill="#fff"
-            opacity="0.5"
-          >
-            Далее: {nextTrack}
-          </text>
-        </g>
+        <path
+          fill="#000"
+          fillOpacity="1"
+          d="
+            M 0 1080
+            L 1920 1080
+            L 1920 850
+            C 1600 980, 960 800, 0 850
+            Z
+          "
+        />
       </svg>
+
+      <div style={{ ...textLayer, top: "10.4%" }}>
+        <div style={singleLineText(15, 800, "21px")}>
+          {topTitle}
+        </div>
+      </div>
+
+      <div style={{ ...textLayer, bottom: "8.3%" }}>
+        <div style={singleLineText(20, 900, "25px")}>
+          {nowPlaying}
+        </div>
+        <div style={singleLineText(11, 700, "16px", 0.5)}>
+          Далее: {nextTrack}
+        </div>
+      </div>
     </div>
   );
 }

@@ -144,7 +144,15 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
         </div>
       )}
 
-      <div style={{ flexGrow: 1, overflowY: "auto", minHeight: 0 }}>
+      <div
+        style={{
+          flexGrow: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflowY: activeTab === "stage" ? "hidden" : "auto",
+        }}
+      >
         {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
         {!isFreeSubscription && activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
         {!isFreeSubscription && activeTab === "brandPhrases" && <BrandPhrasesLibrary token={token} userData={userData} channel={channel} />}

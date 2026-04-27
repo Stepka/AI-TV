@@ -16,6 +16,14 @@ import json
 router = APIRouter(prefix="/playlist", tags=["playlist"])
 
 
+def _get_ai_audio_files(user_id: str, channel_id: str, branded_tracks_enabled: bool):
+    tracks = list_ai_audio(user_id, channel_id)
+    files = tracks["files"]
+    if not branded_tracks_enabled:
+        files = [track for track in files if not track.get("branded_track")]
+    return files
+
+
 @router.post("")
 def get_playlist(req: PlaylistRequest):
     videos = []
@@ -48,17 +56,21 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
 
     if len(video_sources) == 1 and video_sources[0] == "ai_audio":       
 
-        tracks = list_ai_audio(req.user_id, req.channel_id)
+        tracks = _get_ai_audio_files(req.user_id, req.channel_id, req.branded_tracks_enabled)
         for i in range(req.max_results):
             if len(tracks) > 0:
-                track = random.choice(tracks["files"])
+                track = random.choice(tracks)
                 videos.append({
-                    "artist": "AI",
-                    "title": track["name"],
+                    "artist": track["artist"],
+                    "title": track["title"],
                     "videoId": track["url"],
-                    "duration": -1,
+                    "duration": track["duration"],
                     "match": 100,
-                    "source": "ai_audio"
+                    "source": "ai_audio",
+                    "style": track["style"],
+                    "branded_track": track["branded_track"],
+                    "image_url": track.get("image_url"),
+                    "display_name": track["name"],
                 })
 
     else:
@@ -199,16 +211,20 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
                         break  # если нашли видео на VK, не ищем на других платформах
 
                 if video_source == "ai_audio":
-                    tracks = list_ai_audio(req.user_id, req.channel_id)
+                    tracks = _get_ai_audio_files(req.user_id, req.channel_id, req.branded_tracks_enabled)
                     if len(tracks) > 0:
-                        track = random.choice(tracks["files"])
+                        track = random.choice(tracks)
                         videos.append({
-                            "artist": "AI",
-                            "title": "Generated track",
+                            "artist": track["artist"],
+                            "title": track["title"],
                             "videoId": track["url"],
-                            "duration": -1,
+                            "duration": track["duration"],
                             "match": 100,
-                            "source": video_source
+                            "source": video_source,
+                            "style": track["style"],
+                            "branded_track": track["branded_track"],
+                            "image_url": track.get("image_url"),
+                            "display_name": track["name"],
                         })
                         
         
@@ -220,16 +236,20 @@ def _get_playlist(req: PlaylistRequest, match_level = 80):
         print(videos)
 
         for i in range(req.max_results - len(videos)):
-            tracks = list_ai_audio(req.user_id, req.channel_id)
+            tracks = _get_ai_audio_files(req.user_id, req.channel_id, req.branded_tracks_enabled)
             if len(tracks) > 0:
-                track = random.choice(tracks["files"])
+                track = random.choice(tracks)
                 videos.append({
-                    "artist": "AI",
-                    "title": "Generated track",
+                    "artist": track["artist"],
+                    "title": track["title"],
                     "videoId": track["url"],
-                    "duration": -1,
+                    "duration": track["duration"],
                     "match": 100,
-                    "source": video_source
+                    "source": video_source,
+                    "style": track["style"],
+                    "branded_track": track["branded_track"],
+                    "image_url": track.get("image_url"),
+                    "display_name": track["name"],
                 })
 
 
@@ -243,16 +263,20 @@ def _get_free_playlist(req: PlaylistRequest, match_level = 80):
 
     user = fetch_user("admin")
 
-    tracks = list_ai_audio(user.user_uid, req.channel_id)
+    tracks = _get_ai_audio_files(user.user_uid, req.channel_id, req.branded_tracks_enabled)
     for i in range(req.max_results):
         if len(tracks) > 0:
-            track = random.choice(tracks["files"])
+            track = random.choice(tracks)
             videos.append({
-                "artist": "AI",
-                "title": track["name"],
+                "artist": track["artist"],
+                "title": track["title"],
                 "videoId": track["url"],
-                "duration": -1,
+                "duration": track["duration"],
                 "match": 100,
-                "source": "ai_audio"
+                "source": "ai_audio",
+                "style": track["style"],
+                "branded_track": track["branded_track"],
+                "image_url": track.get("image_url"),
+                "display_name": track["name"],
             })
     return videos
