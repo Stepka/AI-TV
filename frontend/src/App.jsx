@@ -3,20 +3,18 @@ import ChannelList from "./ChannelList";
 import AppButton from "./AppButton";
 import ChannelTabs from "./ChannelTabs";
 import UserPanel from "./UserPanel";
-import Stage from "./Stage";
+import { LoginPage, RegisterPage } from "./AuthPages";
 import "./global.css";
 
 export default function App() {
   const API_URL = import.meta.env.VITE_API_URL;
 
-  const [loginOpen, setLoginOpen] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const [authError, setAuthError] = useState("");
   const [authInfo, setAuthInfo] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerInviteCode, setRegisterInviteCode] = useState("");
@@ -33,6 +31,7 @@ export default function App() {
 
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [route, setRoute] = useState(() => window.location.hash || "#/");
 
   const [reloadChannelsTrigger, setReloadChannelsTrigger] = useState(0);
   
@@ -59,7 +58,7 @@ export default function App() {
 
       localStorage.setItem("token", data.access_token);
       setAuthToken(data.access_token);
-      setLoginOpen(false);
+      window.location.hash = "#/";
     } catch {
       setAuthError("Network error");
     } finally {
@@ -70,7 +69,7 @@ export default function App() {
   function doLogout() {
     localStorage.removeItem("token");
     setAuthToken("");
-    setLoginOpen(true);
+    window.location.hash = "#/login";
   }
 
   async function doRegister() {
@@ -120,9 +119,8 @@ export default function App() {
       setPassword("");
       setRegisterEmail("");
       setRegisterPassword("");
-      setRegisterOpen(false);
       setAuthInfo("Registration successful. Please login.");
-      window.history.replaceState({}, "", window.location.pathname);
+      window.location.hash = "#/login";
     } catch {
       setRegisterError("Network error");
     } finally {
@@ -131,13 +129,26 @@ export default function App() {
   }
   
   useEffect(() => {
-    if (!authToken) {
-      setLoginOpen(true);
-    }
-  }, [authToken]);
+    const handleHashChange = () => setRoute(window.location.hash || "#/");
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    if (!authToken && route === "#/") {
+      window.location.hash = "#/login";
+    }
+
+    if (authToken && (route.startsWith("#/login") || route.startsWith("#/register"))) {
+      window.location.hash = "#/";
+    }
+  }, [authToken, route]);
+
+  useEffect(() => {
+    const hashQuery = window.location.hash.includes("?")
+      ? window.location.hash.slice(window.location.hash.indexOf("?") + 1)
+      : "";
+    const params = new URLSearchParams(hashQuery || window.location.search);
     const inviteCodeFromLink = params.get("invite_code");
     const inviteEmailFromLink = params.get("email");
 
@@ -146,8 +157,7 @@ export default function App() {
     }
 
     setRegisterInviteCode(inviteCodeFromLink);
-    setRegisterOpen(true);
-    setLoginOpen(true);
+    window.location.hash = `#/register?${params.toString()}`;
     setAuthInfo("");
     setRegisterError("");
 
@@ -244,7 +254,7 @@ export default function App() {
         invite_code: data.invite.code,
         email: data.invite.email,
       });
-      setInviteLink(`${window.location.origin}${window.location.pathname}?${inviteParams.toString()}`);
+      setInviteLink(`${window.location.origin}${window.location.pathname}#/register?${inviteParams.toString()}`);
 
     } catch {
       setInviteError("Network error");
@@ -253,87 +263,33 @@ export default function App() {
     }
   };
 
-  if (loginOpen) {
-    if (registerOpen) {
-      return (
-        <div className="center-screen">
-          <div className="login-card">
-            <h2>AI-TV Registration</h2>
-
-            <input
-              type="email"
-              value={registerEmail}
-              onChange={(e) => setRegisterEmail(e.target.value)}
-              placeholder="Email"
-            />
-
-            <input
-              type="password"
-              value={registerPassword}
-              onChange={(e) => setRegisterPassword(e.target.value)}
-              placeholder="Password"
-            />
-
-            {registerError && <div className="error">{registerError}</div>}
-            {!!registerInviteCode && <div style={{ opacity: 0.7 }}>Invite applied for {registerEmail || "this registration"}</div>}
-
-            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-              <AppButton onClick={doRegister} disabled={registerLoading}>
-                {registerLoading ? "Registering..." : "Register"}
-              </AppButton>
-
-              <AppButton
-                onClick={() => {
-                  setRegisterOpen(false);
-                  setRegisterError("");
-                }}
-              >
-                Back to login
-              </AppButton>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
+  if (!authToken && route.startsWith("#/register")) {
     return (
-      <div className="center-screen">
-        <div className="login-card">
-          <h2>AI-TV Login</h2>
+      <RegisterPage
+        registerEmail={registerEmail}
+        registerPassword={registerPassword}
+        registerInviteCode={registerInviteCode}
+        registerError={registerError}
+        registerLoading={registerLoading}
+        onEmailChange={setRegisterEmail}
+        onPasswordChange={setRegisterPassword}
+        onRegister={doRegister}
+      />
+    );
+  }
 
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Email or username"
-          />
-
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-          />
-
-          {authError && <div className="error">{authError}</div>}
-          {authInfo && <div style={{ color: "lightgreen" }}>{authInfo}</div>}
-
-          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-            <AppButton onClick={doLogin} disabled={authLoading}>
-              {authLoading ? "Logging in..." : "Login"}
-            </AppButton>
-
-            <AppButton
-              onClick={() => {
-                setRegisterOpen(true);
-                setRegisterError("");
-                setAuthInfo("");
-              }}
-            >
-              Register
-            </AppButton>
-          </div>
-        </div>
-      </div>
+  if (!authToken) {
+    return (
+      <LoginPage
+        username={username}
+        password={password}
+        authError={authError}
+        authInfo={authInfo}
+        authLoading={authLoading}
+        onUsernameChange={setUsername}
+        onPasswordChange={setPassword}
+        onLogin={doLogin}
+      />
     );
   }
 
