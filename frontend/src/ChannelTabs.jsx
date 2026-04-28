@@ -7,8 +7,10 @@ import AIAudioLibrary from "./AIAudioLibrary";
 import VideoLibrary from "./VideoLibrary";
 import BrandPhrasesLibrary from "./BrandPhrasesLibrary";
 import AdPhrasesLibrary from "./AdPhrasesLibrary";
+import { useI18n } from "./i18n";
 
 export default function ChannelTabs({ token, userData, channel, onEditChannel, onDeleteChannel }) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState("stage");
   const isFreeSubscription = userData?.subscription?.name === "free";
 
@@ -64,7 +66,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
               fontWeight: 600,
             }}
           >
-            DJ Stream
+            {t("tabs.stage")}
           </button>
 
           {!isFreeSubscription && (
@@ -81,7 +83,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
                   fontWeight: 600,
                 }}
               >
-                Edit Channel
+                {t("tabs.editChannel")}
               </button>
               <button
                 onClick={() => setActiveTab("brandPhrases")}
@@ -95,7 +97,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
                   fontWeight: 600,
                 }}
               >
-                Brand Phrases
+                {t("tabs.brandPhrases")}
               </button>
               <button
                 onClick={() => setActiveTab("adPhrases")}
@@ -109,7 +111,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
                   fontWeight: 600,
                 }}
               >
-                Ad Phrases
+                {t("tabs.adPhrases")}
               </button>
               <button
                 onClick={() => setActiveTab("aiAudioLibrary")}
@@ -123,7 +125,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
                   fontWeight: 600,
                 }}
               >
-                AI Audio Library
+                {t("tabs.aiAudioLibrary")}
               </button>
               <button
                 onClick={() => setActiveTab("videoLibrary")}
@@ -137,7 +139,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
                   fontWeight: 600,
                 }}
               >
-                Video Library
+                {t("tabs.videoLibrary")}
               </button>
             </>
           )}

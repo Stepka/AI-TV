@@ -3,9 +3,11 @@ import AppButton from "./AppButton";
 import ListEditor from "./ListEditor";
 import Input from "./Input"; 
 import TextArea from "./TextArea"; 
+import { useI18n } from "./i18n";
 
 export default function ChannelManager({ token, channel,  userData, onSave, onDelete }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(false);
   const [editedChannel, setEditedChannel] = useState({ ...channel });
@@ -62,7 +64,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
 
   // Удаляем канал
   const handleDeleteChannel = async (channel_uid) => {
-    if (!window.confirm("Are you sure you want to delete this channel?")) return;
+    if (!window.confirm(t("channelManager.confirmDelete"))) return;
 
     try {
       const res = await fetch(`${API_URL}/channels/${channel_uid}?user_uid=${userData.user_uid}`, {
@@ -74,7 +76,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
 
       if (!res.ok) {
         const err = await res.json();
-        alert("Error: " + err.detail);
+        alert(t("common.errorPrefix", { message: err.detail }));
         return;
       }
         
@@ -82,7 +84,7 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
 
     } catch (e) {
       console.error(e);
-      alert("Failed to delete channel");
+      alert(t("channelManager.deleteFailed"));
     }
   };
 
@@ -128,59 +130,59 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
          }}>
             <br />
             <br />
-            <h3>Edit Channel</h3>
+            <h3>{t("channelManager.editChannel")}</h3>
             <br />
             <hr style={{ marginBottom: 20, borderColor: "rgba(255,255,255,0.1)" }} />
 
-            <Input label="Name" value={editedChannel.name}
+            <Input label={t("channelManager.name")} value={editedChannel.name}
             onChange={v => handleChange("name", v)} />
 
-            <Input label="Type" value={editedChannel.type}
+            <Input label={t("channelManager.type")} value={editedChannel.type}
             onChange={v => handleChange("type", v)} />
 
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <Input label="URL" value={editedChannel.url}
+              <Input label={t("channelManager.url")} value={editedChannel.url}
               onChange={v => handleChange("url", v)} />
               <AppButton
                   onClick={handleFillWithLLMChannel}>
-                  Fill with LLM
+                  {t("channelManager.fillWithLlm")}
               </AppButton>
             </div>
 
-            <TextArea label="Style" value={editedChannel.style || ""}
+            <TextArea label={t("channelManager.style")} value={editedChannel.style || ""}
             onChange={v => handleChange("style", v)} />
 
-            <Input label="Location" value={editedChannel.location || ""}
+            <Input label={t("channelManager.location")} value={editedChannel.location || ""}
             onChange={v => handleChange("location", v)} />
 
-            <TextArea label="Description" value={editedChannel.description || ""}
+            <TextArea label={t("channelManager.description")} value={editedChannel.description || ""}
             onChange={v => handleChange("description", v)} />
 
             <br />
             <br />
             <br />
-            <h3>Edit Voice</h3>
+            <h3>{t("channelManager.editVoice")}</h3>
             <br />
             <hr style={{ marginBottom: 20, borderColor: "rgba(255,255,255,0.1)" }} />
 
-            <Input label="Source" value={editedChannel.voice.source || ""}
+            <Input label={t("channelManager.source")} value={editedChannel.voice.source || ""}
             onChange={v => handleChange("voice.source", v)} />
 
-            <Input label="Name" value={editedChannel.voice.name || ""}
+            <Input label={t("channelManager.name")} value={editedChannel.voice.name || ""}
             onChange={v => handleChange("voice.name", v)} />
 
-            <Input label="Sex" value={editedChannel.voice.sex || ""}
+            <Input label={t("channelManager.sex")} value={editedChannel.voice.sex || ""}
             onChange={v => handleChange("voice.sex", v)} />
 
             <br />
             <br />
             <br />
-            <h3>Edit Media Sources</h3>
+            <h3>{t("channelManager.editMediaSources")}</h3>
             <br />
             <hr style={{ marginBottom: 20, borderColor: "rgba(255,255,255,0.1)" }} />
 
             <ListEditor
-                label="Media Sources"
+                label={t("channelManager.mediaSources")}
                 value={editedChannel.sources || "[ai_audio]"}
                 onChange={v => handleChange("sources", v)}
             />
@@ -213,13 +215,13 @@ export default function ChannelManager({ token, channel,  userData, onSave, onDe
 
             <div style={{ marginTop: 20 }}>
             <AppButton onClick={saveChannel} disabled={loading}>
-                {loading ? "Saving..." : "Save"}
+                {loading ? t("common.saving") : t("common.save")}
             </AppButton>
 
             {/* Кнопка удаления */}
             <AppButton
                 onClick={() => handleDeleteChannel(channel.channel_uid)}>
-                Delete
+                {t("common.delete")}
             </AppButton>
             </div>
         </div>

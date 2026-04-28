@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import AppButton from "./AppButton";
+import { useI18n } from "./i18n";
 
 export default function AIAudioLibrary({ token, userData, channel }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
 
   const [files, setFiles] = useState([]);
   const audioRef = useRef(null);
@@ -65,27 +67,27 @@ export default function AIAudioLibrary({ token, userData, channel }) {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.detail || data.error || "Generate ai track failed");
+        throw new Error(data.detail || data.error || t("audioLibrary.generateFailed"));
       }
 
       if (data.track === "error") {
         const failedMessage = data.type === "FAILED"
-          ? "Song generation failed. Please try another style or prompt."
-          : "Generate ai track failed";
+          ? t("audioLibrary.generationFailedHint")
+          : t("audioLibrary.generateFailed");
         throw new Error(data.error || failedMessage);
       }
 
       setShowGeneratePopup(false);
       loadAILibrary();
     } catch (error) {
-      setGenerateError(error.message || "Generate ai track failed");
+      setGenerateError(error.message || t("audioLibrary.generateFailed"));
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleDeleteAudio = async (filename) => {
-    if (!window.confirm("Are you sure you want to delete this track?")) return;
+    if (!window.confirm(t("audioLibrary.confirmDelete"))) return;
 
     try {
       const res = await fetch(`${API_URL}/media/delete_audio`, {
@@ -103,21 +105,21 @@ export default function AIAudioLibrary({ token, userData, channel }) {
 
       if (!res.ok) {
         const err = await res.json();
-        alert("Error: " + err.detail);
+        alert(t("common.errorPrefix", { message: err.detail }));
         return;
       }
 
       loadAILibrary();
     } catch (e) {
       console.error(e);
-      alert("Failed to delete audio");
+      alert(t("audioLibrary.deleteFailed"));
     }
   };
 
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px" }}>
-      <h2>Audio Library</h2>
-      <span>Available generations: {userData?.ai_tracks_num}</span>
+      <h2>{t("audioLibrary.title")}</h2>
+      <span>{t("audioLibrary.availableGenerations", { count: userData?.ai_tracks_num })}</span>
 
       {generateError && !showGeneratePopup && (
         <div style={{ color: "#ff705e" }}>{generateError}</div>
@@ -130,7 +132,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         }}
         disabled={isGenerating}
       >
-        {isGenerating ? "Generating..." : "Generate track"}
+        {isGenerating ? t("audioLibrary.generating") : t("audioLibrary.generateTrack")}
       </AppButton>
 
       {showGeneratePopup && (
@@ -160,7 +162,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
               boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
             }}
           >
-            <h3 style={{ margin: 0, color: "#fff" }}>Generate Track</h3>
+            <h3 style={{ margin: 0, color: "#fff" }}>{t("audioLibrary.generateTitle")}</h3>
             {generateError && (
               <div style={{ color: "#ff705e", lineHeight: 1.4 }}>
                 {generateError}
@@ -168,7 +170,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Music style</label>
+              <label style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>{t("audioLibrary.musicStyle")}</label>
               <input
                 value={channel?.style || ""}
                 readOnly
@@ -188,7 +190,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
                 checked={brandedTrack}
                 onChange={(e) => setBrandedTrack(e.target.checked)}
               />
-              <span>Branded track</span>
+              <span>{t("audioLibrary.brandedTrack")}</span>
             </label>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -199,10 +201,10 @@ export default function AIAudioLibrary({ token, userData, channel }) {
                 }}
                 disabled={isGenerating}
               >
-                Cancel
+                {t("common.cancel")}
               </AppButton>
               <AppButton onClick={generate} disabled={isGenerating}>
-                {isGenerating ? "Generating..." : "Generate"}
+                {isGenerating ? t("audioLibrary.generating") : t("audioLibrary.generate")}
               </AppButton>
             </div>
           </div>
@@ -228,18 +230,18 @@ export default function AIAudioLibrary({ token, userData, channel }) {
               )}
               <div style={{ flex: "0 0 auto" }}>
                 <AppButton onClick={() => playAudio(file.url)}>
-                  Play
+                  {t("common.play")}
                 </AppButton>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, flex: 1 }}>
                 <span>{file.name}</span>
                 <span style={{ fontSize: 12, opacity: 0.4 }}>
-                  Style: {file.style || "Unknown"} | Duration: {formatDuration(file.duration)} | {file.branded_track ? "Branded" : "Not Branded"}
+                  {t("playlist.style")}: {file.style || t("common.unknown")} | {t("playlist.duration")}: {formatDuration(file.duration)} | {file.branded_track ? t("playlist.branded") : t("playlist.notBranded")}
                 </span>
               </div>
               <div style={{ flex: "0 0 auto" }}>
                 <AppButton onClick={() => handleDeleteAudio(file.filename)}>
-                  Delete
+                  {t("common.delete")}
                 </AppButton>
               </div>
             </div>

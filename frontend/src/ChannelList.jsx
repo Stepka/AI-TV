@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import AppButton from "./AppButton";
+import { useI18n } from "./i18n";
 
 export default function ChannelList({ token, userData, onSelectChannel, reloadChannelsTrigger }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
   const isFreeSubscription = userData?.subscription?.name === "free";
 
   const [channels, setChannels] = useState([]);
@@ -27,7 +29,7 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
         const data = await res.json();
 
         if (!data.ok) {
-          setError("Failed to load channels");
+          setError(t("channels.failedToLoad"));
           return;
         }
 
@@ -46,7 +48,7 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
           }
         }
       } catch {
-        setError("Network error");
+        setError(t("common.networkError"));
       } finally {
         setLoading(false);
       }
@@ -64,7 +66,7 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
   const handleAddChannel = () => {
     const newChannel = {
       channel_uid: crypto.randomUUID(),
-      name: "New Channel",
+      name: t("channels.newChannel"),
       type: "brand_space",
       style: "",
       description: "",
@@ -78,15 +80,15 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
     handleSelect(newChannel);
   };
 
-  if (loading) return <div>Loading channels...</div>;
+  if (loading) return <div>{t("channels.loading")}</div>;
   if (error) return <div style={{ color: "tomato" }}>{error}</div>;
   if (!channels.length) {
     return (
       <div className="channel-list-wrapper">
-        <div>No channels available</div>
+        <div>{t("channels.empty")}</div>
         {!isFreeSubscription && (
           <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>
-            Add Channel
+            {t("channels.add")}
           </AppButton>
         )}
       </div>
@@ -109,11 +111,11 @@ export default function ChannelList({ token, userData, onSelectChannel, reloadCh
 
       {!isFreeSubscription && (
         <AppButton onClick={handleAddChannel} style={{ marginTop: 8, width: "fit-content" }}>
-          Add Channel
+          {t("channels.add")}
         </AppButton>
       )}
 
-      {!isFreeSubscription && <span>Available channels: {userData?.channels_num}</span>}
+      {!isFreeSubscription && <span>{t("channels.available", { count: userData?.channels_num })}</span>}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import React, { useMemo } from "react";
+import { useI18n } from "./i18n";
 
 export default function Playlist({ channel, playlist, loading, brandedTracksEnabled }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
 
   const formatDuration = (value) => {
     const totalSeconds = Math.max(0, Math.round(value || 0));
@@ -60,14 +62,14 @@ export default function Playlist({ channel, playlist, loading, brandedTracksEnab
             <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, flex: 1 }}>
               <span>{item.display_name || `${item.artist} - ${item.title}`}</span>
               <span style={{ fontSize: 12, opacity: 0.4 }}>
-                Style: {item.style || channel?.style || "Unknown"} | Duration: {item.duration > 0 ? formatDuration(item.duration) : "Unknown"} | {item.branded_track ? "Branded" : "Not Branded"}
+                {t("playlist.style")}: {item.style || channel?.style || t("common.unknown")} | {t("playlist.duration")}: {item.duration > 0 ? formatDuration(item.duration) : t("common.unknown")} | {item.branded_track ? t("playlist.branded") : t("playlist.notBranded")}
               </span>
             </div>
           </div>
         ))}
 
         {!loading && visiblePlaylist.length === 0 && (
-          <div style={{ opacity: 0.7 }}>No tracks yet.</div>
+          <div style={{ opacity: 0.7 }}>{t("playlist.empty")}</div>
         )}
       </div>
     </div>

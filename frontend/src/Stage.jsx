@@ -4,12 +4,14 @@ import AppButton from "./AppButton";
 import VideoStage from "./VideoStage";
 import Playlist from "./Playlist";
 import AIAudioPlayer from "./AIAudioPlayer"
+import { useI18n } from "./i18n";
 import './global.css';
 
 
 
 export default function App({ token, userData, channel }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
   const canUseAdVoice = true;
   
   const [isStreaming, setIsStreaming] = useState(false);
@@ -398,7 +400,7 @@ export default function App({ token, userData, channel }) {
     const nextIndex = (current + 1) % playlist.length;
     const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
     setTitles({
-      topTitle: channel?.name ?? "Без названия",
+      topTitle: channel?.name ?? t("stage.untitled"),
       topSub: channel?.description ?? "",
       nowPlaying: currentVideoTitle ?? "",
       nextTrack: nextVideoTitle ?? "",
@@ -430,7 +432,7 @@ export default function App({ token, userData, channel }) {
     const nextIndex = (current + 1) % playlist.length;
     const nextVideoTitle = decodeHtml(playlist[nextIndex].artist + " - " + playlist[nextIndex].title);
     setTitles({
-      topTitle: channel?.name ?? "Без названия",
+      topTitle: channel?.name ?? t("stage.untitled"),
       topSub: channel?.description ?? "",
       nowPlaying: currentVideoTitle ?? "",
       nextTrack: nextVideoTitle ?? "",
@@ -478,7 +480,7 @@ export default function App({ token, userData, channel }) {
       }
     );
 
-    if (!res.ok) throw new Error("Audio fetch failed");
+    if (!res.ok) throw new Error(t("phrases.audioFetchFailed"));
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -620,7 +622,7 @@ export default function App({ token, userData, channel }) {
       }
     );
 
-    if (!res.ok) throw new Error("Audio fetch failed");
+    if (!res.ok) throw new Error(t("phrases.audioFetchFailed"));
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -833,7 +835,7 @@ export default function App({ token, userData, channel }) {
       setPlaylistReady(true);
       // console.log("Playlist loaded:", data.playlist);
     } catch (err) {
-      console.error("Failed to load playlist:", err);
+      console.error(t("stage.failedToLoadPlaylist"), err);
     } finally {
       setPlaylistLoading(false);
     }
@@ -896,7 +898,7 @@ export default function App({ token, userData, channel }) {
               checked={aiDjEnabled}
               onChange={(e) => setAiDjEnabled(e.target.checked)}
             />
-            <span>Enable AI-DJ</span>
+            <span>{t("stage.enableAiDj")}</span>
           </label>
 
           {canUseAdVoice && (
@@ -907,7 +909,7 @@ export default function App({ token, userData, channel }) {
                 onChange={(e) => setAdVoiceEnabled(e.target.checked)}
                 disabled={!aiDjEnabled}
               />
-              <span>Enable Ads</span>
+              <span>{t("stage.enableAds")}</span>
             </label>
           )}
 
@@ -927,7 +929,7 @@ export default function App({ token, userData, channel }) {
                 }
               }}
             />
-            <span>Branded tracks</span>
+            <span>{t("stage.brandedTracks")}</span>
           </label>
         </div>
       )}
@@ -958,8 +960,7 @@ export default function App({ token, userData, channel }) {
             onClick={startStreaming}
             // disabled={loading} // неактивна во время загрузки
           >
-            {/* {loading ? "Loading..." : "Start DJ Streaming"} */}
-            Start DJ Streaming
+            {t("stage.startStreaming")}
           </AppButton>
         )}
 
@@ -969,7 +970,7 @@ export default function App({ token, userData, channel }) {
                 opacity: !helloFinishedTransition ? 1 : 0,
                 transition: "3s opacity",
               }}
-            >{!helloReady ? "Loading..." : "Hello! We are starting..."}</div>
+            >{!helloReady ? t("common.loading") : t("stage.starting")}</div>
         )}
       
         {/* Основной контент — 75% ширины */}
@@ -1022,7 +1023,7 @@ export default function App({ token, userData, channel }) {
                   }}
                   onClick={smoothNext}
                   >
-                    Следующий ⏭
+                    {t("stage.next")}
                   </AppButton>
               </div>
             )}

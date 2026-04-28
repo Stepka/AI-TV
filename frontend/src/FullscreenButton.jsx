@@ -1,7 +1,9 @@
 import { useState } from "react";
 import AppButton from "./AppButton";
+import { useI18n } from "./i18n";
 
 export default function FullscreenButton() {
+  const { t } = useI18n();
   const [isFs, setIsFs] = useState(!!document.fullscreenElement);
 
   const toggleFullscreen = async () => {
@@ -14,7 +16,7 @@ export default function FullscreenButton() {
         setIsFs(false);
       }
     } catch (e) {
-      console.log("Fullscreen error:", e);
+      console.log(t("fullscreen.error"), e);
     }
   };
 
@@ -22,7 +24,7 @@ export default function FullscreenButton() {
     <AppButton
       onClick={toggleFullscreen}
     >
-      {isFs ? "Exit Fullscreen" : "Fullscreen"}
+      {isFs ? t("fullscreen.exit") : t("fullscreen.enter")}
     </AppButton>
   );
 }

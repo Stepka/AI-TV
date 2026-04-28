@@ -2,10 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import AppButton from "./AppButton";
 import PhraseGenerator from "./PhraseGenerator"
 import TextArea from "./TextArea"; 
+import { useI18n } from "./i18n";
 
 
 export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
   
   const [loading, setLoading] = useState(false);
   const [editedChannel, setEditedChannel] = useState({ ...channel });
@@ -49,7 +51,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
         }
       );
 
-      if (!res.ok) throw new Error("Audio fetch failed");
+      if (!res.ok) throw new Error(t("phrases.audioFetchFailed"));
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -78,7 +80,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
     })
     setIsGenerating(false);
 
-    if (!res.ok) throw new Error("Generate ad speech failed");
+    if (!res.ok) throw new Error(t("phrases.generateAdSpeechFailed"));
 
     loadSpeechLibrary();
   };
@@ -105,7 +107,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
 
     setIsGenerating(false);
 
-    if (!res.ok) throw new Error("Generate ai track failed");
+    if (!res.ok) throw new Error(t("phrases.generateTextFailed"));
 
     setAds(prev =>
       prev.map(item =>
@@ -216,7 +218,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
   };
 
   const handleDeleteAd = async (ad) => {
-    if (!window.confirm("Are you sure you want to delete this ad phrase?")) return;
+    if (!window.confirm(t("phrases.confirmDeleteAd"))) return;
 
     try {
       const res = await fetch(`${API_URL}/media/delete_prerecord_ad_phrase`, {
@@ -234,7 +236,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
 
       if (!res.ok) {
         const err = await res.json();
-        alert("Error: " + err.detail);
+        alert(t("common.errorPrefix", { message: err.detail }));
         return;
       }
         
@@ -242,7 +244,7 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
 
     } catch (e) {
       console.error(e);
-      alert("Failed to delete video");
+      alert(t("phrases.deleteFailed"));
     }
   };
 
@@ -256,10 +258,10 @@ export default function AdPhrasesLibrary({ token, userData, channel, onSave }) {
             maxHeight: 800
         }}>
       <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
-        <h2>🎧 Ad Phrases Library</h2>
-        <span>Available generations: {userData?.prerecord_ad_num}</span>
+        <h2>{t("phrases.adTitle")}</h2>
+        <span>{t("audioLibrary.availableGenerations", { count: userData?.prerecord_ad_num })}</span>
         
-        <AppButton onClick={addAd} style={{ marginTop: 8, width: "fit-content" }}>➕ Add Ad Phrase</AppButton>
+        <AppButton onClick={addAd} style={{ marginTop: 8, width: "fit-content" }}>{t("phrases.addAd")}</AppButton>
 
         <ul style={{ listStyle: "none", padding: 0 }}>
             {ads.map((ad, idx) => (

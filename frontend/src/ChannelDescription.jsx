@@ -1,6 +1,8 @@
 import React from "react";
+import { useI18n } from "./i18n";
 
 export default function ChannelDescription({ channel }) {
+  const { t } = useI18n();
   if (!channel) return null;
 
   return (
@@ -16,7 +18,7 @@ export default function ChannelDescription({ channel }) {
       }}
     >
       <h2>{channel.name}</h2>
-      <p>{channel.description || "Описание отсутствует"}</p>
+      <p>{channel.description || t("channels.noDescription")}</p>
     </div>
   );
 }

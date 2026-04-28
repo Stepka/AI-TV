@@ -1,5 +1,6 @@
 import React from "react";
 import AppButton from "./AppButton";
+import { useI18n } from "./i18n";
 
 export function LoginPage({
   username,
@@ -11,13 +12,15 @@ export function LoginPage({
   onPasswordChange,
   onLogin,
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="auth-page">
       <section className="auth-card">
         <div className="auth-header">
-          <span className="auth-brand">AI-TV</span>
-          <h1>Login</h1>
-          <p>Sign in to manage channels, playlists, and audio branding.</p>
+          <span className="auth-brand">{t("common.aiTv")}</span>
+          <h1>{t("auth.loginTitle")}</h1>
+          <p>{t("auth.loginDescription")}</p>
         </div>
 
         <form className="auth-form" onSubmit={(event) => {
@@ -27,7 +30,7 @@ export function LoginPage({
           <input
             value={username}
             onChange={(event) => onUsernameChange(event.target.value)}
-            placeholder="Email or username"
+            placeholder={t("auth.usernamePlaceholder")}
             autoComplete="username"
           />
 
@@ -35,7 +38,7 @@ export function LoginPage({
             type="password"
             value={password}
             onChange={(event) => onPasswordChange(event.target.value)}
-            placeholder="Password"
+            placeholder={t("auth.passwordPlaceholder")}
             autoComplete="current-password"
           />
 
@@ -44,11 +47,11 @@ export function LoginPage({
 
           <div className="auth-actions">
             <AppButton type="submit" disabled={authLoading}>
-              {authLoading ? "Logging in..." : "Login"}
+              {authLoading ? t("auth.loggingIn") : t("auth.loginButton")}
             </AppButton>
 
             <a className="auth-link-button" href="#/register">
-              Register
+              {t("auth.registerLink")}
             </a>
           </div>
         </form>
@@ -67,13 +70,15 @@ export function RegisterPage({
   onPasswordChange,
   onRegister,
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="auth-page">
       <section className="auth-card">
         <div className="auth-header">
-          <span className="auth-brand">AI-TV</span>
-          <h1>Registration</h1>
-          <p>Create a free account or use an invitation link.</p>
+          <span className="auth-brand">{t("common.aiTv")}</span>
+          <h1>{t("auth.registrationTitle")}</h1>
+          <p>{t("auth.registrationDescription")}</p>
         </div>
 
         <form className="auth-form" onSubmit={(event) => {
@@ -84,7 +89,7 @@ export function RegisterPage({
             type="email"
             value={registerEmail}
             onChange={(event) => onEmailChange(event.target.value)}
-            placeholder="Email"
+            placeholder={t("auth.emailPlaceholder")}
             autoComplete="email"
           />
 
@@ -92,24 +97,24 @@ export function RegisterPage({
             type="password"
             value={registerPassword}
             onChange={(event) => onPasswordChange(event.target.value)}
-            placeholder="Password"
+            placeholder={t("auth.passwordPlaceholder")}
             autoComplete="new-password"
           />
 
           {registerError && <div className="error">{registerError}</div>}
           {!!registerInviteCode && (
             <div className="muted">
-              Invite applied for {registerEmail || "this registration"}
+              {t("auth.inviteApplied", { email: registerEmail || t("auth.inviteAppliedFallback") })}
             </div>
           )}
 
           <div className="auth-actions">
             <AppButton type="submit" disabled={registerLoading}>
-              {registerLoading ? "Registering..." : "Register"}
+              {registerLoading ? t("auth.registering") : t("auth.registerButton")}
             </AppButton>
 
             <a className="auth-link-button" href="#/login">
-              Back to login
+              {t("auth.backToLogin")}
             </a>
           </div>
         </form>

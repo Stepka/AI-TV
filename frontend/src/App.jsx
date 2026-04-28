@@ -4,10 +4,12 @@ import AppButton from "./AppButton";
 import ChannelTabs from "./ChannelTabs";
 import UserPanel from "./UserPanel";
 import { LoginPage, RegisterPage } from "./AuthPages";
+import { useI18n } from "./i18n";
 import "./global.css";
 
 export default function App() {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
 
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
@@ -66,7 +68,7 @@ export default function App() {
       const data = await res.json();
 
       if (!data.ok) {
-        setAuthError(data.error || "Login failed");
+        setAuthError(data.error || t("auth.loginFailed"));
         return;
       }
 
@@ -74,7 +76,7 @@ export default function App() {
       setAuthToken(data.access_token);
       window.location.hash = "#/";
     } catch {
-      setAuthError("Network error");
+      setAuthError(t("common.networkError"));
     } finally {
       setAuthLoading(false);
     }
@@ -94,13 +96,13 @@ export default function App() {
     const normalizedEmail = registerEmail.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setRegisterError("Email is required");
+      setRegisterError(t("auth.emailRequired"));
       setRegisterLoading(false);
       return;
     }
 
     if (!normalizedEmail.includes("@")) {
-      setRegisterError("Enter a valid email");
+      setRegisterError(t("auth.invalidEmail"));
       setRegisterLoading(false);
       return;
     }
@@ -119,7 +121,7 @@ export default function App() {
       const data = await res.json();
 
       if (!data.ok) {
-        setRegisterError(data.error || "Registration failed");
+        setRegisterError(data.error || t("auth.registrationFailed"));
         return;
       }
 
@@ -136,7 +138,7 @@ export default function App() {
         setPassword("");
         setRegisterEmail("");
         setRegisterPassword("");
-        setAuthInfo("Registration successful. Please login.");
+        setAuthInfo(t("auth.registrationSuccessLogin"));
         window.location.hash = "#/login";
         return;
       }
@@ -150,7 +152,7 @@ export default function App() {
       setRegisterInviteCode("");
       window.location.hash = "#/";
     } catch {
-      setRegisterError("Network error");
+      setRegisterError(t("common.networkError"));
     } finally {
       setRegisterLoading(false);
     }
@@ -247,19 +249,19 @@ export default function App() {
     const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
     if (!normalizedInviteEmail) {
-      setInviteError("Email is required");
+      setInviteError(t("auth.emailRequired"));
       setInviteLoading(false);
       return;
     }
 
     if (!normalizedInviteEmail.includes("@")) {
-      setInviteError("Enter a valid email");
+      setInviteError(t("auth.invalidEmail"));
       setInviteLoading(false);
       return;
     }
 
     if (!inviteSubscription.trim()) {
-      setInviteError("Subscription is required");
+      setInviteError(t("invite.subscriptionRequired"));
       setInviteLoading(false);
       return;
     }
@@ -276,7 +278,7 @@ export default function App() {
 
       const data = await res.json();
       if (!data.ok) {
-        setInviteError(data.error || "Failed to create invite");
+        setInviteError(data.error || t("invite.failed"));
         return;
       }
       setInviteCode(data.invite.code);
@@ -287,7 +289,7 @@ export default function App() {
       setInviteLink(`${window.location.origin}${window.location.pathname}#/register?${inviteParams.toString()}`);
 
     } catch {
-      setInviteError("Network error");
+      setInviteError(t("common.networkError"));
     } finally {
       setInviteLoading(false);
     }
@@ -327,28 +329,28 @@ export default function App() {
     return (
         <div className="center-screen">
           <div className="login-card">
-          <h2>Create Invite</h2>
+          <h2>{t("invite.title")}</h2>
 
           <input
             type="email"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="Email"
+            placeholder={t("invite.emailPlaceholder")}
           />
 
           <input
             value={inviteSubscription}
             onChange={(e) => setInviteSubscription(e.target.value)}
-            placeholder="Subscription"
+            placeholder={t("invite.subscriptionPlaceholder")}
           />
 
           {inviteError && <div className="error">{inviteError}</div>}
-          {inviteCode && <div style={{ color: "lightgreen", wordBreak: "break-all" }}>Invite code: {inviteCode}</div>}
-          {inviteLink && <div style={{ color: "lightgreen", wordBreak: "break-all" }}>Invite link: {inviteLink}</div>}
+          {inviteCode && <div style={{ color: "lightgreen", wordBreak: "break-all" }}>{t("invite.code", { code: inviteCode })}</div>}
+          {inviteLink && <div style={{ color: "lightgreen", wordBreak: "break-all" }}>{t("invite.link", { link: inviteLink })}</div>}
 
           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <AppButton onClick={doAddUser} disabled={inviteLoading}>
-              {inviteLoading ? "Creating..." : "Create invite"}
+              {inviteLoading ? t("invite.creating") : t("invite.create")}
             </AppButton>
 
             <AppButton
@@ -359,7 +361,7 @@ export default function App() {
                 setInviteError("");
               }}
             >
-              Close
+              {t("common.close")}
             </AppButton>
           </div>
         </div>

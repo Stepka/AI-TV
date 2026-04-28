@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "./i18n";
 
 export default function Sidebar({
   authToken,
@@ -8,12 +9,13 @@ export default function Sidebar({
   channel,
   setChannel,
 }) {
+  const { t } = useI18n();
+
   return (
     <div>
-      {/* AUTH TOP BAR */}
       <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "10px" }}>
         {!authToken ? (
-          <button             
+          <button
             style={{
               padding: "10px 14px",
               borderRadius: 12,
@@ -25,12 +27,12 @@ export default function Sidebar({
             }}
             onClick={() => setLoginOpen(true)}
           >
-            🔐 Login
+            {t("auth.loginButton")}
           </button>
         ) : (
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <span style={{ fontSize: "14px", color: "#aaa" }}>✅ Logged in</span>
-            <button                      
+            <span style={{ fontSize: "14px", color: "#aaa" }}>{t("auth.loggedIn")}</span>
+            <button
               style={{
                 padding: "10px 14px",
                 borderRadius: 12,
@@ -42,13 +44,13 @@ export default function Sidebar({
               }}
               onClick={doLogout}
             >
-              Logout
+              {t("userPanel.logout")}
             </button>
           </div>
         )}
       </div>
 
-      <h2>Каналы</h2>
+      <h2>{t("channels.title")}</h2>
 
       {channelsList.map((ch) => (
         <div

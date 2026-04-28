@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import AppButton from "./AppButton";
+import { useI18n } from "./i18n";
 
 export default function AIAudioLibrary({ token, userData, channel }) {
   const API_URL = import.meta.env.VITE_API_URL;
+  const { t } = useI18n();
 
   const [files, setFiles] = useState([]);
   const [currentVideo, setCurrentVideo] = useState(null);
@@ -75,7 +77,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   };
 
   const handleDeleteVideo = async (filename) => {
-    if (!window.confirm("Are you sure you want to delete this video?")) return;
+    if (!window.confirm(t("videoLibrary.confirmDelete"))) return;
 
     try {
       const res = await fetch(`${API_URL}/media/delete_video`, {
@@ -93,7 +95,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
 
       if (!res.ok) {
         const err = await res.json();
-        alert("Error: " + err.detail);
+        alert(t("common.errorPrefix", { message: err.detail }));
         return;
       }
         
@@ -101,17 +103,17 @@ export default function AIAudioLibrary({ token, userData, channel }) {
 
     } catch (e) {
       console.error(e);
-      alert("Failed to delete video");
+      alert(t("videoLibrary.deleteFailed"));
     }
   };
 
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px"}}>
-      <h2>🎬 Video Library</h2>
+      <h2>{t("videoLibrary.title")}</h2>
       {/* <span>Available generations: {userData?.ai_tracks_num}</span> */}
 
       <AppButton onClick={handleClick} disabled={isGenerating}>
-          {isGenerating ? "Uploading..." : "🎬 Upload Video"}
+          {isGenerating ? t("videoLibrary.uploading") : t("videoLibrary.upload")}
       </AppButton>
 
       <ul style={{ listStyle: "none", padding: 0 }}>
@@ -119,14 +121,14 @@ export default function AIAudioLibrary({ token, userData, channel }) {
           <li key={idx} style={{ marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <AppButton onClick={() => playVideo(file.url)}>
-                  ▶ Play
+                  {t("common.play")}
               </AppButton>
               <span>{file.name}</span>
                           
               {/* Кнопка удаления */}
               <AppButton
                   onClick={() => handleDeleteVideo(file.name)}>
-                  Delete
+                  {t("common.delete")}
               </AppButton>
               </div>
           </li>

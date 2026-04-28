@@ -1,11 +1,16 @@
 import React from "react";
+import { useI18n } from "./i18n";
 
 export default function TitlesOverlay({
-  topTitle = "Channel",
-  nowPlaying = "Now playing",
-  nextTrack = "Next track",
+  topTitle,
+  nowPlaying,
+  nextTrack,
   zIndex = 999,
 }) {
+  const { t } = useI18n();
+  const resolvedTopTitle = topTitle || t("titles.channel");
+  const resolvedNowPlaying = nowPlaying || t("titles.nowPlaying");
+  const resolvedNextTrack = nextTrack || t("titles.nextTrack");
   const singleLineText = (fontSize, fontWeight, lineHeight, opacity = 1) => ({
     color: "#fff",
     fontFamily: "Inter, Arial, sans-serif",
@@ -72,16 +77,16 @@ export default function TitlesOverlay({
 
       <div style={{ ...textLayer, top: "10.4%" }}>
         <div style={singleLineText(15, 800, "21px")}>
-          {topTitle}
+          {resolvedTopTitle}
         </div>
       </div>
 
       <div style={{ ...textLayer, bottom: "8.3%" }}>
         <div style={singleLineText(20, 900, "25px")}>
-          {nowPlaying}
+          {resolvedNowPlaying}
         </div>
         <div style={singleLineText(11, 700, "16px", 0.5)}>
-          Далее: {nextTrack}
+          {t("titles.next", { track: resolvedNextTrack })}
         </div>
       </div>
     </div>
