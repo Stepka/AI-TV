@@ -20,7 +20,7 @@ from services.dj import generate_speech
 from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
-from services.sona import generate_music, get_music_result
+from services.sona import MusicGenerationFailed, generate_music, get_music_result
 from services.llm import generate_ai_track_identity
 from models.media import AdPhrase, AddAdPhraseRequest, DeleteAudioRequest, DeletePrerecordAdPhraseRequest, DeletePrerecordBrandPhraseRequest, DeleteVideoRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
 from services.auth import get_current_user
@@ -214,21 +214,31 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
         prompt=prompt,
         instrumental=instrumental,
     )
+    if task.get("type") == "FAILED":
+        return {
+            "track": "error",
+            "type": "FAILED",
+            "error": task.get("message") or task.get("error") or "Music generation failed",
+        }
+
     task_id = task["data"]["task_id"]
 
-
-    tracks = list_ai_audio(req.user_id, req.channel_id)
-    start_index = get_last_index(tracks["files"])
-    print(f"start_index: {start_index}")
     # потом polling
     attempts = 3
+    result = None
     while attempts > 0:
         try:
             attempts -= 1
-            result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library", start_index=start_index)
+            result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library")
             break
+        except MusicGenerationFailed as e:
+            print(e)
+            return {"track": "error", "type": "FAILED", "error": str(e)}
         except Exception as e:
             print(e)
+
+    if result is None:
+        return {"track": "error", "error": "Music generation failed"}
 
     print(result)
 

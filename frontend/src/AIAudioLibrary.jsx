@@ -9,6 +9,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGeneratePopup, setShowGeneratePopup] = useState(false);
   const [brandedTrack, setBrandedTrack] = useState(false);
+  const [generateError, setGenerateError] = useState("");
 
   useEffect(() => {
     if (!channel || !token || !userData) return;
@@ -45,6 +46,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
 
   const generate = async () => {
     setIsGenerating(true);
+    setGenerateError("");
 
     try {
       const res = await fetch(`${API_URL}/media/generate_ai_track`, {
@@ -60,10 +62,23 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         })
       });
 
-      if (!res.ok) throw new Error("Generate ai track failed");
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "Generate ai track failed");
+      }
+
+      if (data.track === "error") {
+        const failedMessage = data.type === "FAILED"
+          ? "Song generation failed. Please try another style or prompt."
+          : "Generate ai track failed";
+        throw new Error(data.error || failedMessage);
+      }
 
       setShowGeneratePopup(false);
       loadAILibrary();
+    } catch (error) {
+      setGenerateError(error.message || "Generate ai track failed");
     } finally {
       setIsGenerating(false);
     }
@@ -104,7 +119,17 @@ export default function AIAudioLibrary({ token, userData, channel }) {
       <h2>Audio Library</h2>
       <span>Available generations: {userData?.ai_tracks_num}</span>
 
-      <AppButton onClick={() => setShowGeneratePopup(true)} disabled={isGenerating}>
+      {generateError && !showGeneratePopup && (
+        <div style={{ color: "#ff705e" }}>{generateError}</div>
+      )}
+
+      <AppButton
+        onClick={() => {
+          setGenerateError("");
+          setShowGeneratePopup(true);
+        }}
+        disabled={isGenerating}
+      >
         {isGenerating ? "Generating..." : "Generate track"}
       </AppButton>
 
@@ -136,6 +161,11 @@ export default function AIAudioLibrary({ token, userData, channel }) {
             }}
           >
             <h3 style={{ margin: 0, color: "#fff" }}>Generate Track</h3>
+            {generateError && (
+              <div style={{ color: "#ff705e", lineHeight: 1.4 }}>
+                {generateError}
+              </div>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Music style</label>

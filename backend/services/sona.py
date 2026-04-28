@@ -10,6 +10,10 @@ import requests
 API_KEY = os.getenv("AIMUSIC_API_KEY")
 
 
+class MusicGenerationFailed(Exception):
+    pass
+
+
 def safe_file_stem(value: str) -> str:
     stem = re.sub(r"[^\w.-]+", "_", value.strip(), flags=re.UNICODE)
     stem = stem.strip("._")
@@ -82,8 +86,7 @@ def get_music_result(
         task_id: str,
         save_dir: str,
         timeout: int = 300,
-        interval: int = 15, 
-        start_index: int = 0):
+        interval: int = 15):
     
     save_path = Path(save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
@@ -100,6 +103,17 @@ def get_music_result(
             data = response.json()
             print(data)
 
+            response_type = data.get("type") or data.get("data", {}).get("type")
+            if response_type == "FAILED":
+                message = (
+                    data.get("message")
+                    or data.get("error")
+                    or data.get("data", {}).get("message")
+                    or data.get("data", {}).get("error")
+                    or "Music generation failed"
+                )
+                raise MusicGenerationFailed(message)
+
             items = data.get("data", {}).get("response_data", [])
 
             if not items:
@@ -108,6 +122,22 @@ def get_music_result(
                 # raise Exception("No data returned")
 
             # 2. проверяем, все ли готовы
+            failed_item = next(
+                (
+                    item for item in items
+                    if item.get("type") == "FAILED" or item.get("status") == "failed"
+                ),
+                None,
+            )
+            if failed_item:
+                message = (
+                    failed_item.get("message")
+                    or failed_item.get("error")
+                    or failed_item.get("error_message")
+                    or "Music generation failed"
+                )
+                raise MusicGenerationFailed(message)
+
             all_complete = all(item.get("status") == "complete" for item in items)
 
             if all_complete:
@@ -122,9 +152,8 @@ def get_music_result(
                         or item.get("cover_image_url")
                         or item.get("thumbnail_url")
                     )
-                    track_id = start_index + i + 1
 
-                    file_stem = safe_file_stem(f"{title}_{track_id}")
+                    file_stem = safe_file_stem(f"{title}")
                     file_path = unique_path(save_path, file_stem, ".mp3")
 
                     # 3. скачиваем файл
