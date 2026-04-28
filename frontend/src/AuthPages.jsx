@@ -73,7 +73,7 @@ export function RegisterPage({
         <div className="auth-header">
           <span className="auth-brand">AI-TV</span>
           <h1>Registration</h1>
-          <p>Create an account from your invitation link.</p>
+          <p>Create a free account or use an invitation link.</p>
         </div>
 
         <form className="auth-form" onSubmit={(event) => {

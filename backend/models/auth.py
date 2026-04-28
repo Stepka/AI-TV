@@ -11,7 +11,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    invite_code: str
+    invite_code: Optional[str] = None
 
 
 class AddUserRequest(BaseModel):

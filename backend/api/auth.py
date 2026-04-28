@@ -23,15 +23,14 @@ def register(req: RegisterRequest):
         if "@" not in email:
             return {"ok": False, "error": "invalid email"}
 
-        invite_code = req.invite_code.strip().upper()
-        if not invite_code:
-            return {"ok": False, "error": "invite code is required"}
+        invite_code = (req.invite_code or "").strip().upper()
 
         create_req = CreateUserRequest(
             username=email,
             password=req.password,
             password_hash=get_password_hash(req.password),
-            invite_code=invite_code,
+            invite_code=invite_code or None,
+            subscription="free",
         )
         created_user = create_user(create_req)
         return {"ok": True, "created_user": created_user}

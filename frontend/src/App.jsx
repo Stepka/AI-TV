@@ -37,6 +37,20 @@ export default function App() {
   
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  function getInviteParamsFromLocation() {
+    const params = new URLSearchParams(window.location.search);
+    const hashQueryStart = window.location.hash.indexOf("?");
+
+    if (hashQueryStart !== -1) {
+      const hashParams = new URLSearchParams(window.location.hash.slice(hashQueryStart + 1));
+      hashParams.forEach((value, key) => {
+        params.set(key, value);
+      });
+    }
+
+    return params;
+  }
+
   async function doLogin() {
     setAuthLoading(true);
     setAuthError("");
@@ -91,12 +105,6 @@ export default function App() {
       return;
     }
 
-    if (!registerInviteCode.trim()) {
-      setRegisterError("Open the registration form from your invite link");
-      setRegisterLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
@@ -115,12 +123,32 @@ export default function App() {
         return;
       }
 
+      const loginRes = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: normalizedEmail, password: registerPassword }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (!loginData.ok) {
+        setUsername(normalizedEmail);
+        setPassword("");
+        setRegisterEmail("");
+        setRegisterPassword("");
+        setAuthInfo("Registration successful. Please login.");
+        window.location.hash = "#/login";
+        return;
+      }
+
+      localStorage.setItem("token", loginData.access_token);
+      setAuthToken(loginData.access_token);
       setUsername(normalizedEmail);
       setPassword("");
       setRegisterEmail("");
       setRegisterPassword("");
-      setAuthInfo("Registration successful. Please login.");
-      window.location.hash = "#/login";
+      setRegisterInviteCode("");
+      window.location.hash = "#/";
     } catch {
       setRegisterError("Network error");
     } finally {
@@ -145,26 +173,28 @@ export default function App() {
   }, [authToken, route]);
 
   useEffect(() => {
-    const hashQuery = window.location.hash.includes("?")
-      ? window.location.hash.slice(window.location.hash.indexOf("?") + 1)
-      : "";
-    const params = new URLSearchParams(hashQuery || window.location.search);
+    const params = getInviteParamsFromLocation();
     const inviteCodeFromLink = params.get("invite_code");
-    const inviteEmailFromLink = params.get("email");
+    const inviteEmailFromLink = params.get("email") || params.get("username");
 
     if (!inviteCodeFromLink) {
       return;
     }
 
-    setRegisterInviteCode(inviteCodeFromLink);
-    window.location.hash = `#/register?${params.toString()}`;
+    const normalizedInviteCode = inviteCodeFromLink.trim();
+    const normalizedInviteEmail = (inviteEmailFromLink || "").trim().toLowerCase();
+
+    setRegisterInviteCode(normalizedInviteCode);
+    if (!route.startsWith("#/register")) {
+      window.location.hash = `#/register?${params.toString()}`;
+    }
     setAuthInfo("");
     setRegisterError("");
 
-    if (inviteEmailFromLink) {
-      setRegisterEmail(inviteEmailFromLink.toLowerCase());
+    if (normalizedInviteEmail) {
+      setRegisterEmail(normalizedInviteEmail);
     }
-  }, []);
+  }, [route]);
   
   useEffect(() => {
     const onFsChange = () => {
