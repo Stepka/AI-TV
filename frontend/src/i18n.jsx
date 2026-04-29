@@ -102,8 +102,11 @@ export const messages = {
     stage: {
       untitled: "Без названия",
       enableAiDj: "Включить ИИ-Диджея",
+      enableAiDjDescription: "ИИ-диджей будет готовить приветствия и переходы между треками.",
       enableAds: "Включить рекламные фразы",
+      enableAdsDescription: "Включает голосовые рекламные и брендовые вставки во время стрима.",
       brandedTracks: "Брендированные треки",
+      brandedTracksDescription: "Добавляет в плейлист AI-треки, сгенерированные специально для этого канала.",
       startStreaming: "Запустить Стрим",
       starting: "Привет! Запускаемся...",
       next: "Следующий ⏭",
@@ -263,8 +266,11 @@ export const messages = {
     stage: {
       untitled: "Untitled",
       enableAiDj: "Enable AI-DJ",
+      enableAiDjDescription: "AI-DJ prepares intros and transitions between tracks.",
       enableAds: "Enable Ads",
+      enableAdsDescription: "Enables spoken ad and brand inserts during the stream.",
       brandedTracks: "Branded tracks",
+      brandedTracksDescription: "Adds AI tracks generated specifically for this channel to the playlist.",
       startStreaming: "Start DJ Streaming",
       starting: "Hello! We are starting...",
       next: "Next ⏭",

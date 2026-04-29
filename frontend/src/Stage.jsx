@@ -21,7 +21,7 @@ export default function App({ token, userData, channel }) {
   const [current, setCurrent] = useState(0);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [playlistReady, setPlaylistReady] = useState(false);  
-  const [brandedTracksEnabled, setBrandedTracksEnabled] = useState(false);
+  const [brandedTracksEnabled, setBrandedTracksEnabled] = useState(true);
   const [aiDjEnabled, setAiDjEnabled] = useState(true);
   const [adVoiceEnabled, setAdVoiceEnabled] = useState(true);
   
@@ -892,29 +892,37 @@ export default function App({ token, userData, channel }) {
             boxSizing: "border-box",
           }}
         >
-          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <label className="stream-option" title={t("stage.enableAiDjDescription")}>
             <input
+              className="stream-option-input"
               type="checkbox"
               checked={aiDjEnabled}
               onChange={(e) => setAiDjEnabled(e.target.checked)}
             />
+            <span className="stream-option-check" aria-hidden="true" />
             <span>{t("stage.enableAiDj")}</span>
           </label>
 
           {canUseAdVoice && (
-            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: aiDjEnabled ? "pointer" : "not-allowed", opacity: aiDjEnabled ? 1 : 0.55 }}>
+            <label
+              className={`stream-option ${!aiDjEnabled ? "disabled" : ""}`}
+              title={t("stage.enableAdsDescription")}
+            >
               <input
+                className="stream-option-input"
                 type="checkbox"
                 checked={adVoiceEnabled}
                 onChange={(e) => setAdVoiceEnabled(e.target.checked)}
                 disabled={!aiDjEnabled}
               />
+              <span className="stream-option-check" aria-hidden="true" />
               <span>{t("stage.enableAds")}</span>
             </label>
           )}
 
-          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <label className="stream-option" title={t("stage.brandedTracksDescription")}>
             <input
+              className="stream-option-input"
               type="checkbox"
               checked={brandedTracksEnabled}
               onChange={(e) => {
@@ -929,6 +937,7 @@ export default function App({ token, userData, channel }) {
                 }
               }}
             />
+            <span className="stream-option-check" aria-hidden="true" />
             <span>{t("stage.brandedTracks")}</span>
           </label>
         </div>
