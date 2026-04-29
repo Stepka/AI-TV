@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Playlist from "./Playlist";
-import AIAudioPlayer from "./AIAudioPlayer";
 import StreamControls from "./StreamControls";
 import StageViewport from "./StageViewport";
+import TrackPlayerController from "./TrackPlayerController";
 import { useI18n } from "./i18n";
 import './global.css';
 
@@ -25,6 +25,7 @@ export default function Stage({ token, userData, channel }) {
   const [adVoiceEnabled, setAdVoiceEnabled] = useState(true);
   
   const [playerReady, setPlayerReady] = useState(false);
+  const [playerRefreshKey, setPlayerRefreshKey] = useState(0);
 
   const [videoId, setVideoId] = useState(null);
   const [videoSource, setVideoSource] = useState(null);
@@ -45,7 +46,6 @@ export default function Stage({ token, userData, channel }) {
 
   const playerRef = useRef(null);
   const timeoutRef = useRef(null);
-  const externalPlayerAPILoaded = useRef(false);
   
   const [overlayBearerSrc, setOverlayBearerSrc] = useState(null);
   const [overlaySrc, setOverlaySrc] = useState(null);
@@ -109,291 +109,8 @@ export default function Stage({ token, userData, channel }) {
     };
   }, [isStreaming, playlistReady]);
 
-  // Загружаем IFrame API один раз
-  useEffect(() => {
-    // console.log("externalPlayerAPILoaded")
-    if (externalPlayerAPILoaded.current) return;
-
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
-
-    const script = document.createElement("script");
-    script.src = "https://vk.com/js/api/videoplayer.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    externalPlayerAPILoaded.current = true;
-  }, []);
-
-  // Создание плеера
-  const createYoutubePlayer = (videoId) => {
-    // console.log("createYoutubePlayer")
-    if (playerRef.current) playerRef.current.destroy();
-
-    setPlayerReady(false);
-
-    setVideoSource("youtube");
-
-    const interval = setInterval(() => {
-      const iframe = document.querySelector("#YTPlayer");
-      // console.log("Looking for YouTube player iframe...", iframe);
-
-      if (iframe) {
-        clearInterval(interval);
-        // console.log("youtube player найден");
-    
-        playerRef.current = new window.YT.Player("YTPlayer", {
-          height: "405",
-          width: "720",
-          host: "https://www.youtube.com",
-          // host: "https://www.youtube-nocookie.com",          
-          videoId: videoId,
-          events: {
-            onReady: (event) => {
-              // console.log("onReady")
-              setPlayerReady(true);
-
-              // Ставим громкость на 0
-              event.target.setVolume(0);
-              
-              const duration = 10000; // общее время разгона (мс)
-              const period = 50;
-
-              let elapsed = 0;
-
-              clearInterval(duckIntervalRef.current);
-              duckIntervalRef.current = setInterval(() => {
-                elapsed += period;
-
-                let progress = elapsed / duration;
-                if (progress >= 1) {
-                  progress = 1;
-                  clearInterval(duckIntervalRef.current);
-                }
-
-                // Парабола
-                const volume = Math.pow(progress, 2) * 0.75 * 90;
-
-                event.target.setVolume(volume);
-                // console.log("crYtPl Volume:", playerRef.current.getVolume())
-
-              }, period);
-
-            },
-            onStateChange: (event) => {
-              // console.log(event.data)
-            },
-          },
-          playerVars: {
-            autoplay: 1,
-            enablejsapi: 1,
-            // origin: window.location.origin,
-            origin: "http://localhost:3030",
-            // controls: 0,
-            modestbranding: 1,
-            rel: 0,
-            iv_load_policy: 3
-          }
-        });
-        
-      }
-    }, 50);
-  };
-
-  // Создание плеера
-  const createVkPlayer = (videoId) => {
-    // console.log("createVkPlayer: ", videoId);
-    if (playerRef.current) playerRef.current.destroy();
-
-    setPlayerReady(false);
-
-    setVideoId(videoId);
-
-    setVideoSource("vk");    
-
-    const interval = setInterval(() => {
-      const iframe = document.querySelector("#vkplayer");
-      // console.log("Looking for YouTube player iframe...", iframe);
-
-      if (iframe) {
-        clearInterval(interval);
-        // console.log("vk iframe найден");
-
-        // iframe.onload = () => {
-
-          // console.log("vk iframe loaded, creating player...");
-      
-          playerRef.current = new window.VK.VideoPlayer(iframe);
-
-          playerRef.current.on("inited", () => {
-            // console.log("VK player ready");
-            // console.log("Volume:", playerRef.current.getVolume())
-            // console.log("Muted:", playerRef.current.isMuted())
-            setPlayerReady(true);
-            
-            // Ставим громкость на 0
-            playerRef.current.setVolume(0);
-            playerRef.current.play();
-            
-            const duration = 10000; // общее время разгона (мс)
-            const period = 50;
-
-            let elapsed = 0;
-
-            clearInterval(duckIntervalRef.current);
-            duckIntervalRef.current = setInterval(() => {
-              elapsed += period;
-
-              let progress = elapsed / duration;
-              if (progress >= 1) {
-                progress = 1;
-                clearInterval(duckIntervalRef.current);
-              }
-
-              // Парабола
-              const volume = Math.pow(progress, 2) * 0.75;
-
-              playerRef.current.setVolume(volume);
-
-              // console.log("crVkPl Volume:", playerRef.current.getVolume())
-              // console.log("Muted:", playerRef.current.isMuted())
-
-            }, period);
-            
-            // console.log("Muted:", playlist[current].duration)
-            // if (playlist[current].duration > 0) {
-            //   trackTimeoutInterval.current = setInterval(() => {              
-
-            //       const dj_duration = 15;
-            //       console.log("Timeout")
-            //       console.log("Starting DJ transition");
-            //       clearInterval(trackTimeoutInterval);
-
-            //       startTransition(dj_duration);
-            //   }, (playlist[current].duration + 15) * 1000);
-            // }
-
-          });
-
-          playerRef.current.on("adStarted", () => {
-            console.log("video adStarted");
-          });
-
-          playerRef.current.on("adCompleted", () => {
-            console.log("video adCompleted");
-          });
-
-          playerRef.current.on("started", () => {
-            console.log("video started");
-          });
-
-          playerRef.current.on("error", () => {
-            console.log("video error");
-            console.log(playerRef.current.getState());
-            console.log(playerRef.current.getErrorCode());
-            // if (playerRef.current.getErrorCode() != 1000) {
-            //   smoothNext();
-            // }
-            smoothNext();
-          });
-
-          playerRef.current.on("ended", () => {
-            // console.log("video finished");
-            playerRef.current.pause();
-          });
-
-          setPlayerReady(false);
-        // };
-      }
-    }, 50);
-
-    // const dj_duration = 15; // длительность DJ перехода в секундах
-    // setTimeout(() => {
-    //   startTransition(dj_duration);
-    // }, (duration - dj_duration) * 1000);
-  };
-
-  // Создание плеера
-  const createAIAudioPlayer = (videoId) => {
-    // console.log("createAIAudioPlayer: ", videoId);
-    if (playerRef.current) playerRef.current.destroy();
-
-    setPlayerReady(false);
-
-    setVideoId(videoId);
-
-    setVideoSource("ai_audio");    
-
-    const interval = setInterval(async () => {
-      const iframe = document.querySelector("#ai_audio_player");
-      // console.log("Looking for AI Audio player iframe...", iframe);
-
-      if (iframe) {
-        clearInterval(interval);
-
-        const videofile = await getRandomVideo();
-    
-        playerRef.current = new AIAudioPlayer("ai_audio_player", {         
-          src: `${API_URL}/${videoId}`,
-          videoSrc: `${API_URL}/media/video?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}&filename=${videofile}`,
-        });
-
-        // Ставим громкость на 0
-        playerRef.current.setVolume(0);
-        
-        const duration = 10000; // общее время разгона (мс)
-        const period = 50;
-
-        let elapsed = 0;
-
-        clearInterval(duckIntervalRef.current);
-        duckIntervalRef.current = setInterval(() => {
-          elapsed += period;
-
-          let progress = elapsed / duration;
-          if (progress >= 1) {
-            progress = 1;
-            clearInterval(duckIntervalRef.current);
-          }
-
-          // Парабола
-          const volume = Math.pow(progress, 2) * 0.75;
-
-          playerRef.current.setVolume(volume);
-          // console.log("crAIPl Volume:", playerRef.current.getVolume())
-
-        }, period);
-
-        // play / pause / stop
-        playerRef.current.play();
-        playerRef.current.onEnded(() => playerRef.current.destroy());
-
-        setPlayerReady(true);
-      }
-    }, 50);
-
-    // const dj_duration = 15; // длительность DJ перехода в секундах
-    // setTimeout(() => {
-    //   startTransition(dj_duration);
-    // }, (duration - dj_duration) * 1000);
-  };
-
-
   useEffect(() => {
     if (!playlist.length || !helloFinished || !channel || !isStreaming) return;
-
-    // console.log(channel);
-    // console.log("Creating player for videoId:", playlist[current].videoId, "source:", playlist[current].source);
-    if (playlist[current].source == "youtube") {
-      createYoutubePlayer(playlist[current].videoId);
-    } else if (playlist[current].source == "vk") {
-      createVkPlayer(playlist[current].videoId);
-    } else if (playlist[current].source == "ai_audio") {
-      createAIAudioPlayer(playlist[current].videoId);
-    }
-    // createYoutubePlayer(playlist[current].videoId);
-    // createVkPlayer(playlist[current].videoId, playlist[current].duration);
 
     const currentVideoTitle = decodeHtml(playlist[current].artist + " - " + playlist[current].title);
     const nextIndex = (current + 1) % playlist.length;
@@ -703,12 +420,7 @@ export default function Stage({ token, userData, channel }) {
     // console.log(current);
     setTimeout(() => {
       if (current == 0 && list.length == 1) {
-        
-        if (playlist[current].source == "youtube") {
-          createYoutubePlayer(playlist[current].videoId);
-        } else if (playlist[current].source == "vk") {
-          createVkPlayer(playlist[current].videoId);
-        }
+        setPlayerRefreshKey((prev) => prev + 1);
       } else {
         // console.log("handleNext")
         setCurrent(prev => (prev + 1) % list.length);
@@ -866,6 +578,10 @@ export default function Stage({ token, userData, channel }) {
     }
   };
 
+  const currentTrack = isStreaming && helloFinished && playlist.length > 0
+    ? playlist[current]
+    : null;
+
   return (
     <div
       style={{
@@ -894,6 +610,20 @@ export default function Stage({ token, userData, channel }) {
           onBrandedTracksChange={handleBrandedTracksChange}
         />
       )}
+      <TrackPlayerController
+        track={currentTrack}
+        refreshKey={playerRefreshKey}
+        apiUrl={API_URL}
+        userData={userData}
+        channel={channel}
+        playerRef={playerRef}
+        duckIntervalRef={duckIntervalRef}
+        onPlayerReady={setPlayerReady}
+        onVideoIdChange={setVideoId}
+        onVideoSourceChange={setVideoSource}
+        onPlaybackError={smoothNext}
+        getRandomVideo={getRandomVideo}
+      />
       <StageViewport
         isFullscreen={isFullscreen}
         isStreaming={isStreaming}
