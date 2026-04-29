@@ -427,7 +427,7 @@ export default function Stage({ token, userData, channel }) {
   }, []);
 
   const startStreaming = async () => {
-    consoleюдe("Starting stream...");
+    console.log("Starting stream...");
     loadPlaylist();
     setIsStreaming(true);
   };
