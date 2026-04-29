@@ -40,6 +40,8 @@ export default function Stage({ token, userData, channel }) {
   const duckIntervalRef = useRef(null);
 
   const playerRef = useRef(null);
+  const helloStartedRef = useRef(false);
+  const helloTimeoutsRef = useRef([]);
 
   const [overlaySrc, setOverlaySrc] = useState(null);
   const [overlayVisible, setOverlayVisible] = useState(false);
@@ -53,6 +55,14 @@ export default function Stage({ token, userData, channel }) {
     nowPlaying: "",
     nextTrack: "",
   });
+  const channelId = channel?.channel_uid;
+  const userId = userData?.user_uid;
+  const hasPlaylist = playlist.length > 0;
+
+  const clearHelloTimeouts = () => {
+    helloTimeoutsRef.current.forEach(clearTimeout);
+    helloTimeoutsRef.current = [];
+  };
 
   useEffect(() => {
     if (!aiDjEnabled) {
@@ -71,33 +81,48 @@ export default function Stage({ token, userData, channel }) {
   }, [aiDjEnabled, canUseAdVoice]);
 
   useEffect(() => {
-    if (!channel || !userData || !isStreaming || playlist.length === 0 || helloReady) return;
+    if (!channelId || !userId || !isStreaming || !hasPlaylist || helloStartedRef.current) return;
 
-    const scheduledTimeouts = [];
+    helloStartedRef.current = true;
+    clearHelloTimeouts();
+
     const helloTimeout = setTimeout(async () => {
-      const helloData = await prepareDjHello(playlist);
-      playDjHelloOverVideo();
+      try {
+        const activePlaylist = playlistRef.current.length ? playlistRef.current : playlist;
+        const helloData = await prepareDjHello(activePlaylist);
+        playDjHelloOverVideo();
 
-      scheduledTimeouts.push(
-        setTimeout(() => {
-          console.log("Hello finished");
-          setHelloFinished(true);
-        }, Math.max(0, helloData.duration * 1000 - 7000)),
-        setTimeout(() => {
-          console.log("Hello finished transition");
-          setHelloFinishedTransition(true);
-          setIsTransitioning(false);
-        }, Math.max(0, helloData.duration * 1000 - 10000)),
-      );
+        const durationMs = Number(helloData?.duration) > 0
+          ? Number(helloData.duration) * 1000
+          : 10000;
 
-      setHelloReady(true);
+        helloTimeoutsRef.current.push(
+          setTimeout(() => {
+            setHelloFinished(true);
+          }, Math.max(0, durationMs - 7000)),
+          setTimeout(() => {
+            setHelloFinishedTransition(true);
+            setIsTransitioning(false);
+          }, Math.max(0, durationMs - 10000)),
+        );
+
+        setHelloReady(true);
+      } catch (error) {
+        console.error("Failed to prepare DJ hello:", error);
+        setHelloReady(true);
+        setHelloFinished(true);
+        setHelloFinishedTransition(true);
+        setIsTransitioning(false);
+      }
     }, 3000);
 
+    helloTimeoutsRef.current.push(helloTimeout);
+
     return () => {
-      clearTimeout(helloTimeout);
-      scheduledTimeouts.forEach(clearTimeout);
+      clearHelloTimeouts();
+      helloStartedRef.current = false;
     };
-  }, [channel, userData, isStreaming, playlist.length, helloReady]);
+  }, [channelId, userId, isStreaming, hasPlaylist]);
 
   useEffect(() => {
     playlistRef.current = playlist;
