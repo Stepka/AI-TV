@@ -79,8 +79,12 @@ export default function Stage({ token, userData, channel }) {
       playDjHelloOverVideo();
 
       scheduledTimeouts.push(
-        setTimeout(() => setHelloFinished(true), Math.max(0, helloData.duration * 1000 - 7000)),
         setTimeout(() => {
+          console.log("Hello finished");
+          setHelloFinished(true);
+        }, Math.max(0, helloData.duration * 1000 - 7000)),
+        setTimeout(() => {
+          console.log("Hello finished transition");
           setHelloFinishedTransition(true);
           setIsTransitioning(false);
         }, Math.max(0, helloData.duration * 1000 - 10000)),
