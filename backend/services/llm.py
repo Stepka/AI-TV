@@ -19,14 +19,90 @@ from db.channels import get_channel_by_id
 llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-def generate_ai_track_identity(channel_name: str, style: str, branded_track: bool) -> dict:
+def fallback_ai_track_title(channel_name: str, style: str = "", channel_description: str = "") -> str:
+    source = " ".join(part for part in [channel_description, style, channel_name] if part)
+    words = re.sub(r"[^A-Za-zА-Яа-яЁё0-9]+", " ", source).strip().split()
+    meaningful_words = [word for word in words if len(word) > 3]
+
+    if len(meaningful_words) >= 2:
+        return " ".join(meaningful_words[:3]).title()
+    if channel_name:
+        return channel_name.strip()
+    return f"Track {datetime.utcnow().strftime('%H%M%S')}"
+
+
+def generate_ai_track_seed_title(
+    channel_name: str,
+    style: str = "",
+    branded_track: bool = False,
+    channel_description: str = "",
+) -> str:
     branded_hint = "branded" if branded_track else "non-branded"
+    prompt = f"""
+Create one original title idea for a newly generated AI music track.
+
+Channel name: {channel_name}
+Channel description: {channel_description}
+Style: {style}
+Track type: {branded_hint}
+
+Return ONLY valid JSON:
+{{
+  "title": "Track title"
+}}
+
+Rules:
+- invent the title from the channel description, audience, atmosphere, place, brand mood, and music style
+- do not use a fixed template
+- keep it short: 2 to 5 words
+- make it specific and evocative, not generic
+- if the track is branded, a subtle brand reference is allowed
+- if the track is non-branded, do not include the channel name
+- do not include quotes around the whole response
+"""
+
+    try:
+        response = llm_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You create original music track titles from business/channel descriptions."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=1.35,
+            response_format={"type": "json_object"}
+        )
+
+        content = response.choices[0].message.content.strip()
+        data = json.loads(content)
+        title = str(data.get("title", "")).strip()
+        return title or fallback_ai_track_title(channel_name, style, channel_description)
+    except Exception as e:
+        print("Failed to generate AI track seed title:", e)
+        return fallback_ai_track_title(channel_name, style, channel_description)
+
+
+def generate_ai_track_identity(
+    channel_name: str,
+    style: str,
+    branded_track: bool,
+    channel_description: str = "",
+    existing_titles: list[str] | None = None,
+    seed_title: str | None = None,
+) -> dict:
+    branded_hint = "branded" if branded_track else "non-branded"
+    existing_titles = [title for title in (existing_titles or []) if title]
+    existing_titles_text = ", ".join(existing_titles[-30:]) or "none"
+    seed_title = seed_title or generate_ai_track_seed_title(channel_name, style, branded_track, channel_description)
+
     prompt = f"""
 Generate metadata for one newly created AI music track.
 
 Channel name: {channel_name}
+Channel description: {channel_description}
 Style: {style}
 Track type: {branded_hint}
+Seed title idea: {seed_title}
+Already used titles: {existing_titles_text}
 
 Return ONLY valid JSON:
 {{
@@ -37,7 +113,12 @@ Return ONLY valid JSON:
 Rules:
 - artist and title must be concise
 - keep them plausible for the given style
+- base the title on the channel description and its atmosphere, not on a fixed phrase list
+- create a fresh, distinctive title; avoid generic titles like "Generated Track" or the channel name alone
+- do not reuse or closely paraphrase any title from Already used titles
+- vary imagery, mood, time of day, place, energy, and musical texture between generations
 - if the track is branded, allow a subtle reference to the channel name
+- if the track is not branded, do not put the channel name in the title
 - do not include quotes around the whole response
 """
 
@@ -47,16 +128,23 @@ Rules:
             {"role": "system", "content": "You generate short structured music metadata."},
             {"role": "user", "content": prompt}
         ],
-        temperature=1.0,
+        temperature=1.25,
         response_format={"type": "json_object"}
     )
 
     content = response.choices[0].message.content.strip()
     data = json.loads(content)
+    artist = str(data.get("artist", "AI Artist")).strip() or "AI Artist"
+    title = str(data.get("title", seed_title)).strip() or seed_title
+
+    normalized_title = title.casefold()
+    used_titles = {item.casefold() for item in existing_titles}
+    if normalized_title in used_titles or normalized_title == channel_name.casefold():
+        title = seed_title
 
     return {
-        "artist": str(data.get("artist", "AI Artist")).strip() or "AI Artist",
-        "title": str(data.get("title", "Generated Track")).strip() or "Generated Track",
+        "artist": artist,
+        "title": title,
     }
 
 

@@ -21,7 +21,7 @@ from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
 from services.sona import MusicGenerationFailed, generate_music, get_music_result
-from services.llm import generate_ai_track_identity
+from services.llm import generate_ai_track_identity, generate_ai_track_seed_title
 from models.media import AdPhrase, AddAdPhraseRequest, DeleteAudioRequest, DeletePrerecordAdPhraseRequest, DeletePrerecordBrandPhraseRequest, DeleteVideoRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
 from services.auth import get_current_user
 
@@ -202,6 +202,12 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
 
     instrumental = not req.branded_track
     prompt = f"{channel.name}, {channel.name}, {channel.name}" if req.branded_track else "No Lyric"
+    seed_title = generate_ai_track_seed_title(
+        channel.name,
+        channel.style,
+        req.branded_track,
+        channel.description,
+    )
 
     print(
         f"Generating AI track for channel {channel.name} with style {channel.style} "
@@ -210,7 +216,7 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
 
     task = generate_music(
         style=channel.style,
-        title=channel.name,
+        title=seed_title,
         prompt=prompt,
         instrumental=instrumental,
     )
@@ -242,19 +248,30 @@ def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user
 
     print(result)
 
+    existing_titles = [track.title for track in fetch_ai_tracks(req.user_id, req.channel_id)]
+
     for item in result:
-        identity = generate_ai_track_identity(channel.name, channel.style, req.branded_track)
+        source_title = item.get("title") or seed_title
+        identity = generate_ai_track_identity(
+            channel.name,
+            channel.style,
+            req.branded_track,
+            channel_description=channel.description,
+            existing_titles=existing_titles,
+            seed_title=source_title,
+        )
         absolute_file_path = item["file_path"]
         relative_file_path = Path(absolute_file_path).as_posix()
         relative_image_path = Path(item["image_path"]).as_posix() if item.get("image_path") else None
         duration = get_audio_duration_seconds(absolute_file_path)
+        existing_titles.append(identity["title"])
 
         add_ai_track(
             user_id=req.user_id,
             channel_id=req.channel_id,
             file_path=relative_file_path,
             image_path=relative_image_path,
-            artist=channel.name,
+            artist=identity["artist"],
             title=identity["title"],
             duration=duration,
             style=channel.style or "",
