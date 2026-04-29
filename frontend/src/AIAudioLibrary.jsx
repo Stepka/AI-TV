@@ -120,6 +120,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px" }}>
       <h2>{t("audioLibrary.title")}</h2>
       <span>{t("audioLibrary.availableGenerations", { count: userData?.ai_tracks_num })}</span>
+      <span>{t("audioLibrary.generatedTracks", { count: files.length })}</span>
 
       {generateError && !showGeneratePopup && (
         <div style={{ color: "#ff705e" }}>{generateError}</div>

@@ -119,6 +119,7 @@ export const messages = {
     audioLibrary: {
       title: "Аудиотека",
       availableGenerations: "Доступно генераций: {{count}}",
+      generatedTracks: "Сгенерированных треков в аудиотеке: {{count}}",
       generateTrack: "Сгенерировать трек",
       generating: "Генерация...",
       generateTitle: "Генерация трека",
@@ -279,6 +280,7 @@ export const messages = {
     audioLibrary: {
       title: "Audio Library",
       availableGenerations: "Available generations: {{count}}",
+      generatedTracks: "Generated tracks in library: {{count}}",
       generateTrack: "Generate track",
       generating: "Generating...",
       generateTitle: "Generate Track",
