@@ -21,7 +21,10 @@ export default function App() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerInviteCode, setRegisterInviteCode] = useState("");
   const [registerError, setRegisterError] = useState("");
+  const [registerInfo, setRegisterInfo] = useState("");
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerVerificationPending, setRegisterVerificationPending] = useState(false);
+  const [registerVerificationCode, setRegisterVerificationCode] = useState("");
   
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -91,6 +94,7 @@ export default function App() {
   async function doRegister() {
     setRegisterLoading(true);
     setRegisterError("");
+    setRegisterInfo("");
     setAuthInfo("");
 
     const normalizedEmail = registerEmail.trim().toLowerCase();
@@ -125,31 +129,52 @@ export default function App() {
         return;
       }
 
-      const loginRes = await fetch(`${API_URL}/auth/login`, {
+      setRegisterVerificationPending(true);
+      setRegisterInfo(t("auth.verificationCodeSent", { email: normalizedEmail }));
+    } catch {
+      setRegisterError(t("common.networkError"));
+    } finally {
+      setRegisterLoading(false);
+    }
+  }
+
+  async function doVerifyEmail() {
+    setRegisterLoading(true);
+    setRegisterError("");
+    setRegisterInfo("");
+
+    const normalizedEmail = registerEmail.trim().toLowerCase();
+    const normalizedCode = registerVerificationCode.trim();
+
+    if (!normalizedCode) {
+      setRegisterError(t("auth.verificationCodeRequired"));
+      setRegisterLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/auth/verify_email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: normalizedEmail, password: registerPassword }),
+        body: JSON.stringify({ email: normalizedEmail, code: normalizedCode }),
       });
 
-      const loginData = await loginRes.json();
+      const data = await res.json();
 
-      if (!loginData.ok) {
-        setUsername(normalizedEmail);
-        setPassword("");
-        setRegisterEmail("");
-        setRegisterPassword("");
-        setAuthInfo(t("auth.registrationSuccessLogin"));
-        window.location.hash = "#/login";
+      if (!data.ok) {
+        setRegisterError(data.error || t("auth.emailVerificationFailed"));
         return;
       }
 
-      localStorage.setItem("token", loginData.access_token);
-      setAuthToken(loginData.access_token);
+      localStorage.setItem("token", data.access_token);
+      setAuthToken(data.access_token);
       setUsername(normalizedEmail);
       setPassword("");
       setRegisterEmail("");
       setRegisterPassword("");
       setRegisterInviteCode("");
+      setRegisterVerificationCode("");
+      setRegisterVerificationPending(false);
       window.location.hash = "#/";
     } catch {
       setRegisterError(t("common.networkError"));
@@ -178,13 +203,31 @@ export default function App() {
     const params = getInviteParamsFromLocation();
     const inviteCodeFromLink = params.get("invite_code");
     const inviteEmailFromLink = params.get("email") || params.get("username");
+    const verificationCodeFromLink = params.get("verification_code") || params.get("code");
+    const emailFromLink = (inviteEmailFromLink || "").trim().toLowerCase();
+
+    if (verificationCodeFromLink) {
+      setRegisterVerificationCode(verificationCodeFromLink.trim());
+      setRegisterVerificationPending(true);
+      setAuthInfo("");
+      setRegisterError("");
+
+      if (emailFromLink) {
+        setRegisterEmail(emailFromLink);
+      }
+
+      if (!route.startsWith("#/register")) {
+        window.location.hash = `#/register?${params.toString()}`;
+      }
+
+      return;
+    }
 
     if (!inviteCodeFromLink) {
       return;
     }
 
     const normalizedInviteCode = inviteCodeFromLink.trim();
-    const normalizedInviteEmail = (inviteEmailFromLink || "").trim().toLowerCase();
 
     setRegisterInviteCode(normalizedInviteCode);
     if (!route.startsWith("#/register")) {
@@ -193,8 +236,8 @@ export default function App() {
     setAuthInfo("");
     setRegisterError("");
 
-    if (normalizedInviteEmail) {
-      setRegisterEmail(normalizedInviteEmail);
+    if (emailFromLink) {
+      setRegisterEmail(emailFromLink);
     }
   }, [route]);
   
@@ -302,10 +345,15 @@ export default function App() {
         registerPassword={registerPassword}
         registerInviteCode={registerInviteCode}
         registerError={registerError}
+        registerInfo={registerInfo}
         registerLoading={registerLoading}
+        registerVerificationPending={registerVerificationPending}
+        registerVerificationCode={registerVerificationCode}
         onEmailChange={setRegisterEmail}
         onPasswordChange={setRegisterPassword}
+        onVerificationCodeChange={setRegisterVerificationCode}
         onRegister={doRegister}
+        onVerifyEmail={doVerifyEmail}
       />
     );
   }

@@ -65,10 +65,15 @@ export function RegisterPage({
   registerPassword,
   registerInviteCode,
   registerError,
+  registerInfo,
   registerLoading,
+  registerVerificationPending,
+  registerVerificationCode,
   onEmailChange,
   onPasswordChange,
+  onVerificationCodeChange,
   onRegister,
+  onVerifyEmail,
 }) {
   const { t } = useI18n();
 
@@ -83,25 +88,46 @@ export function RegisterPage({
 
         <form className="auth-form" onSubmit={(event) => {
           event.preventDefault();
-          onRegister();
+          registerVerificationPending ? onVerifyEmail() : onRegister();
         }}>
-          <input
-            type="email"
-            value={registerEmail}
-            onChange={(event) => onEmailChange(event.target.value)}
-            placeholder={t("auth.emailPlaceholder")}
-            autoComplete="email"
-          />
+          {!registerVerificationPending && (
+            <>
+              <input
+                type="email"
+                value={registerEmail}
+                onChange={(event) => onEmailChange(event.target.value)}
+                placeholder={t("auth.emailPlaceholder")}
+                autoComplete="email"
+              />
 
-          <input
-            type="password"
-            value={registerPassword}
-            onChange={(event) => onPasswordChange(event.target.value)}
-            placeholder={t("auth.passwordPlaceholder")}
-            autoComplete="new-password"
-          />
+              <input
+                type="password"
+                value={registerPassword}
+                onChange={(event) => onPasswordChange(event.target.value)}
+                placeholder={t("auth.passwordPlaceholder")}
+                autoComplete="new-password"
+              />
+            </>
+          )}
+
+          {registerVerificationPending && (
+            <>
+              <div className="muted">
+                {registerEmail}
+              </div>
+
+              <input
+                inputMode="numeric"
+                value={registerVerificationCode}
+                onChange={(event) => onVerificationCodeChange(event.target.value)}
+                placeholder={t("auth.verificationCodePlaceholder")}
+                autoComplete="one-time-code"
+              />
+            </>
+          )}
 
           {registerError && <div className="error">{registerError}</div>}
+          {registerInfo && <div className="success">{registerInfo}</div>}
           {!!registerInviteCode && (
             <div className="muted">
               {t("auth.inviteApplied", { email: registerEmail || t("auth.inviteAppliedFallback") })}
@@ -110,7 +136,11 @@ export function RegisterPage({
 
           <div className="auth-actions">
             <AppButton type="submit" disabled={registerLoading}>
-              {registerLoading ? t("auth.registering") : t("auth.registerButton")}
+              {registerLoading
+                ? t("auth.registering")
+                : registerVerificationPending
+                  ? t("auth.verifyEmailButton")
+                  : t("auth.registerButton")}
             </AppButton>
 
             <a className="auth-link-button" href="#/login">

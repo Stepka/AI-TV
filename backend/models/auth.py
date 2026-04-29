@@ -14,6 +14,11 @@ class RegisterRequest(BaseModel):
     invite_code: Optional[str] = None
 
 
+class VerifyEmailRequest(BaseModel):
+    email: str
+    code: str
+
+
 class AddUserRequest(BaseModel):
     username: str
     password: str

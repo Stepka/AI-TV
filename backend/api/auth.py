@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from services.auth import get_current_user, authenticate_user, create_access_token, get_password_hash
-from db.auth import create_invite, create_user, fetch_user
-from models.auth import AddUserRequest, CreateInviteRequest, CreateUserRequest, LoginRequest, RegisterRequest
+from services.email import send_email_verification_code
+from db.auth import consume_email_verification, create_email_verification, create_invite, create_user, fetch_user
+from models.auth import AddUserRequest, CreateInviteRequest, CreateUserRequest, LoginRequest, RegisterRequest, VerifyEmailRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -24,16 +25,32 @@ def register(req: RegisterRequest):
             return {"ok": False, "error": "invalid email"}
 
         invite_code = (req.invite_code or "").strip().upper()
-
-        create_req = CreateUserRequest(
-            username=email,
-            password=req.password,
+        code = create_email_verification(
+            email=email,
             password_hash=get_password_hash(req.password),
             invite_code=invite_code or None,
-            subscription="free",
         )
+        send_email_verification_code(email, code)
+        return {"ok": True, "email": email, "verification_required": True}
+    except HTTPException as exc:
+        return {"ok": False, "error": exc.detail}
+    except RuntimeError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+@router.post("/verify_email")
+def verify_email(req: VerifyEmailRequest):
+    try:
+        email = req.email.strip().lower()
+        create_req = consume_email_verification(email, req.code)
         created_user = create_user(create_req)
-        return {"ok": True, "created_user": created_user}
+        token = create_access_token({"sub": created_user.username})
+        return {
+            "ok": True,
+            "created_user": created_user,
+            "access_token": token,
+            "token_type": "bearer",
+        }
     except HTTPException as exc:
         return {"ok": False, "error": exc.detail}
 

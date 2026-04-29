@@ -1,6 +1,7 @@
 
 import uuid
 import secrets
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -34,6 +35,136 @@ def ensure_invites_table():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_invites_code ON invites(code);")
     conn.commit()
     conn.close()
+
+
+def ensure_email_verifications_table():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS email_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            invite_code TEXT,
+            code TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            expires_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications(email);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_email_verifications_code ON email_verifications(code);")
+    conn.commit()
+    conn.close()
+
+
+def create_email_verification(email: str, password_hash: str, invite_code: Optional[str] = None) -> str:
+    ensure_email_verifications_table()
+
+    conn = get_db()
+    cur = conn.cursor()
+    normalized_email = email.strip().lower()
+    normalized_invite_code = invite_code.strip().upper() if invite_code else None
+
+    existing_user = cur.execute(
+        "SELECT id FROM users WHERE username = ?",
+        (normalized_email,)
+    ).fetchone()
+
+    if existing_user:
+        conn.close()
+        raise HTTPException(status_code=400, detail="User already exists")
+
+    if normalized_invite_code:
+        invite_row = cur.execute(
+            "SELECT email, used_by FROM invites WHERE code = ?",
+            (normalized_invite_code,)
+        ).fetchone()
+
+        if not invite_row:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Invite code not found")
+
+        if invite_row["used_by"]:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Invite code already used")
+
+        invite_email = (invite_row["email"] or "").strip().lower()
+        if invite_email and invite_email != normalized_email:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Invite email does not match")
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    cur.execute(
+        """
+        INSERT INTO email_verifications (email, password_hash, invite_code, code, attempts, expires_at)
+        VALUES (?, ?, ?, ?, 0, datetime('now', '+30 minutes'))
+        ON CONFLICT(email) DO UPDATE SET
+            password_hash = excluded.password_hash,
+            invite_code = excluded.invite_code,
+            code = excluded.code,
+            attempts = 0,
+            created_at = datetime('now'),
+            expires_at = datetime('now', '+30 minutes')
+        """,
+        (normalized_email, password_hash, normalized_invite_code, code)
+    )
+    conn.commit()
+    conn.close()
+    return code
+
+
+def consume_email_verification(email: str, code: str) -> CreateUserRequest:
+    ensure_email_verifications_table()
+
+    conn = get_db()
+    cur = conn.cursor()
+    normalized_email = email.strip().lower()
+    normalized_code = code.strip()
+
+    row = cur.execute(
+        "SELECT * FROM email_verifications WHERE email = ?",
+        (normalized_email,)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Verification code not found")
+
+    if row["expires_at"] < cur.execute("SELECT datetime('now') AS now").fetchone()["now"]:
+        cur.execute("DELETE FROM email_verifications WHERE email = ?", (normalized_email,))
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Verification code expired")
+
+    if row["attempts"] >= 5:
+        cur.execute("DELETE FROM email_verifications WHERE email = ?", (normalized_email,))
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Too many verification attempts")
+
+    if row["code"] != normalized_code:
+        cur.execute(
+            "UPDATE email_verifications SET attempts = attempts + 1 WHERE email = ?",
+            (normalized_email,)
+        )
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    cur.execute("DELETE FROM email_verifications WHERE email = ?", (normalized_email,))
+    conn.commit()
+    conn.close()
+
+    return CreateUserRequest(
+        username=normalized_email,
+        password="",
+        password_hash=row["password_hash"],
+        invite_code=row["invite_code"],
+        subscription="free",
+    )
 
 
 def get_user_by_username(username: str):
