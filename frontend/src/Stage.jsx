@@ -142,10 +142,6 @@ export default function Stage({ token, userData, channel }) {
   }, [playlist, current, channel, t]);
 
   useEffect(() => {
-    console.log("Playlist Length:", playlist.length);
-    console.log("Hello Finished:", helloFinished);
-    console.log("Channel:", channel);
-    console.log("Is Streaming:", isStreaming);
     if (!aiDjEnabled) {
       setDjTransitionReady(false);
       return;
@@ -452,7 +448,6 @@ export default function Stage({ token, userData, channel }) {
   }, []);
 
   const startStreaming = async () => {
-    console.log("Starting stream...");
     loadPlaylist();
     setIsStreaming(true);
   };
