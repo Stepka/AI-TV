@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import FullscreenButton from "./FullscreenButton";
-import AppButton from "./AppButton";
-import VideoStage from "./VideoStage";
 import Playlist from "./Playlist";
-import AIAudioPlayer from "./AIAudioPlayer"
+import AIAudioPlayer from "./AIAudioPlayer";
+import StreamControls from "./StreamControls";
+import StageViewport from "./StageViewport";
 import { useI18n } from "./i18n";
 import './global.css';
 
 
 
-export default function App({ token, userData, channel }) {
+export default function Stage({ token, userData, channel }) {
   const API_URL = import.meta.env.VITE_API_URL;
   const { t } = useI18n();
   const canUseAdVoice = true;
@@ -856,197 +855,62 @@ export default function App({ token, userData, channel }) {
     setIsStreaming(true);
   };
 
+  const handleBrandedTracksChange = (enabled) => {
+    setBrandedTracksEnabled(enabled);
+    if (!enabled) {
+      setPlaylist((prev) => {
+        const filtered = prev.filter((item) => !item?.branded_track);
+        setCurrent((currentIndex) => Math.min(currentIndex, Math.max(filtered.length - 1, 0)));
+        return filtered;
+      });
+    }
+  };
+
   return (
     <div
       style={{
         display: "flex",
         justifyContent: "flex-start",
-        // marginBottom: isFullscreen ? 0 : 20,
         width: "100%",
         height: "100%",
         minHeight: 0,
-        display: "flex",
-        flexDirection: "column", // вот это делает вертикальный стэк
-        alignItems: "center",    // центрируем все элементы по горизонтали
+        flexDirection: "column",
+        alignItems: "center",
         cursor: isFullscreen ? "none" : "default",
         overflowY: isFullscreen ? "hidden" : "auto",
         overflowX: "hidden",
         boxSizing: "border-box",
         paddingRight: isFullscreen ? 0 : 6,
-        // gap: isFullscreen ? 0 : 20,             // опционально, чтобы добавить расстояние между элементами
       }}
     >
       {!isFullscreen && (
-        <div
-          style={{
-            width: "100%",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 16,
-            alignItems: "center",
-            padding: 16,
-            margin: "16px 0",
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxSizing: "border-box",
-          }}
-        >
-          <label className="stream-option" title={t("stage.enableAiDjDescription")}>
-            <input
-              className="stream-option-input"
-              type="checkbox"
-              checked={aiDjEnabled}
-              onChange={(e) => setAiDjEnabled(e.target.checked)}
-            />
-            <span className="stream-option-check" aria-hidden="true" />
-            <span>{t("stage.enableAiDj")}</span>
-          </label>
-
-          {canUseAdVoice && (
-            <label
-              className={`stream-option ${!aiDjEnabled ? "disabled" : ""}`}
-              title={t("stage.enableAdsDescription")}
-            >
-              <input
-                className="stream-option-input"
-                type="checkbox"
-                checked={adVoiceEnabled}
-                onChange={(e) => setAdVoiceEnabled(e.target.checked)}
-                disabled={!aiDjEnabled}
-              />
-              <span className="stream-option-check" aria-hidden="true" />
-              <span>{t("stage.enableAds")}</span>
-            </label>
-          )}
-
-          <label className="stream-option" title={t("stage.brandedTracksDescription")}>
-            <input
-              className="stream-option-input"
-              type="checkbox"
-              checked={brandedTracksEnabled}
-              onChange={(e) => {
-                const enabled = e.target.checked;
-                setBrandedTracksEnabled(enabled);
-                if (!enabled) {
-                  setPlaylist((prev) => {
-                    const filtered = prev.filter((item) => !item?.branded_track);
-                    setCurrent((currentIndex) => Math.min(currentIndex, Math.max(filtered.length - 1, 0)));
-                    return filtered;
-                  });
-                }
-              }}
-            />
-            <span className="stream-option-check" aria-hidden="true" />
-            <span>{t("stage.brandedTracks")}</span>
-          </label>
-        </div>
+        <StreamControls
+          canUseAdVoice={canUseAdVoice}
+          aiDjEnabled={aiDjEnabled}
+          adVoiceEnabled={adVoiceEnabled}
+          brandedTracksEnabled={brandedTracksEnabled}
+          onAiDjChange={setAiDjEnabled}
+          onAdVoiceChange={setAdVoiceEnabled}
+          onBrandedTracksChange={handleBrandedTracksChange}
+        />
       )}
-
-      <div
-        style={{
-          width: "100%",
-          minHeight: 400,           // минимальная высота 400px
-          // padding: isFullscreen ? 0 : 16,
-          background: "rgba(0,0,0,0.5)",
-          borderRadius: 12,
-          // marginBottom: isFullscreen ? 0 : 20,
-          color: "#fff",
-          // overflowX: "hidden",
-          transition: "3s opacity",
-          cursor: isFullscreen ? "none" : "default",
-
-          position: "relative",      // для абсолютного позиционирования кнопки
-          display: "flex",
-          justifyContent: "center",  // горизонтальное центрирование текста
-          alignItems: "center",      // вертикальное центрирование текста
-          fontSize: "24px",
-          textAlign: "center",
-        }}
-      >
-        {!isStreaming && (
-          <AppButton
-            onClick={startStreaming}
-            // disabled={loading} // неактивна во время загрузки
-          >
-            {t("stage.startStreaming")}
-          </AppButton>
-        )}
-
-        {isStreaming && (playlist.length == 0 || !helloReady || !helloFinished) && (
-            <div 
-              style={{
-                opacity: !helloFinishedTransition ? 1 : 0,
-                transition: "3s opacity",
-              }}
-            >{!helloReady ? t("common.loading") : t("stage.starting")}</div>
-        )}
-      
-        {/* Основной контент — 75% ширины */}
-        {isStreaming && playlist.length > 0 && helloReady && helloFinished && (
-          <div
-            style={{
-              flexGrow: 1,
-              width: "100%",
-              height: "100%",
-              // maxHeight: isFullscreen ? "100vh" : "60%",
-              color: "#fff",
-              // backgroundColor:  "#fff",
-              textAlign: "center",
-              // padding: "20px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              cursor: isFullscreen ? "none" : "default",
-            }}
-          >
-            <VideoStage
-              isTransitioning={isTransitioning}
-              overlaySrc={overlaySrc}
-              overlayRef={overlayRef}
-              overlayVisible={overlayVisible}
-              titles={titles}
-              isFullscreen={isFullscreen}
-              videoId={videoId}
-              videoSource={videoSource}
-            />
-
-            {!isFullscreen && (
-              <div
-                style={{
-                  marginTop: "15px",
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "15px",
-                }}
-              >
-                <AppButton               
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    background: "rgba(0,0,0,0.6)",
-                    color: "#fff",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                  onClick={smoothNext}
-                  >
-                    {t("stage.next")}
-                  </AppButton>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Fullscreen кнопка справа сверху */}
-        {!isFullscreen && isStreaming && (
-          <div style={{ position: "absolute", top: 8, right: 8, zIndex: 150 }}>
-            <FullscreenButton />
-          </div>
-        )}
-      </div>
-      
+      <StageViewport
+        isFullscreen={isFullscreen}
+        isStreaming={isStreaming}
+        playlist={playlist}
+        helloReady={helloReady}
+        helloFinished={helloFinished}
+        helloFinishedTransition={helloFinishedTransition}
+        isTransitioning={isTransitioning}
+        overlaySrc={overlaySrc}
+        overlayRef={overlayRef}
+        overlayVisible={overlayVisible}
+        titles={titles}
+        videoId={videoId}
+        videoSource={videoSource}
+        onStartStreaming={startStreaming}
+        onNext={smoothNext}
+      />
       {!isFullscreen && (
         <Playlist
           channel={channel}
