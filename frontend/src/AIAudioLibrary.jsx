@@ -12,11 +12,79 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   const [showGeneratePopup, setShowGeneratePopup] = useState(false);
   const [brandedTrack, setBrandedTrack] = useState(false);
   const [generateError, setGenerateError] = useState("");
+  const [availableGenerations, setAvailableGenerations] = useState(userData?.ai_tracks_num ?? 0);
+  const [tracksCount, setTracksCount] = useState(2);
+  const [generationJob, setGenerationJob] = useState(null);
+
+  const hasUnlimitedGenerations = availableGenerations === -1;
+  const maxTracksCount = hasUnlimitedGenerations
+    ? null
+    : Math.max(0, Math.floor((availableGenerations || 0) / 2) * 2);
+  const canGenerateTracks = availableGenerations === -1 || maxTracksCount >= 2;
+
+  const normalizeTracksCount = (value) => {
+    const parsed = Number(value) || 2;
+    const evenValue = Math.max(2, parsed - (parsed % 2));
+    return hasUnlimitedGenerations ? evenValue : Math.min(evenValue, maxTracksCount || 2);
+  };
 
   useEffect(() => {
     if (!channel || !token || !userData) return;
     loadAILibrary();
+    loadActiveGenerationJob();
   }, [userData, channel, token]);
+
+  useEffect(() => {
+    if (!generationJob?.job_id || !token) return undefined;
+    if (!["queued", "running"].includes(generationJob.status)) return undefined;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_URL}/media/generate_ai_track/${generationJob.job_id}`, {
+          headers: { "Authorization": `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.detail || t("audioLibrary.generateFailed"));
+        }
+
+        const nextJob = data.job;
+        setGenerationJob(nextJob);
+
+        if (nextJob.status === "done") {
+          clearInterval(interval);
+          setIsGenerating(false);
+          loadAILibrary();
+        }
+
+        if (nextJob.status === "failed") {
+          clearInterval(interval);
+          setIsGenerating(false);
+          setGenerateError(nextJob.error || t("audioLibrary.generateFailed"));
+        }
+      } catch (error) {
+        clearInterval(interval);
+        setIsGenerating(false);
+        setGenerateError(error.message || t("audioLibrary.generateFailed"));
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [generationJob?.job_id, generationJob?.status, token]);
+
+  useEffect(() => {
+    setAvailableGenerations(userData?.ai_tracks_num ?? 0);
+  }, [userData?.ai_tracks_num]);
+
+  useEffect(() => {
+    if (!canGenerateTracks) {
+      setTracksCount(2);
+      return;
+    }
+
+    setTracksCount((current) => normalizeTracksCount(current));
+  }, [maxTracksCount, canGenerateTracks]);
 
   const loadAILibrary = () => {
     if (!channel || !token || !userData) return;
@@ -30,6 +98,27 @@ export default function AIAudioLibrary({ token, userData, channel }) {
     })
       .then((res) => res.json())
       .then((data) => setFiles(data.files));
+  };
+
+  const loadActiveGenerationJob = async () => {
+    if (!channel || !token || !userData) return;
+
+    try {
+      const res = await fetch(
+        `${API_URL}/media/generate_ai_track_active?user_id=${userData.user_uid}&channel_id=${channel.channel_uid}`,
+        {
+          headers: { "Authorization": `Bearer ${token}` },
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.job) return;
+
+      setGenerationJob(data.job);
+      setIsGenerating(["queued", "running"].includes(data.job.status));
+    } catch (error) {
+      console.warn("Failed to load active generation job:", error);
+    }
   };
 
   const formatDuration = (value) => {
@@ -61,6 +150,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
           user_id: userData.user_uid,
           channel_id: channel.channel_uid,
           branded_track: brandedTrack,
+          tracks_count: tracksCount,
         })
       });
 
@@ -77,11 +167,17 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         throw new Error(data.error || failedMessage);
       }
 
+      if (availableGenerations !== -1) {
+        setAvailableGenerations((current) => Math.max(0, current - tracksCount));
+      }
+      setGenerationJob({
+        job_id: data.job_id,
+        status: data.status || data.track,
+        requested_tracks_count: data.requested_tracks_count || tracksCount,
+      });
       setShowGeneratePopup(false);
-      loadAILibrary();
     } catch (error) {
       setGenerateError(error.message || t("audioLibrary.generateFailed"));
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -119,11 +215,23 @@ export default function AIAudioLibrary({ token, userData, channel }) {
   return (
     <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20, maxHeight: "400px" }}>
       <h2>{t("audioLibrary.title")}</h2>
-      <span>{t("audioLibrary.availableGenerations", { count: userData?.ai_tracks_num })}</span>
+      <span>
+        {t("audioLibrary.availableGenerations", {
+          count: hasUnlimitedGenerations ? t("audioLibrary.unlimitedGenerations") : availableGenerations,
+        })}
+      </span>
       <span>{t("audioLibrary.generatedTracks", { count: files.length })}</span>
 
       {generateError && !showGeneratePopup && (
         <div style={{ color: "#ff705e" }}>{generateError}</div>
+      )}
+      {generationJob && ["queued", "running"].includes(generationJob.status) && (
+        <div style={{ color: "rgba(255,255,255,0.72)" }}>
+          {t("audioLibrary.generationJobStatus", {
+            status: t(`audioLibrary.jobStatus.${generationJob.status}`),
+            count: generationJob.requested_tracks_count || tracksCount,
+          })}
+        </div>
       )}
 
       <AppButton
@@ -131,7 +239,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
           setGenerateError("");
           setShowGeneratePopup(true);
         }}
-        disabled={isGenerating}
+        disabled={isGenerating || !canGenerateTracks}
       >
         {isGenerating ? t("audioLibrary.generating") : t("audioLibrary.generateTrack")}
       </AppButton>
@@ -201,6 +309,34 @@ export default function AIAudioLibrary({ token, userData, channel }) {
               <span>{t("audioLibrary.brandedTrack")}</span>
             </label>
 
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>
+                {t("audioLibrary.tracksCount")}
+              </label>
+              <input
+                type="number"
+                min={2}
+                max={hasUnlimitedGenerations ? undefined : maxTracksCount || 2}
+                step={2}
+                value={tracksCount}
+                disabled={!canGenerateTracks || isGenerating}
+                onChange={(event) => setTracksCount(normalizeTracksCount(event.target.value))}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "#fff",
+                  outline: "none",
+                }}
+              />
+              <span style={{ color: "rgba(255,255,255,0.48)", fontSize: 12 }}>
+                {hasUnlimitedGenerations
+                  ? t("audioLibrary.tracksCountUnlimitedHint")
+                  : t("audioLibrary.tracksCountHint", { count: maxTracksCount || 0 })}
+              </span>
+            </div>
+
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <AppButton
                 onClick={() => {
@@ -211,7 +347,7 @@ export default function AIAudioLibrary({ token, userData, channel }) {
               >
                 {t("common.cancel")}
               </AppButton>
-              <AppButton onClick={generate} disabled={isGenerating}>
+              <AppButton onClick={generate} disabled={isGenerating || !canGenerateTracks}>
                 {isGenerating ? t("audioLibrary.generating") : t("audioLibrary.generate")}
               </AppButton>
             </div>

@@ -31,7 +31,7 @@ def spend_subscription(user_id: str, field: str, decrement: int = 1) -> bool:
     if value == -1:
         return True
 
-    if value == 0:
+    if value < decrement:
         return False
     
     conn = get_db()

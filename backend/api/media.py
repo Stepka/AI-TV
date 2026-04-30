@@ -2,9 +2,7 @@ import hashlib
 import os
 from pathlib import Path
 import random
-import time
 import uuid
-from mutagen import File as MutagenFile
 from scipy.io.wavfile import write
 
 from fastapi import APIRouter, Query, Depends, Request, UploadFile, File, HTTPException
@@ -20,19 +18,12 @@ from services.dj import generate_speech
 from models.channels import Channel
 from db.channels import get_channel_by_id
 from db.subscription import spend_subscription
-from services.sona import MusicGenerationFailed, generate_music, get_music_result
-from services.llm import generate_ai_track_identity, generate_ai_track_seed_title
+from services.ai_tracks import get_ai_track_generation_job, get_latest_active_ai_track_generation_job, start_ai_track_generation_job
+from services.sona import MusicGenerationFailed
 from models.media import AdPhrase, AddAdPhraseRequest, DeleteAudioRequest, DeletePrerecordAdPhraseRequest, DeletePrerecordBrandPhraseRequest, DeleteVideoRequest, GenerateAITrackRequest, GenerateBrandPhraseSpeechRequest, UpdateAdPhraseRequest, UploadVideoRequest
 from services.auth import get_current_user
 
 router = APIRouter(prefix="/media", tags=["media"])
-
-
-def get_audio_duration_seconds(file_path: str) -> float:
-    audio_file = MutagenFile(file_path)
-    if not audio_file or not getattr(audio_file, "info", None):
-        return 0.0
-    return float(getattr(audio_file.info, "length", 0.0) or 0.0)
 
 
 @router.get("/speech")
@@ -191,95 +182,25 @@ def list_prerecord_ad_phrases_library(
 
 @router.post("/generate_ai_track")
 def generate_ai_track(req: GenerateAITrackRequest, user=Depends(get_current_user)):
-    ensure_ai_tracks_table()
-    
-    success = spend_subscription(req.user_id, "ai_tracks_num", decrement = 2)
-    if not success:
-        return {"track": "error", "error": "ai_tracks_num limit exceeded"}
-    
-    channel = get_channel_by_id(req.user_id, req.channel_id)
-    channel = Channel(**channel)
+    return start_ai_track_generation_job(req)
 
-    instrumental = not req.branded_track
-    prompt = f"{channel.name}, {channel.name}, {channel.name}" if req.branded_track else "No Lyric"
-    seed_title = generate_ai_track_seed_title(
-        channel.name,
-        channel.style,
-        req.branded_track,
-        channel.description,
-    )
 
-    print(
-        f"Generating AI track for channel {channel.name} with style {channel.style} "
-        f"(instrumental={instrumental}, branded_track={req.branded_track})"
-    )
+@router.get("/generate_ai_track/{job_id}")
+def get_generate_ai_track_job(job_id: str, user=Depends(get_current_user)):
+    job = get_ai_track_generation_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Generation job not found")
+    return {"track": job["status"], "job": job}
 
-    task = generate_music(
-        style=channel.style,
-        title=seed_title,
-        prompt=prompt,
-        instrumental=instrumental,
-    )
-    if task.get("type") == "FAILED":
-        return {
-            "track": "error",
-            "type": "FAILED",
-            "error": task.get("message") or task.get("error") or "Music generation failed",
-        }
 
-    task_id = task["data"]["task_id"]
-
-    # потом polling
-    attempts = 3
-    result = None
-    while attempts > 0:
-        try:
-            attempts -= 1
-            result = get_music_result(task_id, save_dir=f"channels_data/{req.user_id}/{req.channel_id}/ai_audio_library")
-            break
-        except MusicGenerationFailed as e:
-            print(e)
-            return {"track": "error", "type": "FAILED", "error": str(e)}
-        except Exception as e:
-            print(e)
-
-    if result is None:
-        return {"track": "error", "error": "Music generation failed"}
-
-    print(result)
-
-    existing_titles = [track.title for track in fetch_ai_tracks(req.user_id, req.channel_id)]
-
-    for item in result:
-        source_title = item.get("title") or seed_title
-        identity = generate_ai_track_identity(
-            channel.name,
-            channel.style,
-            req.branded_track,
-            channel_description=channel.description,
-            existing_titles=existing_titles,
-            seed_title=source_title,
-        )
-        absolute_file_path = item["file_path"]
-        relative_file_path = Path(absolute_file_path).as_posix()
-        relative_image_path = Path(item["image_path"]).as_posix() if item.get("image_path") else None
-        duration = get_audio_duration_seconds(absolute_file_path)
-        existing_titles.append(identity["title"])
-
-        add_ai_track(
-            user_id=req.user_id,
-            channel_id=req.channel_id,
-            file_path=relative_file_path,
-            image_path=relative_image_path,
-            artist=identity["artist"],
-            title=identity["title"],
-            duration=duration,
-            style=channel.style or "",
-            branded_track=req.branded_track,
-        )
-
-    return {"track": "ok"}
-
+@router.get("/generate_ai_track_active")
+def get_active_generate_ai_track_job(
+    user_id: str = Query(...),
+    channel_id: str = Query(...),
+    user=Depends(get_current_user),
+):
+    job = get_latest_active_ai_track_generation_job(user_id, channel_id)
+    return {"track": job["status"] if job else "none", "job": job}
 
 @router.post("/generate_brand_phrase_speech")
 def generate_brand_phrase_speech(req: GenerateBrandPhraseSpeechRequest, user=Depends(get_current_user)):

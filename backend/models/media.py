@@ -10,6 +10,7 @@ class GenerateAITrackRequest(BaseModel):
     user_id: str
     channel_id: str
     branded_track: bool = False
+    tracks_count: int = 2
 
 
 class AITrack(BaseModel):

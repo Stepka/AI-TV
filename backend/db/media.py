@@ -1,4 +1,5 @@
 import uuid
+import json
 
 from fastapi import HTTPException
 
@@ -32,6 +33,164 @@ def ensure_ai_tracks_table():
         cur.execute("ALTER TABLE ai_tracks ADD COLUMN image_path TEXT")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_ai_tracks_user_channel ON ai_tracks(user_id, channel_id);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_ai_tracks_file_path ON ai_tracks(file_path);")
+    conn.commit()
+    conn.close()
+
+
+def ensure_ai_track_generation_jobs_table():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ai_track_generation_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT UNIQUE NOT NULL,
+            user_id TEXT NOT NULL,
+            channel_id TEXT NOT NULL,
+            branded_track INTEGER NOT NULL DEFAULT 0,
+            requested_tracks_count INTEGER NOT NULL,
+            generated_tracks_count INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL,
+            error TEXT,
+            result_json TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            started_at TEXT,
+            finished_at TEXT
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ai_track_jobs_user_channel ON ai_track_generation_jobs(user_id, channel_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ai_track_jobs_status ON ai_track_generation_jobs(status);")
+    conn.commit()
+    conn.close()
+
+
+def create_ai_track_generation_job(
+    user_id: str,
+    channel_id: str,
+    branded_track: bool,
+    requested_tracks_count: int,
+) -> str:
+    ensure_ai_track_generation_jobs_table()
+
+    job_id = str(uuid.uuid4())
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO ai_track_generation_jobs (
+            job_id, user_id, channel_id, branded_track, requested_tracks_count, status
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (job_id, user_id, channel_id, int(branded_track), requested_tracks_count, "queued")
+    )
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def fetch_ai_track_generation_job(job_id: str):
+    ensure_ai_track_generation_jobs_table()
+
+    conn = get_db()
+    cur = conn.cursor()
+    row = cur.execute(
+        "SELECT * FROM ai_track_generation_jobs WHERE job_id = ?",
+        (job_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    data = dict(row)
+    data["branded_track"] = bool(data["branded_track"])
+    data["result"] = json.loads(data["result_json"]) if data.get("result_json") else None
+    data.pop("result_json", None)
+    return data
+
+
+def fetch_latest_active_ai_track_generation_job(user_id: str, channel_id: str):
+    ensure_ai_track_generation_jobs_table()
+
+    conn = get_db()
+    cur = conn.cursor()
+    row = cur.execute(
+        """
+        SELECT * FROM ai_track_generation_jobs
+        WHERE user_id = ?
+          AND channel_id = ?
+          AND status IN ('queued', 'running')
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (user_id, channel_id)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    data = dict(row)
+    data["branded_track"] = bool(data["branded_track"])
+    data["result"] = json.loads(data["result_json"]) if data.get("result_json") else None
+    data.pop("result_json", None)
+    return data
+
+
+def mark_ai_track_generation_job_running(job_id: str):
+    ensure_ai_track_generation_jobs_table()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE ai_track_generation_jobs
+        SET status = 'running', started_at = datetime('now')
+        WHERE job_id = ?
+        """,
+        (job_id,)
+    )
+    conn.commit()
+    conn.close()
+
+
+def mark_ai_track_generation_job_done(job_id: str, result: dict):
+    ensure_ai_track_generation_jobs_table()
+
+    generated_count = result.get("generated_tracks_count", 0)
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE ai_track_generation_jobs
+        SET status = 'done',
+            generated_tracks_count = ?,
+            result_json = ?,
+            finished_at = datetime('now')
+        WHERE job_id = ?
+        """,
+        (generated_count, json.dumps(result, ensure_ascii=False), job_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def mark_ai_track_generation_job_failed(job_id: str, error: str):
+    ensure_ai_track_generation_jobs_table()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE ai_track_generation_jobs
+        SET status = 'failed',
+            error = ?,
+            finished_at = datetime('now')
+        WHERE job_id = ?
+        """,
+        (error, job_id)
+    )
     conn.commit()
     conn.close()
 
