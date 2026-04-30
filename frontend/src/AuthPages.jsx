@@ -69,9 +69,11 @@ export function RegisterPage({
   registerLoading,
   registerVerificationPending,
   registerVerificationCode,
+  registerConsentAccepted,
   onEmailChange,
   onPasswordChange,
   onVerificationCodeChange,
+  onConsentChange,
   onRegister,
   onVerifyEmail,
 }) {
@@ -107,6 +109,26 @@ export function RegisterPage({
                 placeholder={t("auth.passwordPlaceholder")}
                 autoComplete="new-password"
               />
+
+              <label className="auth-consent">
+                <input
+                  type="checkbox"
+                  checked={registerConsentAccepted}
+                  onChange={(event) => onConsentChange(event.target.checked)}
+                  required
+                />
+                <span>
+                  {t("auth.consentPrefix")}{" "}
+                  <a href="#/consent" target="_blank" rel="noreferrer">
+                    {t("auth.personalDataConsentLink")}
+                  </a>{" "}
+                  {t("auth.consentAnd")}{" "}
+                  <a href="#/terms" target="_blank" rel="noreferrer">
+                    {t("auth.serviceTermsLink")}
+                  </a>
+                  .
+                </span>
+              </label>
             </>
           )}
 

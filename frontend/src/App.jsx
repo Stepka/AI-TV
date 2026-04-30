@@ -4,6 +4,7 @@ import AppButton from "./AppButton";
 import ChannelTabs from "./ChannelTabs";
 import UserPanel from "./UserPanel";
 import { LoginPage, RegisterPage } from "./AuthPages";
+import { PersonalDataConsentPage, ServiceTermsPage } from "./LegalPages";
 import { useI18n } from "./i18n";
 import "./global.css";
 
@@ -25,6 +26,7 @@ export default function App() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerVerificationPending, setRegisterVerificationPending] = useState(false);
   const [registerVerificationCode, setRegisterVerificationCode] = useState("");
+  const [registerConsentAccepted, setRegisterConsentAccepted] = useState(false);
   
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -111,6 +113,12 @@ export default function App() {
       return;
     }
 
+    if (!registerConsentAccepted) {
+      setRegisterError(t("auth.consentRequired"));
+      setRegisterLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
@@ -174,6 +182,7 @@ export default function App() {
       setRegisterPassword("");
       setRegisterInviteCode("");
       setRegisterVerificationCode("");
+      setRegisterConsentAccepted(false);
       setRegisterVerificationPending(false);
       window.location.hash = "#/";
     } catch {
@@ -338,6 +347,14 @@ export default function App() {
     }
   };
 
+  if (route.startsWith("#/consent")) {
+    return <PersonalDataConsentPage />;
+  }
+
+  if (route.startsWith("#/terms")) {
+    return <ServiceTermsPage />;
+  }
+
   if (!authToken && route.startsWith("#/register")) {
     return (
       <RegisterPage
@@ -349,9 +366,11 @@ export default function App() {
         registerLoading={registerLoading}
         registerVerificationPending={registerVerificationPending}
         registerVerificationCode={registerVerificationCode}
+        registerConsentAccepted={registerConsentAccepted}
         onEmailChange={setRegisterEmail}
         onPasswordChange={setRegisterPassword}
         onVerificationCodeChange={setRegisterVerificationCode}
+        onConsentChange={setRegisterConsentAccepted}
         onRegister={doRegister}
         onVerifyEmail={doVerifyEmail}
       />

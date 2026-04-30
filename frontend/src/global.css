@@ -336,7 +336,7 @@ html, body {
   gap: 12px;
 }
 
-.auth-form input,
+.auth-form input:not([type="checkbox"]),
 .login-card input {
   width: 100%;
   padding: 12px 14px;
@@ -347,10 +347,43 @@ html, body {
   outline: none;
 }
 
-.auth-form input:focus,
+.auth-form input:not([type="checkbox"]):focus,
 .login-card input:focus {
   border-color: rgba(255, 122, 61, 0.72);
   box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.14);
+}
+
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.72);
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.auth-consent input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin-top: 2px;
+  accent-color: #ff7a3d;
+  cursor: pointer;
+}
+
+.auth-consent a {
+  color: #ff9a66;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-consent a:hover {
+  color: #ffb58e;
 }
 
 .auth-actions {
@@ -389,6 +422,59 @@ html, body {
 .muted {
   color: rgba(255,255,255,0.7);
   line-height: 1.4;
+}
+
+.legal-page {
+  min-height: 100vh;
+  padding: 32px 20px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 88, 88, 0.16), transparent 32%),
+    radial-gradient(circle at 85% 18%, rgba(255, 168, 64, 0.12), transparent 30%),
+    #0f0f14;
+  color: #fff;
+  overflow-y: auto;
+}
+
+.legal-card {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: 32px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(17, 17, 22, 0.94);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.32);
+}
+
+.legal-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-bottom: 22px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.86);
+  text-decoration: none;
+}
+
+.legal-back:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.24);
+}
+
+.legal-card h1 {
+  margin-bottom: 22px;
+  font-size: 34px;
+  line-height: 1.15;
+}
+
+.legal-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: rgba(255,255,255,0.76);
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .login-card {
