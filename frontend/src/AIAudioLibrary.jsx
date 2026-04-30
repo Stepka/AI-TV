@@ -172,15 +172,22 @@ export default function AIAudioLibrary({ token, userData, channel }) {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>{t("audioLibrary.musicStyle")}</label>
-              <input
+              <textarea
                 value={channel?.style || ""}
                 readOnly
+                rows={4}
                 style={{
+                  minHeight: 92,
                   padding: "10px 12px",
                   borderRadius: 8,
                   border: "1px solid rgba(255,255,255,0.12)",
                   background: "rgba(255,255,255,0.06)",
                   color: "#fff",
+                  lineHeight: 1.45,
+                  resize: "none",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "break-word",
+                  outline: "none",
                 }}
               />
             </div>
@@ -213,41 +220,51 @@ export default function AIAudioLibrary({ token, userData, channel }) {
       )}
 
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {files.map((file) => (
-          <li key={file.track_id} style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {file.image_url && (
-                <img
-                  src={`${API_URL}/${file.image_url}`}
-                  alt={file.name}
-                  style={{
-                    width: 64,
-                    height: 64,
-                    objectFit: "cover",
-                    borderRadius: 8,
-                    flex: "0 0 64px",
-                  }}
-                />
-              )}
-              <div style={{ flex: "0 0 auto" }}>
-                <AppButton onClick={() => playAudio(file.url)}>
-                  {t("common.play")}
-                </AppButton>
+        {files.map((file) => {
+          const styleText = file.style || t("common.unknown");
+
+          return (
+            <li key={file.track_id} style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {file.image_url && (
+                  <img
+                    src={`${API_URL}/${file.image_url}`}
+                    alt={file.name}
+                    style={{
+                      width: 64,
+                      height: 64,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                      flex: "0 0 64px",
+                    }}
+                  />
+                )}
+                <div style={{ flex: "0 0 auto" }}>
+                  <AppButton onClick={() => playAudio(file.url)}>
+                    {t("common.play")}
+                  </AppButton>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, flex: 1 }}>
+                  <span>{file.name}</span>
+                  <span className="track-meta">
+                    <span className="track-style-meta" title={styleText}>
+                      {t("playlist.style")}: {styleText}
+                    </span>
+                    <span>|</span>
+                    <span>{t("playlist.duration")}: {formatDuration(file.duration)}</span>
+                    <span>|</span>
+                    <span>{file.branded_track ? t("playlist.branded") : t("playlist.notBranded")}</span>
+                  </span>
+                </div>
+                <div style={{ flex: "0 0 auto" }}>
+                  <AppButton onClick={() => handleDeleteAudio(file.filename)}>
+                    {t("common.delete")}
+                  </AppButton>
+                </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, flex: 1 }}>
-                <span>{file.name}</span>
-                <span style={{ fontSize: 12, opacity: 0.4 }}>
-                  {t("playlist.style")}: {file.style || t("common.unknown")} | {t("playlist.duration")}: {formatDuration(file.duration)} | {file.branded_track ? t("playlist.branded") : t("playlist.notBranded")}
-                </span>
-              </div>
-              <div style={{ flex: "0 0 auto" }}>
-                <AppButton onClick={() => handleDeleteAudio(file.filename)}>
-                  {t("common.delete")}
-                </AppButton>
-              </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
 
       <audio ref={audioRef} controls style={{ width: "100%" }} />
