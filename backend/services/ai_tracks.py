@@ -16,7 +16,7 @@ from db.media import (
     mark_ai_track_generation_job_failed,
     mark_ai_track_generation_job_running,
 )
-from db.subscription import spend_subscription
+from db.subscription import refund_subscription, spend_subscription
 from models.channels import Channel
 from models.media import GenerateAITrackRequest
 from services.llm import generate_ai_track_identity, generate_ai_track_seed_title
@@ -48,17 +48,32 @@ def generate_ai_tracks(req: GenerateAITrackRequest) -> dict:
     tracks_count = normalize_tracks_count(req.tracks_count)
     channel = Channel(**get_channel_by_id(req.user_id, req.channel_id))
     generated_tracks = []
+    errors = []
+    refunded_tracks_count = 0
     existing_titles = [track.title for track in fetch_ai_tracks(req.user_id, req.channel_id)]
 
-    for _ in range(tracks_count // 2):
-        result = generate_ai_track_pair(req, channel, existing_titles)
-        generated_tracks.extend(result)
+    for pair_index in range(tracks_count // 2):
+        try:
+            result = generate_ai_track_pair(req, channel, existing_titles)
+            generated_tracks.extend(result)
+        except Exception as e:
+            print(f"AI track generation pair {pair_index + 1} failed:", e)
+            refund_subscription(req.user_id, "ai_tracks_num", increment=2)
+            refunded_tracks_count += 2
+            errors.append({
+                "pair": pair_index + 1,
+                "refunded_tracks_count": 2,
+                "error": str(e),
+            })
+            continue
 
     return {
-        "track": "ok",
+        "track": "ok" if generated_tracks else "error",
         "requested_tracks_count": tracks_count,
         "generated_tracks_count": len(generated_tracks),
+        "refunded_tracks_count": refunded_tracks_count,
         "generated_tracks": generated_tracks,
+        "errors": errors,
     }
 
 
@@ -101,6 +116,7 @@ def run_ai_track_generation_job(job_id: str, req: GenerateAITrackRequest):
         mark_ai_track_generation_job_done(job_id, result)
     except Exception as e:
         print(e)
+        refund_subscription(req.user_id, "ai_tracks_num", increment=normalize_tracks_count(req.tracks_count))
         mark_ai_track_generation_job_failed(job_id, str(e))
 
 

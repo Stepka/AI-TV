@@ -51,3 +51,26 @@ def spend_subscription(user_id: str, field: str, decrement: int = 1) -> bool:
 
     return True
 
+
+def refund_subscription(user_id: str, field: str, increment: int = 1) -> bool:
+    user = fetch_user_by_id(user_id)
+    value = getattr(user, field)
+
+    if value == -1:
+        return True
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        UPDATE users
+        SET {field} = ?
+        WHERE user_uid = ?
+    """, (
+        value + increment, user_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return True
+

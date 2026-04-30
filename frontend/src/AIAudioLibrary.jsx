@@ -55,12 +55,31 @@ export default function AIAudioLibrary({ token, userData, channel }) {
         if (nextJob.status === "done") {
           clearInterval(interval);
           setIsGenerating(false);
+          const refundedTracksCount = nextJob.result?.refunded_tracks_count || 0;
+          const generationErrors = nextJob.result?.errors || [];
+
+          if (refundedTracksCount > 0) {
+            setAvailableGenerations((current) => current === -1 ? current : current + refundedTracksCount);
+          }
+
+          if (generationErrors.length > 0) {
+            setGenerateError(t("audioLibrary.generationPartialFailed", {
+              count: refundedTracksCount,
+            }));
+          }
+
           loadAILibrary();
         }
 
         if (nextJob.status === "failed") {
           clearInterval(interval);
           setIsGenerating(false);
+          const refundedTracksCount = nextJob.requested_tracks_count || 0;
+
+          if (refundedTracksCount > 0) {
+            setAvailableGenerations((current) => current === -1 ? current : current + refundedTracksCount);
+          }
+
           setGenerateError(nextJob.error || t("audioLibrary.generateFailed"));
         }
       } catch (error) {
