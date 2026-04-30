@@ -35,6 +35,7 @@ export default function Stage({ token, userData, channel }) {
   const [djTransitionReady, setDjTransitionReady] = useState(false);
 
   const djAudioRef = useRef(null);
+  const djAudioUrlRef = useRef(null);
   const djDataRef = useRef(null);
   const djHelloDataRef = useRef(null);
   const duckIntervalRef = useRef(null);
@@ -42,6 +43,7 @@ export default function Stage({ token, userData, channel }) {
   const playerRef = useRef(null);
   const helloStartedRef = useRef(false);
   const helloTimeoutsRef = useRef([]);
+  const stageTimeoutsRef = useRef([]);
 
   const [overlaySrc, setOverlaySrc] = useState(null);
   const [overlayVisible, setOverlayVisible] = useState(false);
@@ -63,6 +65,66 @@ export default function Stage({ token, userData, channel }) {
     helloTimeoutsRef.current.forEach(clearTimeout);
     helloTimeoutsRef.current = [];
   };
+
+  const clearStageTimeouts = () => {
+    stageTimeoutsRef.current.forEach(clearTimeout);
+    stageTimeoutsRef.current = [];
+  };
+
+  const scheduleStageTimeout = (callback, delay) => {
+    const timeoutId = setTimeout(() => {
+      stageTimeoutsRef.current = stageTimeoutsRef.current.filter((id) => id !== timeoutId);
+      callback();
+    }, delay);
+
+    stageTimeoutsRef.current.push(timeoutId);
+    return timeoutId;
+  };
+
+  const stopDjAudio = () => {
+    if (djAudioRef.current) {
+      djAudioRef.current.pause();
+      djAudioRef.current.src = "";
+      djAudioRef.current.onended = null;
+      djAudioRef.current = null;
+    }
+
+    if (djAudioUrlRef.current) {
+      URL.revokeObjectURL(djAudioUrlRef.current);
+      djAudioUrlRef.current = null;
+    }
+  };
+
+  const stopPlayer = () => {
+    const player = playerRef.current;
+    player?.pauseVideo?.();
+    player?.stopVideo?.();
+    player?.pause?.();
+    player?.destroy?.();
+    playerRef.current = null;
+  };
+
+  const stopStreamResources = () => {
+    clearHelloTimeouts();
+    clearStageTimeouts();
+    clearInterval(duckIntervalRef.current);
+    duckIntervalRef.current = null;
+    stopDjAudio();
+    stopPlayer();
+
+    const overlay = overlayRef.current;
+    if (overlay) {
+      overlay.pause();
+      overlay.removeAttribute("src");
+      overlay.load?.();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopStreamResources();
+    };
+  }, []);
 
   useEffect(() => {
     if (!aiDjEnabled) {
@@ -196,8 +258,10 @@ export default function Stage({ token, userData, channel }) {
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
+    stopDjAudio();
     const audio = new Audio(url);
     djAudioRef.current = audio;
+    djAudioUrlRef.current = url;
 
     audio.currentTime = 0;
     audio.volume = 1;
@@ -207,6 +271,9 @@ export default function Stage({ token, userData, channel }) {
 
     audio.onended = () => {
       URL.revokeObjectURL(url);
+      if (djAudioUrlRef.current === url) {
+        djAudioUrlRef.current = null;
+      }
     };
   };
 
@@ -293,11 +360,18 @@ export default function Stage({ token, userData, channel }) {
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
+    stopDjAudio();
     const audio = new Audio(url);
     djAudioRef.current = audio;
+    djAudioUrlRef.current = url;
 
     audio.volume = 1;
-    audio.onended = () => URL.revokeObjectURL(url);
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      if (djAudioUrlRef.current === url) {
+        djAudioUrlRef.current = null;
+      }
+    };
     audio.play();
 
     const djDuration = Math.min(Math.ceil(djDataRef.current.duration / 2), 15);
@@ -340,7 +414,7 @@ export default function Stage({ token, userData, channel }) {
   const smoothNext = (timeout = 2000) => {
     setIsTransitioning(true);
     handleNext(timeout);
-    setTimeout(() => setIsTransitioning(false), timeout);
+    scheduleStageTimeout(() => setIsTransitioning(false), timeout);
   };
 
   const handleNext = (timeout = 0) => {
@@ -350,7 +424,7 @@ export default function Stage({ token, userData, channel }) {
       loadPlaylist();
     }
 
-    setTimeout(() => {
+    scheduleStageTimeout(() => {
       if (current === 0 && list.length === 1) {
         setPlayerRefreshKey((prev) => prev + 1);
       } else {
@@ -370,7 +444,7 @@ export default function Stage({ token, userData, channel }) {
   const playOverlayVideo = async (src) => {
     setOverlaySrc(src);
 
-    setTimeout(async () => {
+    scheduleStageTimeout(async () => {
       const videoEl = overlayRef.current;
       if (!videoEl) return;
 
@@ -390,7 +464,7 @@ export default function Stage({ token, userData, channel }) {
       const stopOverlay = () => {
         videoEl.removeEventListener("timeupdate", onTimeUpdate);
         setOverlayVisible(false);
-        setTimeout(() => {
+        scheduleStageTimeout(() => {
           videoEl.pause();
           setOverlaySrc(null);
         }, 3000);

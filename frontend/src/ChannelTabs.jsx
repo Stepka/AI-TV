@@ -155,7 +155,7 @@ export default function ChannelTabs({ token, userData, channel, onEditChannel, o
           overflowY: activeTab === "stage" ? "hidden" : "auto",
         }}
       >
-        {activeTab === "stage" && <Stage token={token} userData={userData} channel={channel} />}
+        {activeTab === "stage" && <Stage key={channel?.channel_uid} token={token} userData={userData} channel={channel} />}
         {!isFreeSubscription && activeTab === "channelManager" && <ChannelManager token={token} userData={userData} channel={channel} onSave={onEditChannel} onDelete={onDeleteChannel} />}
         {!isFreeSubscription && activeTab === "brandPhrases" && <BrandPhrasesLibrary token={token} userData={userData} channel={channel} />}
         {!isFreeSubscription && activeTab === "adPhrases" && <AdPhrasesLibrary token={token} userData={userData} channel={channel} />}
