@@ -336,7 +336,7 @@ export default function Stage({ token, userData, channel }) {
       }
 
       if (!djDataRef.current) return;
-      const djDuration = Math.min(Math.ceil(djDataRef.current.duration / 2), 15);
+      const djDuration = Math.min(Math.max(Math.ceil(djDataRef.current.duration / 2), 2), 15);
       if (djDataRef.current && remaining < djDuration) {
         clearInterval(interval);
         startTransition(djDuration);
@@ -374,7 +374,7 @@ export default function Stage({ token, userData, channel }) {
     };
     audio.play();
 
-    const djDuration = Math.min(Math.ceil(djDataRef.current.duration / 2), 15);
+    const djDuration = Math.min(Math.max(Math.ceil(djDataRef.current.duration / 2), 2), 15);
     fadeTrackVolume({
       durationMs: djDuration * 1000,
       targetProgress: 0.5,
